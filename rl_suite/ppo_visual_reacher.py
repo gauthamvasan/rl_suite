@@ -119,11 +119,12 @@ def main():
 
         # Observe
         next_obs, r, done, infos = env.step(action)
-
+        next_img = torch.as_tensor(next_obs.images.astype(np.float32))[None, :, :, :]
+        next_prop = torch.as_tensor(next_obs.proprioception.astype(np.float32))[None, :]
         # Learn
         ####### Start
-        learner.push_and_update(images=img, proprioception=prop, action=action,
-                                reward=r, log_prob=lprob, done=done)
+        learner.push_and_update(imgs=img, propris=prop, action=action, reward=r, log_prob=lprob, done=done,
+                                next_imgs=next_img, next_propris=next_prop)
         if t % 100 == 0:
             print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
                 t, obs.proprioception[:2], action, r, done))

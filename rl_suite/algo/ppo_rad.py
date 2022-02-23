@@ -57,7 +57,7 @@ class PPO_RAD:
         """
         advs = torch.as_tensor(np.zeros(len(vals), dtype=np.float32), device=self.device)
 
-        for t in reversed(range(len(rewards)-1)):
+        for t in reversed(range(len(rewards))):
             if self.bootstrap_terminal:
                 delta = rewards[t] + self.gamma * vals[t+1] - vals[t]
                 advs[t] = delta + self.gamma * self.lmbda * advs[t+1]
@@ -68,13 +68,15 @@ class PPO_RAD:
         rets = advs[:-1] + vals[:-1]
         return rets, advs[:-1]
 
-    def update(self):
+    def update(self, next_imgs, next_propris):
         images, propris, actions, rewards, dones, old_lprobs = self.buffer.sample(len(self.buffer))
-
+        images = torch.cat([images, next_imgs])
+        propris = torch.cat([propris, next_propris])
         vals = []
         with torch.no_grad():
-            for ind in range(0, len(rewards), 256):
-                inds = np.arange(ind, min(len(rewards), ind+256))
+            end = len(images)
+            for ind in range(0, end, 256):
+                inds = np.arange(ind, min(end, ind+256))
                 img = images[inds].to(self.device)
                 prop = propris[inds].to(self.device)
                 v = self.critic(images=img, proprioceptions=prop, random_rad=True, detach_encoder=False)
@@ -89,7 +91,7 @@ class PPO_RAD:
         # Normalize advantages
         norm_advs = (advs - advs.mean()) / advs.std()
 
-        inds = np.arange(len(rewards)-1)
+        inds = np.arange(len(rewards))
         for itr in range(self.cfg.n_epochs):
             np.random.shuffle(inds)
             for i_start in range(0, len(self.buffer), self.cfg.opt_batch_size):
@@ -115,11 +117,11 @@ class PPO_RAD:
                 self.actor_opt.step()
                 self.critic_opt.step()
 
-    def push_and_update(self, images, proprioception, action, reward, log_prob, done):
-        self.buffer.push(images, proprioception, action, reward, done, lprob=log_prob)
+    def push_and_update(self, imgs, propris, action, reward, log_prob, done, next_imgs, next_propris):
+        self.buffer.push(imgs, propris, action, reward, done, lprob=log_prob)
         if len(self.buffer) >= self.batch_size and done:
             tic = time.time()
-            self.update()
+            self.update(next_imgs, next_propris)
             self.buffer.reset()
             self.n_updates += 1
             print("Update {} took {}s".format(self.n_updates, time.time()-tic))
