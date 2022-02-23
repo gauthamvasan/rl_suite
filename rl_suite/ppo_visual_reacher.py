@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument('--max_timesteps', default=500000, type=int, help="# timesteps for the run")
     parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
     # Algorithm
-    parser.add_argument('--batch_size', default=512, type=int)
+    parser.add_argument('--batch_size', default=2048, type=int)
     parser.add_argument('--opt_batch_size', default=256, type=int, help="Optimizer batch size")
     parser.add_argument('--n_epochs', default=10, type=int, help="Number of learning epochs per PPO update")
     parser.add_argument('--actor_lr', default=0.0003, type=float)
@@ -62,6 +62,7 @@ def parse_args():
     parser.add_argument('--freeze_cnn', default=0, type=int)
     # Misc
     parser.add_argument('--work_dir', default='./results', type=str)
+    parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
     args = parser.parse_args()
     return args
 
@@ -97,12 +98,12 @@ def main():
 
     # Experiment block starts
     fname = os.path.join(args.work_dir, "ppo_visual_reacher_bs-{}_{}.txt".format(args.batch_size, seed))
+    plt_fname = os.path.join(args.work_dir, "ppo_visual_reacher_bs-{}_{}.png".format(args.batch_size, seed))
     ret = 0
     step = 0
     rets = []
     ep_lens = []
     obs = env.reset()
-    checkpoint = 10000
     i_episode = 0
     for t in range(args.max_timesteps):
 
@@ -136,17 +137,18 @@ def main():
             i_episode += 1
             rets.append(ret)
             ep_lens.append(step)
-            print("Episode {} ended after {} steps with return {}".format(i_episode, ret, step))
+            print("Episode {} ended after {} steps with return {}".format(i_episode, step, ret))
             ret = 0
             step = 0
             obs = env.reset()
 
-        if (t+1) % checkpoint == 0:
-            plot_rets, plot_x = smoothed_curve(rets, ep_lens, x_tick=checkpoint, window_len=checkpoint)
+        if (t+1) % args.checkpoint == 0:
+            plot_rets, plot_x = smoothed_curve(rets, ep_lens, x_tick=args.checkpoint, window_len=args.checkpoint)
             if plot_rets.any():
                 plt.clf()
                 plt.plot(plot_x, plot_rets)
                 plt.pause(0.001)
+                plt.savefig(plt_fname)
             save_returns(rets, ep_lens, fname)
 
     save_returns(rets, ep_lens, fname)
