@@ -83,6 +83,7 @@ class PPO_RAD:
         vals = torch.cat(vals)
         rewards = rewards.to(self.device)
         dones = dones.to(self.device)
+        old_lprobs = old_lprobs.to(self.device)
         rets, advs = self.estimate_returns_advantages(rewards=rewards, dones=dones, vals=vals)
 
         # Normalize advantages
