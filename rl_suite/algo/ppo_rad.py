@@ -40,7 +40,7 @@ class PPO_RAD:
         prop = prop.to(self.device)
 
         with torch.no_grad():
-            mu, action, lprob = self.actor(img, prop, random_rad=False, detach_encoder=False)
+            mu, action, lprob = self.actor(img, prop, random_rad=False, detach_encoder=True)
 
         return action.cpu().view(-1), lprob.cpu().view(-1)
 
@@ -70,11 +70,19 @@ class PPO_RAD:
 
     def update(self):
         images, propris, actions, rewards, dones, old_lprobs = self.buffer.sample(len(self.buffer))
-        images, propris, actions, rewards, old_lprobs, dones = images.to(self.device), propris.to(self.device), \
-                                                             actions.to(self.device), rewards.to(self.device), \
-                                                             old_lprobs.to(self.device), dones.to(self.device)
+
+        vals = []
         with torch.no_grad():
-            vals = self.critic(images=images, proprioceptions=propris, random_rad=True, detach_encoder=False)
+            for ind in range(0, len(rewards), 256):
+                inds = np.arange(ind, min(len(rewards), ind+256))
+                img = images[inds].to(self.device)
+                prop = propris[inds].to(self.device)
+                v = self.critic(images=img, proprioceptions=prop, random_rad=True, detach_encoder=False)
+                vals.append(v)
+
+        vals = torch.cat(vals)
+        rewards = rewards.to(self.device)
+        dones = dones.to(self.device)
         rets, advs = self.estimate_returns_advantages(rewards=rewards, dones=dones, vals=vals)
 
         # Normalize advantages
@@ -85,10 +93,13 @@ class PPO_RAD:
             np.random.shuffle(inds)
             for i_start in range(0, len(self.buffer), self.cfg.opt_batch_size):
                 opt_inds = inds[i_start: min(i_start+self.cfg.opt_batch_size, len(inds)-1)]
+                img = images[opt_inds].to(self.device)
+                prop = propris[opt_inds].to(self.device)
+                a = actions[opt_inds].to(self.device)
+
                 # Policy update preparation
-                new_lprobs = self.actor.lprob(images[opt_inds], propris[opt_inds], actions[opt_inds],
-                                              random_rad=True, detach_encoder=False)
-                new_vals = self.critic(images[opt_inds], propris[opt_inds], random_rad=True, detach_encoder=False)
+                new_lprobs = self.actor.lprob(img, prop, a, random_rad=True, detach_encoder=True)
+                new_vals = self.critic(img, prop, random_rad=True, detach_encoder=False)
                 ratio = torch.exp(new_lprobs - old_lprobs[opt_inds])
                 p_loss = ratio * norm_advs[opt_inds]
                 clipped_p_loss = torch.clamp(ratio, 1 - self.cfg.clip_epsilon, 1 + self.cfg.clip_epsilon) * norm_advs[opt_inds]

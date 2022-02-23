@@ -1,6 +1,6 @@
 import sys
 import argparse
-import gym
+import os
 import torch
 
 
@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from rl_suite.algo.ppo_rad import PPO_RAD
 from rl_suite.algo.replay_buffer import VisuomotorReplayBuffer
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
+from rl_suite.plot import smoothed_curve
 from sys import platform
 if platform == "darwin":    # For MacOS
     import matplotlib as mpl
@@ -43,39 +44,46 @@ def parse_args():
     parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
     parser.add_argument('--tol', default=0.018, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
     parser.add_argument('--image_period', default=1, type=int, help="Update image obs only every 'image_period' steps")
+    parser.add_argument('--max_timesteps', default=500000, type=int, help="# timesteps for the run")
+    parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
     # Algorithm
-    parser.add_argument('--batch_size', default=200, type=int)
-    parser.add_argument('--opt_batch_size', default=128, type=int, help="Optimizer batch size")
+    parser.add_argument('--batch_size', default=512, type=int)
+    parser.add_argument('--opt_batch_size', default=256, type=int, help="Optimizer batch size")
     parser.add_argument('--n_epochs', default=10, type=int, help="Number of learning epochs per PPO update")
-    parser.add_argument('--actor_lr', default=3e-4, type=float)
-    parser.add_argument('--critic_lr', default=3e-4, type=float)
+    parser.add_argument('--actor_lr', default=0.0003, type=float)
+    parser.add_argument('--critic_lr', default=0.001, type=float)
     parser.add_argument('--gamma', default=0.99, type=float, help="Discount factor")
-    parser.add_argument('--lmbda', default=0.995, type=float, help="Lambda return coefficient")
+    parser.add_argument('--lmbda', default=0.97, type=float, help="Lambda return coefficient")
     parser.add_argument('--clip_epsilon', default=0.2, type=float, help="Clip epsilon for KL divergence in PPO actor loss")
-    parser.add_argument('--l2_reg', default=1e-4, type=float, help="L2 regularization coefficient")
+    parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")
     parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
     # RAD
     parser.add_argument('--rad_offset', default=0.01, type=float)
     parser.add_argument('--freeze_cnn', default=0, type=int)
+    # Misc
+    parser.add_argument('--work_dir', default='./results', type=str)
     args = parser.parse_args()
     return args
 
+def save_returns(rets, ep_lens, fname):
+    data = np.zeros((2, len(rets)))
+    data[0] = ep_lens
+    data[1] = rets
+    np.savetxt(fname, data)
+
 def main():
     args = parse_args()
-
     seed = args.seed
 
     # Task setup block starts
     # Do not change
     env = VisualMujocoReacher2D(tol=args.tol)
     env.seed(seed)
-    o_dim = env.observation_space.shape[0]
-    a_dim = env.action_space.shape[0]
     # Task setup block end
 
     # Learner setup block
-    torch.manual_seed(seed)
     ####### Start
+    torch.manual_seed(seed)
     np.random.seed(seed)
     args.image_shape = env.image_space.shape
     args.proprioception_shape = env.proprioception_space.shape
@@ -88,13 +96,15 @@ def main():
     ####### End
 
     # Experiment block starts
+    fname = os.path.join(args.work_dir, "ppo_visual_reacher_bs-{}_{}.txt".format(args.batch_size, seed))
     ret = 0
+    step = 0
     rets = []
-    avgrets = []
+    ep_lens = []
     obs = env.reset()
-    num_steps = 500000
     checkpoint = 10000
-    for steps in range(num_steps):
+    i_episode = 0
+    for t in range(args.max_timesteps):
 
         # Select an action
         ####### Start
@@ -113,30 +123,33 @@ def main():
         ####### Start
         learner.push_and_update(images=img, proprioception=prop, action=action,
                                 reward=r, log_prob=lprob, done=done)
-        if steps % 100 == 0:
+        if t % 100 == 0:
             print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
-                steps, obs.proprioception[:2], action, r, done))
+                t, obs.proprioception[:2], action, r, done))
         obs = next_obs
         ####### End
 
         # Log
         ret += r
-        if done:
-          rets.append(ret)
-          ret = 0
-          obs = env.reset()
+        step += 1
+        if done or step == args.timeout:
+            i_episode += 1
+            rets.append(ret)
+            ep_lens.append(step)
+            print("Episode {} ended after {} steps with return {}".format(i_episode, ret, step))
+            ret = 0
+            step = 0
+            obs = env.reset()
 
-        if (steps+1) % checkpoint == 0:
-          avgrets.append(np.mean(rets))
-          rets = []
-          plt.clf()
-          plt.plot(range(checkpoint, (steps+1)+checkpoint, checkpoint), avgrets)
-          plt.pause(0.001)
-    name = sys.argv[0].split('.')[-2].split('_')[-1]
-    data = np.zeros((2, len(avgrets)))
-    data[0] = range(checkpoint, num_steps+1, checkpoint)
-    data[1] = avgrets
-    np.savetxt(name+str(seed)+".txt", data)
+        if (t+1) % checkpoint == 0:
+            plot_rets, plot_x = smoothed_curve(rets, ep_lens, x_tick=checkpoint, window_len=checkpoint)
+            if plot_rets.any():
+                plt.clf()
+                plt.plot(plot_x, plot_rets)
+                plt.pause(0.001)
+            save_returns(rets, ep_lens, fname)
+
+    save_returns(rets, ep_lens, fname)
     # plt.show()
 
 
