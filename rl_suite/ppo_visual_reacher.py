@@ -143,8 +143,9 @@ def main():
             obs = env.reset()
 
         if (t+1) % args.checkpoint == 0:
-            plot_rets, plot_x = smoothed_curve(rets, ep_lens, x_tick=args.checkpoint, window_len=args.checkpoint)
-            if plot_rets.any():
+            plot_rets, plot_x = smoothed_curve(
+                np.array(rets), np.array(ep_lens), x_tick=args.checkpoint, window_len=args.checkpoint)
+            if len(plot_rets):
                 plt.clf()
                 plt.plot(plot_x, plot_rets)
                 plt.pause(0.001)
