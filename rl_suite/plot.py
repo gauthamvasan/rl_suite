@@ -55,10 +55,12 @@ def smoothed_plot(data, x_tick=1000, window_len=1000):
     rets, t = smoothed_curve(returns=returns, ep_lens=ep_lens, x_tick=x_tick, window_len=window_len)
     plt.plot(t, rets, color=color, linewidth=2)
     # plt.fill_between(x, rets - std_errs, rets + std_errs, alpha=0.6)
-    plt.xlabel('Steps')
-    h = plt.ylabel("Return", labelpad=25)
+    plt.xlabel('Steps', fontweight='bold', fontsize=14)
+    h = plt.ylabel("Return", labelpad=25, fontweight='bold', fontsize=14)
     h.set_rotation(0)
     plt.pause(0.001)
+    plt.grid()
+    plt.tight_layout()
     plt.show()
 
 def avg_run_plot(data, x_tick):
@@ -87,7 +89,7 @@ if __name__ == '__main__':
 
     # Plot all data without smoothing
     # raw_plot(data)
-
-    fp = "/home/gautham/src/ur5_async_rl/results/SACv2_reaching_dt=0.06_bs=128_dim=160*90_9/returns.txt"
+    x_tick = window_len = 5000
+    fp = "results/ppo_visual_reacher_bs-2048_0.txt"
     data = np.loadtxt(fp)
     smoothed_plot(data, x_tick, window_len)
