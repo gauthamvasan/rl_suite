@@ -28,6 +28,8 @@ class PPO_RAD:
         self.device = device
         self.n_updates = 0
         self.lmbda = self.cfg.lmbda
+        if not hasattr(self.cfg, 'gpu_chunk'):
+            self.GPU_CHUNK = 256
 
         self.actor_opt = Adam(self.actor.parameters(), lr=cfg.actor_lr, weight_decay=cfg.l2_reg)
         self.critic_loss = nn.MSELoss()
@@ -35,7 +37,19 @@ class PPO_RAD:
 
         self.train()
 
+    @staticmethod
+    def get_as_tensor(img, prop):
+        if isinstance(img, (np.ndarray, np.generic)):
+            img = torch.as_tensor(img.astype(np.float32))[None, :, :, :]
+        
+        if isinstance(prop, (np.ndarray, np.generic)):
+            prop = torch.as_tensor(prop.astype(np.float32))[None, :]
+        
+        return img, prop
+
+
     def sample_action(self, img, prop):
+        img, prop = self.get_as_tensor(img, prop)
         img = img.to(self.device)
         prop = prop.to(self.device)
 
@@ -70,13 +84,14 @@ class PPO_RAD:
 
     def update(self, next_imgs, next_propris):
         images, propris, actions, rewards, dones, old_lprobs = self.buffer.sample(len(self.buffer))
+        next_imgs, next_propris = self.get_as_tensor(next_imgs, next_propris)
         images = torch.cat([images, next_imgs])
         propris = torch.cat([propris, next_propris])
         vals = []
         with torch.no_grad():
             end = len(images)
-            for ind in range(0, end, 256):
-                inds = np.arange(ind, min(end, ind+256))
+            for ind in range(0, end, self.GPU_CHUNK):
+                inds = np.arange(ind, min(end, ind + self.GPU_CHUNK))
                 img = images[inds].to(self.device)
                 prop = propris[inds].to(self.device)
                 v = self.critic(images=img, proprioceptions=prop, random_rad=True, detach_encoder=False)

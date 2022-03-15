@@ -25,7 +25,7 @@ class VisuomotorReplayBuffer:
         else:
             propris = torch.from_numpy(np.stack(batch.prop).astype(np.float32))
 
-        images = torch.from_numpy(np.concatenate(batch.img, axis=0).astype(np.float32))
+        images = torch.from_numpy(np.stack(batch.img, axis=0).astype(np.float32))
         actions = torch.from_numpy(np.stack(batch.action).astype(np.float32))
         rewards = torch.from_numpy(np.stack(batch.reward).astype(np.float32))
         dones = torch.from_numpy(np.stack(batch.done).astype(np.float32))

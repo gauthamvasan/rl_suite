@@ -112,8 +112,8 @@ def main():
         # Replace the following statement with your own code for
         # selecting an action
         # a = np.random.randint(a_dim)
-        img = torch.as_tensor(obs.images.astype(np.float32))[None, :, :, :]
-        prop = torch.as_tensor(obs.proprioception.astype(np.float32))[None, :]
+        img = obs.images
+        prop = obs.proprioception
         action, lprob = learner.sample_action(img, prop)
         ####### End
 
