@@ -215,25 +215,6 @@ class ActorModel(nn.Module):
         return dist.log_prob(actions).sum(axis=-1)
 
 
-    @staticmethod
-    def gaussian_logprob(noise, log_std):
-        """Compute Gaussian log probability."""
-        residual = (-0.5 * noise.pow(2) - log_std).sum(-1, keepdim=True)
-        return residual - 0.5 * np.log(2 * np.pi) * noise.size(-1)
-
-    @staticmethod
-    def squash(mu, pi, log_pi):
-        """Apply squashing function.
-        See appendix C from https://arxiv.org/pdf/1812.05905.pdf.
-        """
-        mu = torch.tanh(mu)
-        if pi is not None:
-            pi = torch.tanh(pi)
-        if log_pi is not None:
-            log_pi -= torch.log(F.relu(1 - pi.pow(2)) + 1e-6).sum(-1, keepdim=True)
-        return mu, pi, log_pi
-
-
 class CriticModel(nn.Module):
     def __init__(self, image_shape, proprioception_shape, net_params, rad_offset, freeze_cnn=False):
         super().__init__()
@@ -263,6 +244,110 @@ class CriticModel(nn.Module):
         return vals.view(-1)
 
 
+class SACRADActor(ActorModel):
+    LOG_STD_MIN = -10
+    LOG_STD_MAX = 2
+    
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False):
+        super().__init__(image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn)
+
+    @staticmethod
+    def squash(mu, action, log_p):
+        """Apply squashing function.
+        See appendix C from https://arxiv.org/pdf/1812.05905.pdf.
+        """
+        mu = torch.tanh(mu)
+        if action is not None: 
+            action = torch.tanh(action)
+        if log_p is not None:
+            log_p -= torch.log(F.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
+        return mu, action, log_p
+    
+    @staticmethod
+    def gaussian_logprob(noise, log_std):
+        """Compute Gaussian log probability."""
+        residual = (-0.5 * noise.pow(2) - log_std).sum(-1, keepdim=True)
+        return residual - 0.5 * np.log(2 * np.pi) * noise.size(-1)
+
+    def forward(self, images, proprioceptions, random_rad=True, detach_encoder=False):
+        latents = self.encoder(images, proprioceptions, random_rad, detach=detach_encoder)
+        mu, log_std = self.trunk(latents).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self.LOG_STD_MIN + 0.5 * (
+            self.LOG_STD_MAX - self.LOG_STD_MIN
+        ) * (log_std + 1)
+        std = log_std.exp()
+
+        self.outputs['mu'] = mu
+        self.outputs['std'] = std
+
+        # Reparametrized action sampling
+        noise = torch.randn_like(mu)
+        action = mu + noise * std
+
+        log_p = self.gaussian_logprob(noise, log_std)
+        mu, action, log_p = self.squash(mu, action, log_p)
+
+        return mu, action, log_p, log_std
+
+
+class QFunction(nn.Module):
+    """MLP for q-function."""
+    def __init__(self, latent_dim, action_dim, net_params):
+        super().__init__()
+
+        mlp_params = net_params['mlp']
+        mlp_params[0][0] = latent_dim + action_dim
+        mlp_params[-1][-1] = 1
+        layers = []
+        for i, (in_dim, out_dim) in enumerate(mlp_params):
+            layers.append(nn.Linear(in_dim, out_dim))
+            if i < len(mlp_params) - 1:
+                layers.append(nn.ReLU())
+        self.trunk = nn.Sequential(
+            *layers
+        )
+
+    def forward(self, latent, action):
+        latent_action = torch.cat([latent, action], dim=1)
+        return self.trunk(latent_action)
+
+
+class SACRADCritic(nn.Module):
+    """Critic network, employes two q-functions."""
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False):
+        super().__init__()
+
+        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+        if freeze_cnn:
+            print("Critic CNN weights won't be trained!")
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+
+
+        self.Q1 = QFunction(
+            self.encoder.latent_dim, action_dim, net_params
+        )
+        self.Q2 = QFunction(
+            self.encoder.latent_dim, action_dim, net_params
+        )
+
+        self.outputs = dict()
+        self.apply(weight_init)
+
+    def forward(self, obs, state, action, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder
+        obs = self.encoder(obs, state, detach=detach_encoder)
+        q1 = self.Q1(obs, action)
+        q2 = self.Q2(obs, action)
+
+        self.outputs['q1'] = q1
+        self.outputs['q2'] = q2
+
+        return q1, q2
+
 
 if __name__ == '__main__':
     ss_config = {
@@ -287,3 +372,4 @@ if __name__ == '__main__':
     img = torch.zeros((1, 9, 125, 200))
     prop = torch.zeros((1, 6))
     print(critic(img, prop))
+    

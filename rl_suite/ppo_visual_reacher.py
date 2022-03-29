@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from rl_suite.algo.ppo_rad import PPO_RAD
-from rl_suite.algo.replay_buffer import VisuomotorReplayBuffer
+from rl_suite.algo.replay_buffer import PPORADBuffer
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
 from rl_suite.plot import smoothed_curve
 from sys import platform
@@ -91,8 +91,8 @@ def main():
     args.action_shape = env.action_space.shape
     args.net_params = ss_config
 
-    buffer = VisuomotorReplayBuffer(env.image_space.shape, env.proprioception_space.shape, env.action_space.shape,
-                                    args.batch_size + 1000, store_lprob=True)
+    buffer = PPORADBuffer(env.image_space.shape, env.proprioception_space.shape, env.action_space.shape,
+                          args.batch_size + 1000, store_lprob=True)
     learner = PPO_RAD(cfg=args, buffer=buffer, device=device)
     ####### End
 
