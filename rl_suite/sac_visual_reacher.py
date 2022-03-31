@@ -49,8 +49,8 @@ def parse_args():
     # Algorithm
     parser.add_argument('--replay_buffer_capacity', default=100000, type=int)
     parser.add_argument('--init_steps', default=1000, type=int)
-    parser.add_argument('--update_every', default=50, type=int)
-    parser.add_argument('--update_epochs', default=50, type=int)
+    parser.add_argument('--update_every', default=1, type=int)
+    parser.add_argument('--update_epochs', default=1, type=int)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--gamma', default=1, type=float, help="Discount factor")
     ## Actor
@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument('--rad_offset', default=0.01, type=float)
     parser.add_argument('--freeze_cnn', default=0, type=int)
     # Misc
-    parser.add_argument('--work_dir', default='./results', type=str)
+    parser.add_argument('--work_dir', default='/home/gautham/src/rl_suite/rl_suite/results', type=str)
     parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
     args = parser.parse_args()
     return args

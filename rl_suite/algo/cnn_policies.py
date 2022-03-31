@@ -274,21 +274,33 @@ class SACRADActor(ActorModel):
         mu, log_std = self.trunk(latents).chunk(2, dim=-1)
 
         # constrain log_std inside [log_std_min, log_std_max]
-        log_std = torch.tanh(log_std)
-        log_std = self.LOG_STD_MIN + 0.5 * (
-            self.LOG_STD_MAX - self.LOG_STD_MIN
-        ) * (log_std + 1)
-        std = log_std.exp()
+        # log_std = torch.tanh(log_std)
+        # log_std = self.LOG_STD_MIN + 0.5 * (
+        #     self.LOG_STD_MAX - self.LOG_STD_MIN
+        # ) * (log_std + 1)
+        # std = log_std.exp()
 
-        self.outputs['mu'] = mu
-        self.outputs['std'] = std
+        # self.outputs['mu'] = mu
+        # self.outputs['std'] = std
+
+        # # Reparametrized action sampling
+        # noise = torch.randn_like(mu)
+        # action = mu + noise * std
+
+        # log_p = self.gaussian_logprob(noise, log_std)
+        # mu, action, log_p = self.squash(mu, action, log_p)
+
+        log_std = torch.clamp(log_std, self.LOG_STD_MIN, self.LOG_STD_MAX)
+        std = torch.exp(log_std)
+        dist = Normal(mu, std)
 
         # Reparametrized action sampling
-        noise = torch.randn_like(mu)
-        action = mu + noise * std
+        action = dist.rsample()
+        log_p = dist.log_prob(action).sum(axis=-1)
+        log_p -= (2 * (np.log(2) - action - F.softplus(-2 * action))).sum(axis=1)
 
-        log_p = self.gaussian_logprob(noise, log_std)
-        mu, action, log_p = self.squash(mu, action, log_p)
+        # TODO: Why does spinning up apply tanh here instead of earlier?
+        action = torch.tanh(action)
 
         return mu, action, log_p, log_std
 

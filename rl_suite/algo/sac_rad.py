@@ -151,7 +151,7 @@ class SAC_RAD:
 
     def update(self, img, prop, action, reward, next_img, next_prop, not_done):
         # Move tensors to device
-        img, img, prop, action, reward, next_img, next_prop, not_done = img.to(self.device), prop.to(self.device), \
+        img, prop, action, reward, next_img, next_prop, not_done = img.to(self.device), prop.to(self.device), \
             action.to(self.device), reward.to(self.device), next_img.to(self.device), \
                 next_prop.to(self.device), not_done.to(self.device)
 
@@ -214,8 +214,9 @@ class SACRADAgent(SAC_RAD):
         
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
             for _ in range(self.cfg.update_epochs):
+                # tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
-            
+                # print(time.time() - tic)
             return stat
         
         self.steps += 1
