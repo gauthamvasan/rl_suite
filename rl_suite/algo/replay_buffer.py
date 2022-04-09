@@ -61,16 +61,16 @@ class SACRADBuffer(object):
         self.ignore_propri = True
 
         if image_shape[-1] != 0:
-            self.images = np.empty((capacity, *image_shape), dtype=np.uint8)
+            self.images = np.zeros((capacity, *image_shape), dtype=np.uint8)
             self.ignore_image = False
 
         if proprioception_shape[-1] != 0:
-            self.propris = np.empty((capacity, *proprioception_shape), dtype=np.float32)
+            self.propris = np.zeros((capacity, *proprioception_shape), dtype=np.float32)
             self.ignore_propri = False
 
-        self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
-        self.rewards = np.empty((capacity, 1), dtype=np.float32)
-        self.dones = np.empty((capacity, 1), dtype=np.float32)
+        self.actions = np.zeros((capacity, *action_shape), dtype=np.float32)
+        self.rewards = np.zeros((capacity, 1), dtype=np.float32)
+        self.dones = np.zeros((capacity, 1), dtype=np.float32)
 
         self.idx = 0
         self.last_save = 0
@@ -93,7 +93,7 @@ class SACRADBuffer(object):
 
     def sample(self):
         idxs = np.random.randint(
-            0, self.count, size=min(self.count-1, self.batch_size)
+            0, self.count-1, size=min(self.count-1, self.batch_size)
         )
         if self.ignore_image:
             images = None
