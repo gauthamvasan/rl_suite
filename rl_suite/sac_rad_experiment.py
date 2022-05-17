@@ -72,7 +72,7 @@ def parse_args():
     parser.add_argument('--rad_offset', default=0.01, type=float)
     parser.add_argument('--freeze_cnn', default=0, type=int)
     # Misc
-    parser.add_argument('--work_dir', default='/home/vasan/src/rl_suite/rl_suite/results', type=str)
+    parser.add_argument('--work_dir', default='/home/gautham/src/rl_suite/rl_suite/results', type=str)
     parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
     args = parser.parse_args()
     return args

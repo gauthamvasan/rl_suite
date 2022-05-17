@@ -2,12 +2,16 @@ import torch
 import copy
 import time
 import os
+import threading
 
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.multiprocessing as mp
 
+from copy import deepcopy
 from rl_suite.algo.cnn_policies import SACRADActor, SACRADCritic
+from rl_suite.algo.replay_buffer import SACRADBuffer
 
 
 class SAC_RAD:
@@ -220,3 +224,149 @@ class SACRADAgent(SAC_RAD):
             return stat
         
         self.steps += 1
+
+
+class AsyncSACAgent(SAC_RAD):
+    def __init__(self, cfg, device=torch.device('cpu')):
+        """ SAC agent with asynchronous updates using multiprocessing
+        N.B: Pytorch multiprocessing and replay buffers do not mingle well!
+        Buffer operations should be taken care of in the main training script
+        Args:
+            cfg:
+            actor_critic:
+            device:
+        """
+        super(AsyncSACAgent, self).__init__(cfg=cfg, device=device)
+        self.cfg = cfg
+        self.pi = deepcopy(self.actor)
+        self.pi.to(device)
+        self.device = device
+
+        self.batch_size = cfg.batch_size
+
+        self.running = mp.Value('i', 1)
+        self.pause = mp.Value('i', 0)
+        self.steps = mp.Value('i', 0)
+        self.n_updates = mp.Value('i', 0)
+        self._nn_lock = mp.Lock()
+
+        self._state_dict = {
+            'actor': self.actor.state_dict(), 
+            'critic': self.critic.state_dict(),
+            'actor_opt': self.actor_optimizer.state_dict(),
+            'critic_opt': self.critic_optimizer.state_dict(),
+            'log_alpha_opt': self.log_alpha_optimizer.state_dict(),
+        }
+
+    def async_recv_model(self, model_queue):
+        """ Update the performance element (i.e., sync with new model after gradient updates)
+        Args:
+            model_queue:
+        Returns:
+        """
+        while True:
+            with self.running.get_lock():
+                if not self.running.value:
+                    print("Exiting async_recv_model thread!")
+                    return
+
+            self._state_dict = model_queue.get()
+            with self._nn_lock:
+                self.actor.load_state_dict(self._state_dict['actor'])
+
+            with self.n_updates.get_lock():
+                n_updates = self.n_updates.value
+            if n_updates % 20 == 0:
+                print("***** Performance element updated!, # learning updates: {} *****".format(n_updates))
+
+
+    def async_update(self, tensor_queue, model_queue):
+        """ Asynchronous process to update the actor_critic model.
+        Relies on one other threads spawned from the main process:
+            - async_recv_model
+        It also spawns it's own thread `async_recv_data` to receive state transitions from the main interaction process
+        Args:
+            tensor_queue: Multiprocessing queue to transfer RL interaction data
+            model_queue: Multiprocessing queue to send updated models back to main process
+        Returns:
+        """
+        # TODO: Make buffer a configurable object
+        # N.B: DO NOT pass the buffer as an arg. Python pickling causes large delays and often crashes
+        buffer = SACRADBuffer(self.cfg.image_shape, self.proprioception_shape, self.action_shape,
+                              self.cfg.replay_buffer_capacity, self.cfg.batch_size)
+
+        def async_recv_data():
+            # TODO: Exit mechanism for buffer
+            while True:
+                data = tensor_queue.get()
+                buffer.store(obs=data['obs'], action=data['action'], reward=data['reward'],
+                             done=data['done'], next_obs=data['next_obs'])
+                with self.running.get_lock():
+                    if not self.running.value:
+                        break
+            print("Exiting buffer thread within the async update process")
+
+        buffer_t = threading.Thread(target=async_recv_data)
+        buffer_t.start()
+
+        while True:
+            with self.running.get_lock():
+                if not self.running.value:
+                    print("Exiting async_update process!")
+                    buffer_t.join()
+                    return
+
+            # Warmup block
+            with self.steps.get_lock():
+                steps = self.steps.value
+            if steps < self.n_warmup:
+                time.sleep(1)
+                print("Waiting to fill up the buffer before making any updates...")
+                continue
+
+            # Pause learning
+            with self.pause.get_lock():
+                pause = self.pause.value
+            if pause:
+                time.sleep(0.25)
+                continue
+
+            # Ask for data, make learning updates
+            tic = time.time()
+            for i in range(self.n_epochs):
+                observations, actions, rewards, dones, next_observations = buffer.sample_batch(self.batch_size)
+                self.update(observations, actions, rewards, dones, next_observations)
+            with self.n_updates.get_lock():
+                self.n_updates.value += 1
+                if self.n_updates.value % 20 == 0:
+                    print("***** SAC learning update {} took {} *****".format(self.n_updates.value, time.time() - tic))
+            state_dict = {
+            'actor': self.actor.state_dict(), 
+            'critic': self.critic.state_dict(),
+            'actor_opt': self.actor_optimizer.state_dict(),
+            'critic_opt': self.critic_optimizer.state_dict(),
+            'log_alpha_opt': self.log_alpha_optimizer.state_dict(),
+        }
+            model_queue.put(state_dict)
+
+    def compute_action(self, obs, deterministic=False):
+        with torch.no_grad():
+            with self._nn_lock:
+                action, _ = self.pi(obs, with_lprob=False, det_rad=True)
+        return action.detach().cpu().numpy()
+
+    def state_dict(self):
+        return self._state_dict
+
+    def load_state_dict(self, model):
+        self.actor_critic.load_state_dict(model['actor_critic'])
+        self.pi_optimizer.load_state_dict(model['pi_opt'])
+        self.q_optimizer.load_state_dict(model['q_opt'])
+        self.pi = deepcopy(self.actor_critic.pi)
+        for p in self.pi.parameters():
+            p.requires_grad = False
+
+    def set_pause(self, val):
+        with self.pause.get_lock():
+            self.pause.value = val
+            print("Learning paused!" if val else "Resuming async learning ...")
