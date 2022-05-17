@@ -1,6 +1,8 @@
 import torch
 import numpy as np
+
 from collections import namedtuple
+from threading import Lock
 
 
 class PPORADBuffer:
@@ -113,3 +115,40 @@ class SACRADBuffer(object):
         dones = torch.as_tensor(self.dones[idxs])
 
         return images, propris, actions, rewards, next_images, next_propris, dones
+
+
+class SACReplayBuffer:
+    """
+    A simple FIFO experience replay buffer for SAC agents.
+    """
+
+    def __init__(self, obs_dim, act_dim, capacity, batch_size):
+        self.batch_size = batch_size
+        self.observations = np.zeros((capacity, obs_dim), dtype=np.float32)
+        self.actions = np.zeros((capacity, act_dim), dtype=np.float32)
+        self.rewards = np.zeros(capacity, dtype=np.float32)
+        self.dones = np.zeros(capacity, dtype=np.float32)
+        self.ptr, self.size, self.max_size = 0, 0, capacity
+        self.lock = Lock()
+
+    def add(self, obs, action, reward, done):
+        with self.lock:
+            self.observations[self.ptr] = obs
+            self.actions[self.ptr] = action
+            self.rewards[self.ptr] = reward
+            self.dones[self.ptr] = done
+            self.ptr = (self.ptr+1) % self.max_size
+            self.size = min(self.size+1, self.max_size)
+
+    def sample(self):
+        with self.lock:
+            idxs = np.random.randint(0, self.size, size=self.batch_size)
+            observations = torch.from_numpy(self.observations[idxs, :])
+            next_observations = torch.from_numpy(self.observations[idxs+1, :])
+            actions = torch.from_numpy(self.actions[idxs])
+            rewards = torch.from_numpy(self.rewards[idxs])
+            dones = torch.from_numpy(self.dones[idxs])
+            return (observations, actions, rewards, dones, next_observations)
+
+    def __len__(self):
+        return self.size

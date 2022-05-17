@@ -9,7 +9,7 @@ from rl_suite.envs.env_utils import Observation
 
 
 class VisualMujocoReacher2D(gym.Wrapper):
-    def __init__(self, tol, img_history=3, image_period=1):
+    def __init__(self, tol, img_history=3, image_period=1, control_mode='accel'):
         """
 
         Args:
