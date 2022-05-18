@@ -238,8 +238,8 @@ class AsyncSACAgent(SAC_RAD):
         """
         super(AsyncSACAgent, self).__init__(cfg=cfg, device=device)
         self.cfg = cfg
-        self.pi = deepcopy(self.actor)
-        self.pi.to(device)
+        # self.pi = deepcopy(self.actor)
+        # self.pi.to(device)
         self.device = device
 
         self.batch_size = cfg.batch_size
@@ -292,15 +292,13 @@ class AsyncSACAgent(SAC_RAD):
         """
         # TODO: Make buffer a configurable object
         # N.B: DO NOT pass the buffer as an arg. Python pickling causes large delays and often crashes
-        buffer = SACRADBuffer(self.cfg.image_shape, self.proprioception_shape, self.action_shape,
+        buffer = SACRADBuffer(self.cfg.image_shape, self.cfg.proprioception_shape, self.cfg.action_shape,
                               self.cfg.replay_buffer_capacity, self.cfg.batch_size)
 
         def async_recv_data():
             # TODO: Exit mechanism for buffer
             while True:
-                data = tensor_queue.get()
-                buffer.store(obs=data['obs'], action=data['action'], reward=data['reward'],
-                             done=data['done'], next_obs=data['next_obs'])
+                buffer.add(*tensor_queue.get())
                 with self.running.get_lock():
                     if not self.running.value:
                         break
@@ -319,7 +317,7 @@ class AsyncSACAgent(SAC_RAD):
             # Warmup block
             with self.steps.get_lock():
                 steps = self.steps.value
-            if steps < self.n_warmup:
+            if steps < self.cfg.init_steps:
                 time.sleep(1)
                 print("Waiting to fill up the buffer before making any updates...")
                 continue
@@ -333,21 +331,22 @@ class AsyncSACAgent(SAC_RAD):
 
             # Ask for data, make learning updates
             tic = time.time()
-            for i in range(self.n_epochs):
-                observations, actions, rewards, dones, next_observations = buffer.sample_batch(self.batch_size)
-                self.update(observations, actions, rewards, dones, next_observations)
+            for i in range(self.cfg.update_epochs):
+                images, propris, actions, rewards, next_images, next_propris, dones = buffer.sample()
+                self.update(images.clone(), propris.clone(), actions.clone(), 
+                    rewards.clone(), next_images.clone(), next_propris.clone(), dones.clone())
             with self.n_updates.get_lock():
                 self.n_updates.value += 1
-                if self.n_updates.value % 20 == 0:
+                if self.n_updates.value % 100 == 0:
                     print("***** SAC learning update {} took {} *****".format(self.n_updates.value, time.time() - tic))
             state_dict = {
-            'actor': self.actor.state_dict(), 
-            'critic': self.critic.state_dict(),
-            'actor_opt': self.actor_optimizer.state_dict(),
-            'critic_opt': self.critic_optimizer.state_dict(),
-            'log_alpha_opt': self.log_alpha_optimizer.state_dict(),
-        }
-            model_queue.put(state_dict)
+                'actor': self.actor.state_dict(), 
+                'critic': self.critic.state_dict(),
+                'actor_opt': self.actor_optimizer.state_dict(),
+                'critic_opt': self.critic_optimizer.state_dict(),
+                'log_alpha_opt': self.log_alpha_optimizer.state_dict(),
+            }
+            # model_queue.put(state_dict)
 
     def compute_action(self, obs, deterministic=False):
         with torch.no_grad():

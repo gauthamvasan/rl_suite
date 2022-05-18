@@ -2,12 +2,15 @@ import sys
 import argparse
 import os
 import torch
+import threading
+import time
 
 import numpy as np
 import matplotlib.pyplot as plt
+import torch.multiprocessing as mp
 
 from datetime import datetime
-from rl_suite.algo.sac_rad import SACRADAgent
+from rl_suite.algo.sac_rad import SACRADAgent, AsyncSACAgent
 from rl_suite.algo.replay_buffer import SACRADBuffer
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
 from rl_suite.plot import smoothed_curve
@@ -74,6 +77,7 @@ def parse_args():
     # Misc
     parser.add_argument('--work_dir', default='/home/gautham/src/rl_suite/rl_suite/results', type=str)
     parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
+    parser.add_argument('--load_model', default=0, type=int, help="Database ID to load model")
     args = parser.parse_args()
     return args
 
@@ -100,9 +104,25 @@ def run(args, env):
     args.action_shape = env.action_space.shape
     args.net_params = ss_config
 
-    buffer = SACRADBuffer(env.image_space.shape, env.proprioception_space.shape, env.action_space.shape,
-                                    args.replay_buffer_capacity, args.batch_size)
-    learner = SACRADAgent(cfg=args, buffer=buffer, device=device)
+    # Multiprocessing 
+    ctx = mp.get_context('spawn')
+    agent = AsyncSACAgent(cfg=args, device=device)
+
+    # Model should be loaded before agent process is spawned for multiprocessing
+    if args.load_model:
+        raise NotImplemented
+        # agent.load_state_dict(args.model)
+        # print("Loading model from database id: {}".format(args.db_id))
+
+    tensor_queue = ctx.Queue()
+    model_queue = ctx.Queue()
+
+    p_update = ctx.Process(target=agent.async_update, args=(tensor_queue, model_queue,))
+    p_update.start()
+
+    # model_t = threading.Thread(target=agent.async_recv_model, args=(model_queue,))
+    # model_t.start()
+
     ####### End
 
     # Experiment block starts
@@ -125,19 +145,32 @@ def run(args, env):
         if t < args.init_steps:
             action = env.action_space.sample()
         else:
-            action = learner.sample_action(img, prop)
+            action = agent.sample_action(img, prop)
         ####### End
 
         # Observe
         next_obs, r, done, infos = env.step(action)
+        time.sleep(0.04) # RTRL sim sleep 
         # next_img = torch.as_tensor(next_obs.images.astype(np.float32))[None, :, :, :]
         # next_prop = torch.as_tensor(next_obs.proprioception.astype(np.float32))[None, :]
         # Learn
         ####### Start
-        learner.push_and_update(img, prop, action, r, done)
-        if t % 100 == 0:
-            print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
-                t, obs.proprioception[:2], action, r, done))
+        # if not (p_update.is_alive() and model_t.is_alive()):
+        if not p_update.is_alive():
+            print("Update process died!! Exiting the script ...")
+            # print("Life status: Update process: {}, Recv model thread: {}".format(
+            # p_update.is_alive(), model_t.is_alive()))
+            with agent.running.get_lock():
+                agent.running.value = 0
+                time.sleep(0.1)
+                raise KeyboardInterrupt
+
+        tensor_queue.put((img, prop, action, r, done))
+        with agent.steps.get_lock():
+            agent.steps.value += 1
+        # if t % 100 == 0:
+            # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
+                # t, obs.proprioception[:2], action, r, done))
         obs = next_obs
         ####### End
 
@@ -148,7 +181,7 @@ def run(args, env):
             i_episode += 1
             rets.append(ret)
             ep_lens.append(step)
-            print("Episode {} ended after {} steps with return {}".format(i_episode, step, ret))
+            print("Episode {} ended after {} steps with return {}. Total steps: {}".format(i_episode, step, ret, t))
             ret = 0
             step = 0
             obs = env.reset()
@@ -174,4 +207,5 @@ def main():
     run(args, env)
 
 if __name__ == "__main__":
+    mp.set_start_method('spawn')
     main()
