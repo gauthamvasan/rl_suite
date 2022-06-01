@@ -142,7 +142,7 @@ class SACReplayBuffer:
 
     def sample(self):
         with self.lock:
-            idxs = np.random.randint(0, self.size, size=self.batch_size)
+            idxs = np.random.randint(0, self.size-1, size=self.batch_size)
             observations = torch.from_numpy(self.observations[idxs, :])
             next_observations = torch.from_numpy(self.observations[idxs+1, :])
             actions = torch.from_numpy(self.actions[idxs])
