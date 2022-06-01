@@ -72,7 +72,8 @@ def save_returns(rets, ep_lens, fname):
     data[1] = rets
     np.savetxt(fname, data)
 
-def run(args, env):    
+def run(args, env):
+    run_id = datetime.now().strftime("%Y%m%d-%H%M%S")    
     seed = args.seed
 
     # Task setup block starts
@@ -95,8 +96,9 @@ def run(args, env):
     ####### End
 
     # Experiment block starts
-    fname = os.path.join(args.work_dir, "sac_reacher_tol-{}_bs-{}_{}.txt".format(args.tol, args.batch_size, seed))
-    plt_fname = os.path.join(args.work_dir, "sac_reacher_tol-{}_bs-{}_{}.png".format(args.tol, args.batch_size, seed))
+    base_fname = os.path.join(args.work_dir, "{}_sac_{}_{}".format(run_id, env.name, seed))
+    fname = base_fname + ".txt"
+    plt_fname = base_fname + ".png"
     ret = 0
     step = 0
     rets = []
@@ -150,13 +152,14 @@ def run(args, env):
             save_returns(rets, ep_lens, fname)
 
     save_returns(rets, ep_lens, fname)
+    learner.save(model_dir=args.work_dir, step=args.max_timesteps)
     # plt.show()
 
 def main():
-    run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
     args = parse_args()
     # env = VisualMujocoReacher2D(tol=args.tol)
     env = gym.make('Reacher-v2')
+    env.name = "Reacher-v2"
     run(args, env)
 
 if __name__ == "__main__":
