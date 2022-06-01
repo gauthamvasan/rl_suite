@@ -32,9 +32,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # Task
     parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
-    parser.add_argument('--tol', default=0.009, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
+    parser.add_argument('--tol', default=0.018, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
     parser.add_argument('--image_period', default=1, type=int, help="Update image obs only every 'image_period' steps")
-    parser.add_argument('--max_timesteps', default=500000, type=int, help="# timesteps for the run")
+    parser.add_argument('--max_timesteps', default=100000, type=int, help="# timesteps for the run")
     parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
     # Algorithm
     parser.add_argument('--replay_buffer_capacity', default=10000, type=int)
@@ -95,8 +95,8 @@ def run(args, env):
     ####### End
 
     # Experiment block starts
-    fname = os.path.join(args.work_dir, "sac_reacher_bs-{}_{}.txt".format(args.batch_size, seed))
-    plt_fname = os.path.join(args.work_dir, "sac_reacher_bs-{}_{}.png".format(args.batch_size, seed))
+    fname = os.path.join(args.work_dir, "sac_reacher_tol-{}_bs-{}_{}.txt".format(args.tol, args.batch_size, seed))
+    plt_fname = os.path.join(args.work_dir, "sac_reacher_tol-{}_bs-{}_{}.png".format(args.tol, args.batch_size, seed))
     ret = 0
     step = 0
     rets = []
@@ -130,7 +130,7 @@ def run(args, env):
         # Log
         ret += r
         step += 1
-        if done or step == args.timeout:
+        if done or step == args.timeout:    # Bootstrap on timeout
             i_episode += 1
             rets.append(ret)
             ep_lens.append(step)
