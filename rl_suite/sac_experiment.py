@@ -99,6 +99,7 @@ def run(args, env):
     base_fname = os.path.join(args.work_dir, "{}_sac_{}_{}".format(run_id, env.name, seed))
     fname = base_fname + ".txt"
     plt_fname = base_fname + ".png"
+
     ret = 0
     step = 0
     rets = []
@@ -153,7 +154,7 @@ def run(args, env):
 
     save_returns(rets, ep_lens, fname)
     learner.save(model_dir=args.work_dir, step=args.max_timesteps)
-    # plt.show()
+
 
 def main():
     args = parse_args()
