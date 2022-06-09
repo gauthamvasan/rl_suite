@@ -10,7 +10,7 @@ from gym.spaces import Box
 
 
 class BallInCupWrapper:
-    def __init__(self, ball_in_cup):
+    def __init__(self, seed, timeout):
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
         self._timeout = timeout

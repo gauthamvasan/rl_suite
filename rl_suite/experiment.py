@@ -7,14 +7,15 @@ from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dm_control_wrapper import BallInCupWrapper, ReacherWrapper
 
 
-def make_env(name, *args, **kwargs):
+def make_env(name, **kwargs):
     if name == "ball_in_cup":
-        env = BallInCupWrapper(seed, timeout=timeout)
+        env = BallInCupWrapper(seed=kwargs['seed'], timeout=kwargs['timeout'])
     elif name == "sparse_reacher":
-        env = ReacherWrapper(seed=seed, tol=tol, timeout=timeout)
+        env = ReacherWrapper(seed=kwargs['seed'], tol=kwargs['tol'], timeout=kwargs['timeout'])
     else:
         env = gym.make(name)
     env.name = name
+    return env
 
 
 class Experiment:
@@ -42,4 +43,7 @@ class Experiment:
         np.savetxt(savepath, data)
     
 
-    
+if __name__ == "__main__":
+    env = make_env("ball_in_cup", seed=0, timeout=500)
+    print(env.reset())
+
