@@ -1,21 +1,21 @@
 import argparse
 import gym
+import torch
+import random
+
 import numpy as np
+import matplotlib.pyplot as plt
 
 from datetime import datetime
 from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dm_control_wrapper import BallInCupWrapper, ReacherWrapper
+from rl_suite.plot import smoothed_curve
+from sys import platform
 
-
-def make_env(name, **kwargs):
-    if name == "ball_in_cup":
-        env = BallInCupWrapper(seed=kwargs['seed'], timeout=kwargs['timeout'])
-    elif name == "sparse_reacher":
-        env = ReacherWrapper(seed=kwargs['seed'], tol=kwargs['tol'], timeout=kwargs['timeout'])
-    else:
-        env = gym.make(name)
-    env.name = name
-    return env
+# For MacOS
+if platform == "darwin":    
+    import matplotlib as mpl
+    mpl.use("TKAgg")
 
 
 class Experiment:
@@ -26,8 +26,19 @@ class Experiment:
         parser = argparse.ArgumentParser()
         # Task
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
-        args = parser.parse_args()
-        return args
+        self.args = parser.parse_args()
+        return self.args
+
+    def make_env(self):
+        if self.args.name == "ball_in_cup":
+            env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout)
+        elif self.args.name == "sparse_reacher":
+            env = ReacherWrapper(seed=self.args.seed, tol=self.args.tol, timeout=self.args.timeout)
+        else:
+            env = gym.make(self.args.name)
+            env.seed(self.args.seed)
+        env.name = self.args.name
+        return env
 
     def save_returns(self, rets, ep_lens, savepath):
         """ Save learning curve data as a numpy text file 
@@ -42,8 +53,28 @@ class Experiment:
         data[1] = rets
         np.savetxt(savepath, data)
     
+    def set_seed(self):
+        seed = self.args.seed
 
-if __name__ == "__main__":
-    env = make_env("ball_in_cup", seed=0, timeout=500)
-    print(env.reset())
+        np.random.seed(seed)
+        random.seed(seed)
+        self.env.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+        
+        torch.use_deterministic_algorithms(True)
 
+    def learning_curve(self, rets, ep_lens, save_fig=""):
+        plot_rets, plot_x = smoothed_curve(
+                np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)
+        if len(plot_rets):
+            plt.clf()
+            plt.plot(plot_x, plot_rets)
+            plt.pause(0.001)
+            if save_fig:
+                plt.savefig(save_fig)
+    
+    def run(self):
+        """ This needs to be algorithm specific """
+        raise NotImplemented

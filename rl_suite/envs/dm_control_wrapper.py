@@ -64,12 +64,12 @@ class ReacherWrapper(gym.Wrapper):
     def reset(self):
         self.steps = 0
         obs = self.env.reset()
-        return torch.from_numpy(obs.astype(np.float32)).unsqueeze(0)
+        return obs.astype(np.float32)
 
     def step(self, action):
         self.steps += 1
         next_obs, _, done, info = self.env.step(action)
-        next_obs = torch.from_numpy(next_obs.astype(np.float32)).unsqueeze(0)
+        next_obs = next_obs.astype(np.float32)
 
         dist_to_target = -info["reward_dist"]
 

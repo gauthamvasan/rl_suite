@@ -26,8 +26,8 @@ class SAC:
         self.critic_lr = cfg.critic_lr
         self.alpha_lr = cfg.alpha_lr
 
-        self.actor = SquashedGaussianMLPActor(cfg.obs_dim, cfg.action_dim, cfg.net_params, device)
-        self.critic = SACCritic(cfg.obs_dim, cfg.action_dim, cfg.net_params, device)
+        self.actor = SquashedGaussianMLPActor(cfg.obs_dim, cfg.action_dim, cfg.actor_nn_params, device)
+        self.critic = SACCritic(cfg.obs_dim, cfg.action_dim, cfg.critic_nn_params, device)
         self.critic_target = copy.deepcopy(self.critic) # also copies the encoder instance
 
         self.log_alpha = torch.tensor(np.log(cfg.init_temperature)).to(device)
@@ -80,20 +80,21 @@ class SAC:
             else:
                 return action.cpu().data.numpy().flatten()
 
-    def update_critic(self, obs, action, reward, next_obs, not_done):
+    def update_critic(self, obs, action, reward, next_obs, done):
         with torch.no_grad():
             _, policy_action, log_p, _ = self.actor(next_obs)
             target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
             target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_p
-            target_Q = reward + (not_done * self.gamma * target_V)
+            if self.cfg.bootstrap_terminal:
+                # enable infinite bootstrap
+                target_Q = reward + (self.cfg.gamma * target_V)
+            else:
+                target_Q = reward + ((1.0 - done) * self.cfg.gamma * target_V)
 
         # get current Q estimates
         current_Q1, current_Q2 = self.critic(obs, action)
-
-        # Ignore terminal transitions to enable infinite bootstrap
         critic_loss = torch.mean(
-            (current_Q1 - target_Q) ** 2 * not_done + (current_Q2 - target_Q) ** 2 * not_done
-            #(current_Q1 - target_Q) ** 2 + (current_Q2 - target_Q) ** 2
+            (current_Q1 - target_Q) ** 2 + (current_Q2 - target_Q) ** 2
         )
         # Optimize the critic
         self.critic_optimizer.zero_grad()
