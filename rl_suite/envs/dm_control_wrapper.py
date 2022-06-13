@@ -17,9 +17,9 @@ class BallInCupWrapper:
         self._action_dim = 2
 
     def make_obs(self, x):
-        obs = np.zeros((1, self._obs_dim), dtype=np.float32)
-        obs[:, :4] = x.observation['position'].astype(np.float32)
-        obs[:, 4:] = x.observation['velocity'].astype(np.float32)
+        obs = np.zeros(self._obs_dim, dtype=np.float32)
+        obs[:4] = x.observation['position'].astype(np.float32)
+        obs[4:] = x.observation['velocity'].astype(np.float32)
         return obs
 
     def reset(self):
@@ -72,7 +72,7 @@ class ReacherWrapper(gym.Wrapper):
 
         dist_to_target = -info["reward_dist"]
 
-        reward = -1
+        reward = -0.1
         if dist_to_target <= self._tol:
             info['reached'] = True
             done = True

@@ -37,10 +37,10 @@ class SACExperiment(Experiment):
         parser.add_argument('--gamma', default=1, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
         ## Actor
-        parser.add_argument('--actor_lr', default=1e-3, type=float)
+        parser.add_argument('--actor_lr', default=3e-4, type=float)
         parser.add_argument('--actor_update_freq', default=2, type=int)
         ## Critic
-        parser.add_argument('--critic_lr', default=1e-3, type=float)
+        parser.add_argument('--critic_lr', default=3e-4, type=float)
         parser.add_argument('--critic_tau', default=0.001, type=float)
         parser.add_argument('--critic_target_update_freq', default=2, type=int)
         ## Entropy
@@ -113,9 +113,7 @@ class SACExperiment(Experiment):
                 action = np.random.uniform(
                     low=self.env.action_space.low, high=self.env.action_space.high, size=self.args.action_dim)         
             else:
-                print("Obs:", obs.shape)
                 action = learner.sample_action(obs)
-                print(action, self.args.action_dim)
             ####### End
 
             # Observe
@@ -137,7 +135,7 @@ class SACExperiment(Experiment):
                 i_episode += 1
                 rets.append(ret)
                 ep_lens.append(step)
-                print("Episode {} ended after {} steps with return {}. Total steps: {}".format(
+                print("Episode {} ended after {} steps with return {:.2f}. Total steps: {}".format(
                     i_episode, step, ret, t))
                 ret = 0
                 step = 0
