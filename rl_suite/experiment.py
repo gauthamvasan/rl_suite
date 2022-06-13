@@ -2,6 +2,7 @@ import argparse
 import gym
 import torch
 import random
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,14 +31,14 @@ class Experiment:
         return self.args
 
     def make_env(self):
-        if self.args.name == "ball_in_cup":
+        if self.args.env == "ball_in_cup":
             env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout)
-        elif self.args.name == "sparse_reacher":
+        elif self.args.env == "sparse_reacher":
             env = ReacherWrapper(seed=self.args.seed, tol=self.args.tol, timeout=self.args.timeout)
         else:
-            env = gym.make(self.args.name)
+            env = gym.make(self.args.env)
             env.seed(self.args.seed)
-        env.name = self.args.name
+        env.name = self.args.env
         return env
 
     def save_returns(self, rets, ep_lens, savepath):
@@ -58,7 +59,11 @@ class Experiment:
 
         np.random.seed(seed)
         random.seed(seed)
-        self.env.seed(seed)
+        try:
+            self.env.seed(seed)
+        except AttributeError as e:
+            warnings.warn("AttributeError: '{}' object has no attribute 'seed'".format(self.args.env))
+
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)

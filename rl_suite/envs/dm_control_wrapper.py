@@ -8,7 +8,6 @@ from dm_control import suite
 from gym.spaces import Box
 
 
-
 class BallInCupWrapper:
     def __init__(self, seed, timeout):
         """ Outputs state transition data as torch arrays """
@@ -44,7 +43,7 @@ class BallInCupWrapper:
 
     @property
     def action_space(self):
-        return Box(shape=(2,), high=1, low=-1)
+        return Box(shape=(self._action_dim,), high=1, low=-1)
 
 
 class ReacherWrapper(gym.Wrapper):

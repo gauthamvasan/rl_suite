@@ -22,7 +22,7 @@ class SACExperiment(Experiment):
     def parse_args(self):
         parser = argparse.ArgumentParser()
         # Task
-        parser.add_argument('--name', required=True, type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
+        parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
         parser.add_argument('--tol', default=0.018, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         parser.add_argument('--image_period', default=1, type=int, help="Update image obs only every 'image_period' steps")
@@ -84,15 +84,8 @@ class SACExperiment(Experiment):
 
     def run(self):
         # Reproducibility
-        # self.set_seed()
-        seed = self.args.seed
-        np.random.seed(seed)       
-        self.env.seed(seed)
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(seed)
-        
-        
+        self.set_seed()
+                
         # args.observation_shape = env.observation_space.shape
         self.args.action_shape = self.env.action_space.shape
         self.args.obs_dim = self.env.observation_space.shape[0]
@@ -120,7 +113,9 @@ class SACExperiment(Experiment):
                 action = np.random.uniform(
                     low=self.env.action_space.low, high=self.env.action_space.high, size=self.args.action_dim)         
             else:
+                print("Obs:", obs.shape)
                 action = learner.sample_action(obs)
+                print(action, self.args.action_dim)
             ####### End
 
             # Observe
