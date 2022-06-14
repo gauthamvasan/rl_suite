@@ -1,8 +1,10 @@
 import argparse
+from logging import warning
 import gym
 import torch
 import random
 import warnings
+import os
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +12,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dm_control_wrapper import BallInCupWrapper, ReacherWrapper
+from rl_suite.envs.dot_reacher_env import DotReacherEnv
 from rl_suite.plot import smoothed_curve
 from sys import platform
 
@@ -21,12 +24,14 @@ if platform == "darwin":
 
 class Experiment:
     def __init__(self):
-        self.run_id = datetime.now().strftime("%Y%m%d-%H%M%S")   
+        self.run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+        self.parse_args()
 
     def parse_args(self):
         parser = argparse.ArgumentParser()
         # Task
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
+        parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         self.args = parser.parse_args()
         return self.args
 
@@ -35,6 +40,9 @@ class Experiment:
             env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout)
         elif self.args.env == "sparse_reacher":
             env = ReacherWrapper(seed=self.args.seed, tol=self.args.tol, timeout=self.args.timeout)
+        elif self.args.env == "dot_reacher":
+            env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
+                    dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
@@ -68,7 +76,11 @@ class Experiment:
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
         
-        torch.use_deterministic_algorithms(True)
+        try:
+            torch.use_deterministic_algorithms(True)
+        except Exception as e:
+            print(e)
+            warnings.warn("Unable to use deterministic algorithms with pytorch & cuda!!")
 
     def learning_curve(self, rets, ep_lens, save_fig=""):
         plot_rets, plot_x = smoothed_curve(
@@ -83,3 +95,16 @@ class Experiment:
     def run(self):
         """ This needs to be algorithm specific """
         raise NotImplemented
+
+    @staticmethod
+    def make_dir(dir_path):
+        try:
+            os.mkdir(dir_path)
+        except OSError:
+            pass
+        return dir_path
+
+if __name__ == "__main__":
+    a = np.loadtxt("/home/vasan/src/rl_suite/rl_suite/results/sparse_reacher/20220613-233856_sac_sparse_reacher_test-7.txt")
+    expt = Experiment()
+    expt.learning_curve(a[1], a[0], "./test.png")

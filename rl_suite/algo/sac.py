@@ -55,15 +55,15 @@ class SAC:
 
     def init_optimizers(self):
         self.actor_optimizer = torch.optim.Adam(
-            self.actor.parameters(), lr=self.actor_lr, betas=(0.9, 0.999)
+            self.actor.parameters(), lr=self.actor_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
         )
 
         self.critic_optimizer = torch.optim.Adam(
-            self.critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999)
+            self.critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
         )
 
         self.log_alpha_optimizer = torch.optim.Adam(
-            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999)
+            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999), weight_decay=self.cfg.l2_reg,
         )
 
     @property
@@ -72,8 +72,9 @@ class SAC:
 
     def sample_action(self, x, deterministic=False):
         with torch.no_grad():
-            x = torch.FloatTensor(x).to(self.device)
-            x = x.unsqueeze(0)
+            if not isinstance(x, torch.FloatTensor):
+                x = torch.FloatTensor(x).to(self.device)
+                x = x.unsqueeze(0)
             mu, action, _, _ = self.actor(x)
             if deterministic:
                 return mu.cpu().data.numpy().flatten()
