@@ -197,6 +197,9 @@ def run(args, env):
             save_returns(rets, ep_lens, fname)
 
     save_returns(rets, ep_lens, fname)
+    with agent.running.get_lock():
+        agent.running.value = 0
+        print("Exit the script")
     # plt.show()
 
 def main():
