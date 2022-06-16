@@ -96,20 +96,21 @@ class SAC_RAD:
             else:
                 return action.cpu().data.numpy().flatten()
 
-    def update_critic(self, img, prop, action, reward, next_img, next_prop, not_done):
+    def update_critic(self, img, prop, action, reward, next_img, next_prop, done):
         with torch.no_grad():
             _, policy_action, log_p, _ = self.actor(next_img, next_prop)
             target_Q1, target_Q2 = self.critic_target(next_img, next_prop, policy_action)
             target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_p
-            target_Q = reward + (not_done * self.gamma * target_V)
+            if self.cfg.bootstrap_terminal:
+                # enable infinite bootstrap
+                target_Q = reward + (self.cfg.gamma * target_V)
+            else:
+                target_Q = reward + ((1.0 - done) * self.cfg.gamma * target_V)
 
         # get current Q estimates
-        current_Q1, current_Q2 = self.critic(img, prop, action, detach_encoder=False)
-
-        # Ignore terminal transitions to enable infinite bootstrap
+        current_Q1, current_Q2 = self.critic(img, prop, action)
         critic_loss = torch.mean(
-            (current_Q1 - target_Q) ** 2 * not_done + (current_Q2 - target_Q) ** 2 * not_done
-            #(current_Q1 - target_Q) ** 2 + (current_Q2 - target_Q) ** 2
+            (current_Q1 - target_Q) ** 2 + (current_Q2 - target_Q) ** 2
         )
         # Optimize the critic
         self.critic_optimizer.zero_grad()
