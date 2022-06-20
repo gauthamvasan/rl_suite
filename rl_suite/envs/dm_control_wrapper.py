@@ -28,6 +28,8 @@ class BallInCupWrapper:
         return self.make_obs(self.env.reset())
 
     def step(self, action):
+        if isinstance(action, torch.Tensor):
+            action = action.cpu().numpy().flatten()
         self.steps += 1
 
         x = self.env.step(action)
@@ -67,6 +69,8 @@ class ReacherWrapper(gym.Wrapper):
         return obs.astype(np.float32)
 
     def step(self, action):
+        if isinstance(action, torch.Tensor):            
+            action = action.cpu().numpy().flatten()
         self.steps += 1
         next_obs, _, done, info = self.env.step(action)
         next_obs = next_obs.astype(np.float32)

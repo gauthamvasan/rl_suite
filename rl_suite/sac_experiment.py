@@ -10,9 +10,8 @@ from rl_suite.experiment import Experiment
 
 
 class SACExperiment(Experiment):
-    def __init__(self):
-        super().__init__()
-        self.args = self.parse_args()
+    def __init__(self, args):
+        super(SACExperiment, self).__init__(args)        
         self.env = self.make_env()
         base_fname = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.args.work_dir, "{}_sac_{}_{}-{}".format(
             self.run_id, self.env.name, self.args.description, self.args.seed))
@@ -25,7 +24,7 @@ class SACExperiment(Experiment):
         # Task
         parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
-        parser.add_argument('--max_timesteps', default=100000, type=int, help="# timesteps for the run")
+        parser.add_argument('--N', default=100000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         ## Sparse reacher
         parser.add_argument('--tol', default=0.018, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
@@ -107,7 +106,7 @@ class SACExperiment(Experiment):
         ep_lens = []
         obs = self.env.reset()
         i_episode = 0
-        for t in range(self.args.max_timesteps):
+        for t in range(self.args.N):
             # Select an action
             ####### Start
             # Replace the following statement with your own code for
@@ -152,7 +151,7 @@ class SACExperiment(Experiment):
                 self.save_returns(rets, ep_lens, self.fname)
 
         self.save_returns(rets, ep_lens, self.fname)
-        learner.save(model_dir=self.args.work_dir, step=self.args.max_timesteps)
+        learner.save(model_dir=self.args.work_dir, step=self.args.N)
         # plt.show()
 
 def main():

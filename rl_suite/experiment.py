@@ -23,17 +23,9 @@ if platform == "darwin":
 
 
 class Experiment:
-    def __init__(self):
+    def __init__(self, args):
         self.run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-        self.parse_args()
-
-    def parse_args(self):
-        parser = argparse.ArgumentParser()
-        # Task
-        parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
-        parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
-        self.args = parser.parse_args()
-        return self.args
+        self.args = args
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
@@ -105,6 +97,11 @@ class Experiment:
         return dir_path
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
+    parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
+    args = parser.parse_args()
+        
+    expt = Experiment(args)
     a = np.loadtxt("/home/vasan/src/rl_suite/rl_suite/results/sparse_reacher/20220613-233856_sac_sparse_reacher_test-7.txt")
-    expt = Experiment()
     expt.learning_curve(a[1], a[0], "./test.png")
