@@ -5,6 +5,7 @@ import torch
 import random
 import warnings
 import os
+import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -54,6 +55,10 @@ class Experiment:
         data[1] = rets
         np.savetxt(savepath, data)
     
+    def save_args(self, fname):
+        with open(fname, "wb") as handle:
+            pickle.dump(vars(self.args), handle)
+
     def set_seed(self):
         seed = self.args.seed
 
