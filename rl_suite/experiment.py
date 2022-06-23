@@ -73,11 +73,7 @@ class Experiment:
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
         
-        try:
-            torch.use_deterministic_algorithms(True)
-        except Exception as e:
-            print(e)
-            warnings.warn("Unable to use deterministic algorithms with pytorch & cuda!!")
+        # torch.use_deterministic_algorithms(True)
 
     def learning_curve(self, rets, ep_lens, save_fig=""):
         plot_rets, plot_x = smoothed_curve(
