@@ -27,7 +27,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--N', default=100000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         ## Sparse reacher
-        parser.add_argument('--tol', default=0.018, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
+        parser.add_argument('--tol', default=0.0036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
         parser.add_argument('--pos_tol', default=0.25, type=float, help="Position tolerance in [0.05, ..., 0.25]")
         parser.add_argument('--vel_tol', default=0.1, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
@@ -36,7 +36,7 @@ class SACExperiment(Experiment):
         # Algorithm
         parser.add_argument('--replay_buffer_capacity', default=100000, type=int)
         parser.add_argument('--init_steps', default=1000, type=int)
-        parser.add_argument('--update_every', default=1, type=int)
+        parser.add_argument('--update_every', default=5, type=int)
         parser.add_argument('--update_epochs', default=1, type=int)
         parser.add_argument('--batch_size', default=64, type=int)
         parser.add_argument('--gamma', default=1, type=float, help="Discount factor")

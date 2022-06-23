@@ -31,7 +31,7 @@ class SAC_RAD:
         self.alpha_lr = cfg.alpha_lr
 
         self.action_dim = cfg.action_shape[0]
-
+        
         self.actor = SACRADActor(cfg.image_shape, cfg.proprioception_shape, cfg.action_shape[0], cfg.net_params,
                                 cfg.rad_offset, cfg.freeze_cnn).to(device)
 
@@ -307,7 +307,7 @@ class AsyncSACAgent(SAC_RAD):
 
         buffer_t = threading.Thread(target=async_recv_data)
         buffer_t.start()
-
+        
         while True:
             with self.running.get_lock():
                 if not self.running.value:
@@ -319,7 +319,7 @@ class AsyncSACAgent(SAC_RAD):
             with self.steps.get_lock():
                 steps = self.steps.value
             if steps < self.cfg.init_steps:
-                time.sleep(1)
+                time.sleep(10)
                 print("Waiting to fill up the buffer before making any updates...")
                 continue
 
@@ -328,6 +328,7 @@ class AsyncSACAgent(SAC_RAD):
                 pause = self.pause.value
             if pause:
                 time.sleep(0.25)
+                print("Learning paused ...")
                 continue
 
             # Ask for data, make learning updates

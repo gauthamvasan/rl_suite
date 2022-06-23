@@ -46,7 +46,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # Task
     parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
-    parser.add_argument('--tol', default=0.009, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
+    parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
     parser.add_argument('--image_period', default=1, type=int, help="Update image obs only every 'image_period' steps")
     parser.add_argument('--max_timesteps', default=500000, type=int, help="# timesteps for the run")
     parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
@@ -55,7 +55,7 @@ def parse_args():
     parser.add_argument('--init_steps', default=1000, type=int)
     parser.add_argument('--update_every', default=1, type=int)
     parser.add_argument('--update_epochs', default=1, type=int)
-    parser.add_argument('--batch_size', default=128, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--gamma', default=1, type=float, help="Discount factor")
     ## Actor
     parser.add_argument('--actor_lr', default=3e-4, type=float)
@@ -150,7 +150,7 @@ def run(args, env):
 
         # Observe
         next_obs, r, done, infos = env.step(action)
-        time.sleep(0.04) # RTRL sim sleep 
+        time.sleep(0.02) # RTRL sim sleep 
         # next_img = torch.as_tensor(next_obs.images.astype(np.float32))[None, :, :, :]
         # next_prop = torch.as_tensor(next_obs.proprioception.astype(np.float32))[None, :]
         # Learn
