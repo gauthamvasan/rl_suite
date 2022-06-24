@@ -328,7 +328,6 @@ class AsyncSACAgent(SAC_RAD):
                 pause = self.pause.value
             if pause:
                 time.sleep(0.25)
-                print("Learning paused ...")
                 continue
 
             # Ask for data, make learning updates
