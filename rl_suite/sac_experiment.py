@@ -10,14 +10,17 @@ from rl_suite.experiment import Experiment
 
 
 class SACExperiment(Experiment):
-    def __init__(self, args):
-        super(SACExperiment, self).__init__(args)        
+    def __init__(self):
+        super(SACExperiment, self).__init__(self.parse_args())
         self.env = self.make_env()
         base_fname = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.args.work_dir, "{}_sac_{}_{}-{}".format(
             self.run_id, self.env.name, self.args.description, self.args.seed))
-        print(base_fname)
         self.fname = base_fname + ".txt"
         self.plt_fname = base_fname + ".png"
+
+        print('-'*50)
+        print("{}-{}".format(self.run_id, base_fname))
+        print('-'*50)               
 
     def parse_args(self):
         parser = argparse.ArgumentParser()

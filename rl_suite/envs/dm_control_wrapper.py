@@ -164,12 +164,13 @@ def visualize_behavior(domain_name, task_name, seed=1):
 def random_policy_stats():
     # Problem
     seed = 10
+    timeout = 1000
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # Env
     # env = BallInCupWrapper(seed, timeout=5000)
-    env = ReacherWrapper(seed=seed, tol=0.009, timeout=5000)
+    env = ReacherWrapper(seed=seed, tol=0.009, timeout=timeout)
 
     # Experiment
     EP = 50
@@ -196,7 +197,7 @@ def random_policy_stats():
             epi_steps += 1
 
             # Termination
-            if done:
+            if done or epi_steps == timeout:
                 rets.append(ret)
                 ep_lens.append(epi_steps)
                 print('-' * 50)
@@ -219,7 +220,8 @@ def random_policy_stats():
 
 def interaction(domain_name, task_name, seed=1):
     # Load one task:
-    env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
+    # env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
+    env = ReacherWrapper(tol=0.009, timeout=5000, seed=0)
 
     # Step through an episode and print out reward, discount and observation.
     action_spec = env.action_spec()
@@ -256,8 +258,8 @@ def interaction(domain_name, task_name, seed=1):
     print("Min length:", min(ep_lens))
 
 if __name__ == '__main__':
-    for domain_name, task_name in suite.BENCHMARKING: # suite.BENCHMARKING
-        print(domain_name, task_name)
+    # for domain_name, task_name in suite.BENCHMARKING: # suite.BENCHMARKING
+        # print(domain_name, task_name)
         # env = suite.load(domain_name, task_name)
 
     # m = ManipulatorWrapper(task_name="insert_ball", seed=3)
@@ -271,5 +273,5 @@ if __name__ == '__main__':
     # visualize_behavior("acrobot", "swingup_sparse")
 
     # r = ReacherWrapper(seed=1)
-    # random_policy_stats()
+    random_policy_stats()
 
