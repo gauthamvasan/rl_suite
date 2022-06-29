@@ -1,7 +1,7 @@
 import torch
 import copy
 import time
-import os
+import pickle
 import threading
 
 import numpy as np
@@ -305,6 +305,14 @@ class AsyncSACAgent(SAC_RAD):
                         break
             print("Exiting buffer thread within the async update process")
 
+        def save_buffer():
+            tic = time.time()
+            with open("{}-sac_buffer.pkl".format(self.cfg.robot_serial), "wb") as handle:
+                pickle.dump(buffer, handle, protocol=4)
+            print("Saved the buffer locally!")
+            print("Took: {}s".format(time.time()-tic))
+
+                    
         buffer_t = threading.Thread(target=async_recv_data)
         buffer_t.start()
         
@@ -322,6 +330,11 @@ class AsyncSACAgent(SAC_RAD):
                 time.sleep(10)
                 print("Waiting to fill up the buffer before making any updates...")
                 continue
+            
+            if steps % 5000 == 0:
+                print("Saving buffer thread spawned ...")
+                buffer_save = threading.Thread(target=save_buffer)
+                buffer_save.start()
 
             # Pause learning
             with self.pause.get_lock():

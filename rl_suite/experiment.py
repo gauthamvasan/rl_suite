@@ -93,8 +93,8 @@ class Experiment:
     def make_dir(dir_path):
         try:
             os.mkdir(dir_path)
-        except OSError:
-            pass
+        except OSError as e:
+            print(e)
         return dir_path
 
 if __name__ == "__main__":
