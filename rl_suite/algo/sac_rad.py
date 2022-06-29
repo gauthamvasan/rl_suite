@@ -307,7 +307,7 @@ class AsyncSACAgent(SAC_RAD):
 
         def save_buffer():
             tic = time.time()
-            with open("sac_buffer.pkl", "wb") as handle:
+            with open("{}-sac_buffer.pkl".format(self.cfg.robot_serial), "wb") as handle:
                 pickle.dump(buffer, handle, protocol=4)
             print("Saved the buffer locally!")
             print("Took: {}s".format(time.time()-tic))
