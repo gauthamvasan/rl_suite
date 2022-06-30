@@ -348,9 +348,9 @@ class AsyncSACAgent(SAC_RAD):
                 time.sleep(0.25)
                 continue
 
-            # Ask for data, make learning updates
-            tic = time.time()
+            # Ask for data, make learning updates            
             for i in range(self.cfg.update_epochs):
+                tic = time.time()
                 images, propris, actions, rewards, next_images, next_propris, dones = buffer.sample()
                 self.update(images.clone(), propris.clone(), actions.clone(), 
                     rewards.clone(), next_images.clone(), next_propris.clone(), dones.clone())
