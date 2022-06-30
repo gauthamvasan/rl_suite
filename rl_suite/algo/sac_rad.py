@@ -247,6 +247,7 @@ class AsyncSACAgent(SAC_RAD):
 
         self.running = mp.Value('i', 1)
         self.pause = mp.Value('i', 0)
+        self.save_buffer = mp.Value('i', 0)
         self.steps = mp.Value('i', 0)
         self.n_updates = mp.Value('i', 0)
         self._nn_lock = mp.Lock()
@@ -305,7 +306,7 @@ class AsyncSACAgent(SAC_RAD):
                         break
             print("Exiting buffer thread within the async update process")
 
-        def save_buffer():
+        def save_buffer_pkl():
             tic = time.time()
             with open("{}-sac_buffer.pkl".format(self.cfg.robot_serial), "wb") as handle:
                 pickle.dump(buffer, handle, protocol=4)
@@ -327,14 +328,18 @@ class AsyncSACAgent(SAC_RAD):
             with self.steps.get_lock():
                 steps = self.steps.value
             if steps < self.cfg.init_steps:
-                time.sleep(10)
+                time.sleep(5)
                 print("Waiting to fill up the buffer before making any updates...")
                 continue
             
-            if steps % 5000 == 0:
-                print("Saving buffer thread spawned ...")
-                buffer_save = threading.Thread(target=save_buffer)
-                buffer_save.start()
+            # Save buffer locally
+            with self.save_buffer.get_lock():
+                save_buffer = self.save_buffer.value
+                if save_buffer:
+                    print("Saving buffer thread spawned ...")
+                    buffer_save = threading.Thread(target=save_buffer_pkl)
+                    buffer_save.start()
+                self.save_buffer.value = 0
 
             # Pause learning
             with self.pause.get_lock():
@@ -349,10 +354,10 @@ class AsyncSACAgent(SAC_RAD):
                 images, propris, actions, rewards, next_images, next_propris, dones = buffer.sample()
                 self.update(images.clone(), propris.clone(), actions.clone(), 
                     rewards.clone(), next_images.clone(), next_propris.clone(), dones.clone())
-            with self.n_updates.get_lock():
-                self.n_updates.value += 1
-                if self.n_updates.value % 100 == 0:
-                    print("***** SAC learning update {} took {} *****".format(self.n_updates.value, time.time() - tic))
+                with self.n_updates.get_lock():
+                    self.n_updates.value += 1
+                    if self.n_updates.value % 100 == 0:
+                        print("***** SAC learning update {} took {} *****".format(self.n_updates.value, time.time() - tic))
             state_dict = {
                 'actor': self.actor.state_dict(), 
                 'critic': self.critic.state_dict(),
