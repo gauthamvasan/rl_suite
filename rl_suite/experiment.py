@@ -1,5 +1,4 @@
 import argparse
-from logging import warning
 import gym
 import torch
 import random
@@ -14,6 +13,7 @@ from datetime import datetime
 from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dm_control_wrapper import BallInCupWrapper, ReacherWrapper
 from rl_suite.envs.dot_reacher_env import DotReacherEnv
+from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.plot import smoothed_curve
 from sys import platform
 
@@ -36,6 +36,9 @@ class Experiment:
         elif self.args.env == "dot_reacher":
             env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
+        elif self.args.env == "mountain_car_continuous":
+            env = MountainCarContinuous(timeout=self.args.timeout)
+            env.env.seed(self.args.seed)
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)

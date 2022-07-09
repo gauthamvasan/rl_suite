@@ -3,8 +3,9 @@ import gym
 
 class MountainCarContinuous:
     """ Minimum-time version with longer timelimits"""
-    def __init__(self) -> None:
+    def __init__(self, timeout) -> None:
         self.env = gym.make("MountainCarContinuous-v0")
+        self.timeout = timeout
 
     def reset(self):
         self.steps = 0
