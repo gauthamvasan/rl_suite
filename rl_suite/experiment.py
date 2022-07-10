@@ -100,6 +100,24 @@ class Experiment:
             print(e)
         return dir_path
 
+
+class MySQLExperiment(Experiment):
+    def __init__(self, args):
+        super().__init__(args)
+        creds = pickle.load(open("/home/vasan/src/creds.pkl", "rb"))
+        self.db = MySQLDBManager(user=creds["user"],
+                 host=creds["host"], 
+                 password=creds["password"],
+                 database=args.db,
+                 table=args.table,)
+    
+    def save_returns(self, rets, ep_lens, savepath):
+        self.db.update(episodic_returns=rets, episodic_lengths=ep_lens, model=None, metadata={})
+    
+    def save_args(self, fname):
+        self.db.save(cfg=vars(self.args), run_id=self.run_id, episodic_returns=[], episodic_lengths=[], metadata={})
+        
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")
@@ -109,3 +127,4 @@ if __name__ == "__main__":
     expt = Experiment(args)
     a = np.loadtxt("/home/vasan/src/rl_suite/rl_suite/results/sparse_reacher/20220613-233856_sac_sparse_reacher_test-7.txt")
     expt.learning_curve(a[1], a[0], "./test.png")
+    

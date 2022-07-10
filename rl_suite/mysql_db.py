@@ -55,6 +55,7 @@ class MySQLDBManager(object):
                 cursor.execute((
                     "CREATE TABLE `{}` ("
                     "  `id` int NOT NULL AUTO_INCREMENT," 
+                    "  `run_id` TEXT,"
                     "  `description` TEXT,"
                     "  `cfg` LONGBLOB,"      
                     "  `episodic_returns` LONGBLOB,"
@@ -107,7 +108,7 @@ class MySQLDBManager(object):
             cnx.close()
             print("Updated {} entry on row: {}".format(self.table, self.run_id))
 
-    def save(self, cfg, episodic_returns, episodic_lengths, metadata):
+    def save(self, cfg, run_id, episodic_returns, episodic_lengths, metadata):
         """
 
         Args:
@@ -121,8 +122,8 @@ class MySQLDBManager(object):
 
             # Form a list of parameters that we want to save to database
             #   TODO: Poll this straight from db
-            params_to_save = ['description', 'cfg', 'episodic_returns', 'episodic_lengths', 'metadata']
-            values = [cfg['description'], pickle.dumps(cfg), pickle.dumps(episodic_returns),
+            params_to_save = ['description', 'run_id', 'cfg', 'episodic_returns', 'episodic_lengths', 'metadata']
+            values = [cfg['description'], run_id, pickle.dumps(cfg), pickle.dumps(episodic_returns),
                       pickle.dumps(episodic_lengths), pickle.dumps(metadata)]
 
             query = "INSERT INTO {} ({})" \
@@ -138,45 +139,7 @@ class MySQLDBManager(object):
             print('Cannot save while in readonly mode')
 
 
-class PickleExptSaver:
-    """ Save pickle file with relevant experiment data """
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.expt_data = {
-            "cfg": None,
-            "episodic_returns": None,
-            "episodic_lengths": None,
-            "metadata":None,
-            "model": None,
-        }
-
-    def update(self, episodic_returns, episodic_lengths, model, metadata):
-        self.expt_data["episodic_returns"] = episodic_returns
-        self.expt_data["episodic_lengths"] = episodic_lengths
-        self.expt_data["model"] = model
-        self.expt_data["metadata"] = metadata
-        self.pickle_dump()
-
-    def save(self, cfg, episodic_returns, episodic_lengths, metadata):
-        self.expt_data["cfg"] = cfg
-        self.expt_data["episodic_returns"] = episodic_returns
-        self.expt_data["episodic_lengths"] = episodic_lengths
-        self.expt_data["metadata"] = metadata
-        self.pickle_dump()
-
-    def pickle_dump(self):
-        with open(self.filepath, 'wb') as handle:
-            pickle.dump(self.expt_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    def load_run(self, filepath):
-        with open(filepath, 'rb') as handle:
-            expt_data = pickle.load(handle)
-
-        return expt_data["cfg"], expt_data["model"], expt_data["episodic_returns"], \
-               expt_data["episodic_lengths"], expt_data["metadata"]
-
-
-if __name__ == '__main__':
+def test_local():
     id = 56
     db = MySQLDBManager(host="localhost", user='vega', password='vector123')
     cfg, model, episodic_returns, episodic_lengths, metadata = db.load_run(db_id=id)
@@ -184,4 +147,13 @@ if __name__ == '__main__':
     # Create a duplicate record
     db.save(cfg, episodic_returns, episodic_lengths, metadata)
     db.update(episodic_returns, episodic_lengths, model, metadata)
-    
+
+def test_cc():
+    # CC Test
+    creds = pickle.load(open("/home/vasan/src/creds.pkl", "rb"))
+    db = MySQLDBManager(user=creds["user"], host=creds["host"], password=creds["password"],
+            database=args.db, table=args.table,)
+
+if __name__ == '__main__':
+    test_cc()
+       
