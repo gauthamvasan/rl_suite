@@ -20,7 +20,6 @@ class SAC:
         self.encoder_tau = cfg.encoder_tau
         self.actor_update_freq = cfg.actor_update_freq
         self.critic_target_update_freq = cfg.critic_target_update_freq
-        self.rad_offset = cfg.rad_offset
 
         self.actor_lr = cfg.actor_lr
         self.critic_lr = cfg.critic_lr
