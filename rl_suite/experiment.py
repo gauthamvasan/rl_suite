@@ -1,4 +1,5 @@
 import argparse
+from genericpath import exists
 import gym
 import torch
 import random
@@ -20,7 +21,8 @@ from sys import platform
 # For MacOS
 if platform == "darwin":    
     import matplotlib as mpl
-    mpl.use("TKAgg")
+    # mpl.use("TKAgg")
+    mpl.use("Qt5Agg")
 
 
 class Experiment:
@@ -95,7 +97,7 @@ class Experiment:
     @staticmethod
     def make_dir(dir_path):
         try:
-            os.mkdir(dir_path)
+            os.makedirs(dir_path, exist_ok=True)
         except OSError as e:
             print(e)
         return dir_path

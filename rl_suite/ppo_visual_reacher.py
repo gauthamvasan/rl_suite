@@ -14,7 +14,7 @@ from rl_suite.plot import smoothed_curve
 from sys import platform
 if platform == "darwin":    # For MacOS
     import matplotlib as mpl
-    mpl.use("TKAgg")
+    mpl.use("Qt5Agg")
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
