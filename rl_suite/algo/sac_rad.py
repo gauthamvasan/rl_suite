@@ -198,6 +198,9 @@ class SAC_RAD:
         torch.save(
             self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
         )
+        torch.save(self.actor_optimizer.state_dict(), '%s/actor_opt_%s.pt' % (model_dir, step))
+        torch.save(self.critic_optimizer.state_dict(), '%s/critic_opt_%s.pt' % (model_dir, step))
+        torch.save(self.log_alpha_optimizer.state_dict(), '%s/log_alpha_opt_%s.pt' % (model_dir, step))
 
     def load(self, model_dir, step):
         self.actor.load_state_dict(
@@ -206,7 +209,9 @@ class SAC_RAD:
         self.critic.load_state_dict(
             torch.load('%s/critic_%s.pt' % (model_dir, step))
         )
-
+        self.actor_optimizer.load_state_dict(torch.load('%s/actor_opt_%s.pt' % (model_dir, step)))
+        self.critic_optimizer.load_state_dict(torch.load('%s/critic_opt_%s.pt' % (model_dir, step)))
+        self.log_alpha_optimizer.load_state_dict(torch.load('%s/log_alpha_opt_%s.pt' % (model_dir, step)))
 
 class SACRADAgent(SAC_RAD):
     def __init__(self, cfg, buffer, device=torch.device('cpu')):
@@ -373,16 +378,6 @@ class AsyncSACAgent(SAC_RAD):
                 action, _ = self.pi(obs, with_lprob=False, det_rad=True)
         return action.detach().cpu().numpy()
 
-    def state_dict(self):
-        return self._state_dict
-
-    def load_state_dict(self, model):
-        self.actor_critic.load_state_dict(model['actor_critic'])
-        self.pi_optimizer.load_state_dict(model['pi_opt'])
-        self.q_optimizer.load_state_dict(model['q_opt'])
-        self.pi = deepcopy(self.actor_critic.pi)
-        for p in self.pi.parameters():
-            p.requires_grad = False
 
     def set_pause(self, val):
         with self.pause.get_lock():
