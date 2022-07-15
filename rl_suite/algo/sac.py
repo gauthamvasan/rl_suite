@@ -209,3 +209,47 @@ class SACAgent(SAC):
             return stat
         
         self.steps += 1
+
+
+class ResetSACAgent(SAC):
+    def __init__(self, cfg, device=torch.device('cpu')):
+        self.cfg = cfg
+        self.device = device
+        self.gamma = cfg.gamma
+        self.critic_tau = cfg.critic_tau
+        self.encoder_tau = cfg.encoder_tau
+        self.actor_update_freq = cfg.actor_update_freq
+        self.critic_target_update_freq = cfg.critic_target_update_freq
+
+        self.actor_lr = cfg.actor_lr
+        self.critic_lr = cfg.critic_lr
+        self.alpha_lr = cfg.alpha_lr
+
+        # Add one action for reset
+        self.actor = SquashedGaussianMLPActor(cfg.obs_dim, cfg.action_dim+1, cfg.actor_nn_params, device)
+        self.critic = SACCritic(cfg.obs_dim, cfg.action_dim, cfg.critic_nn_params, device)
+        self.critic_target = copy.deepcopy(self.critic) # also copies the encoder instance
+
+        self.log_alpha = torch.tensor(np.log(cfg.init_temperature)).to(device)
+        self.log_alpha.requires_grad = True
+        # set target entropy to -|A|
+        self.target_entropy = -np.prod((cfg.action_dim + 1,))
+
+        self.num_updates = 0
+
+        # optimizers
+        self.init_optimizers()
+        self.train()
+        self.critic_target.train()
+
+    def push_and_update(self, obs, action, reward, done):
+        self._replay_buffer.add(obs, action, reward, done)
+        
+        if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
+            for _ in range(self.cfg.update_epochs):
+                # tic = time.time()
+                stat = self.update(*self._replay_buffer.sample())
+                # print(time.time() - tic)
+            return stat
+        
+        self.steps += 1
