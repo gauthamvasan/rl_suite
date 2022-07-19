@@ -34,6 +34,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--vel_tol', default=0.1, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
         parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
         parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")
+        # Reset threshold
+        parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
         # Algorithm
         parser.add_argument('--replay_buffer_capacity', default=150000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
@@ -61,7 +63,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--nn_activation', default="relu", type=str)
         # Misc
         parser.add_argument('--work_dir', default='./results/sac_dot_reacher', type=str)
-        parser.add_argument('--checkpoint', default=10000, type=int, help="Save plots and rets every checkpoint")
+        parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
@@ -127,7 +129,7 @@ class SACExperiment(Experiment):
             ####### End
 
             # Observe
-            if reset_action > 0.9: 
+            if reset_action > self.args.reset_thresh: 
                 n_reset += 1               
                 next_obs = self.env.reset()
                 r = -1
