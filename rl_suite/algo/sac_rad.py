@@ -256,6 +256,7 @@ class AsyncSACAgent(SAC_RAD):
         self.steps = mp.Value('i', 0)
         self.n_updates = mp.Value('i', 0)
         self._nn_lock = mp.Lock()
+        self._buffer_lock = mp.Lock()
 
         self._state_dict = {
             'actor': self.actor.state_dict(), 
@@ -305,7 +306,8 @@ class AsyncSACAgent(SAC_RAD):
         def async_recv_data():
             # TODO: Exit mechanism for buffer
             while True:
-                buffer.add(*tensor_queue.get())
+                with self._buffer_lock:
+                    buffer.add(*tensor_queue.get())
                 with self.running.get_lock():
                     if not self.running.value:
                         break
@@ -313,12 +315,14 @@ class AsyncSACAgent(SAC_RAD):
 
         def save_buffer_pkl():
             tic = time.time()
-            with open("{}-sac_buffer.pkl".format(self.cfg.robot_serial), "wb") as handle:
-                pickle.dump(buffer, handle, protocol=4)
+            print("Saving buffer thread spawned ...")
+            with self._buffer_lock:
+                with open("{}-sac_buffer.pkl".format(self.cfg.robot_serial), "wb") as handle:
+                    pickle.dump(buffer, handle, protocol=4)
             print("Saved the buffer locally!")
             print("Took: {}s".format(time.time()-tic))
 
-                    
+        # Start receiving data from the env interaction process to store in the buffer
         buffer_t = threading.Thread(target=async_recv_data)
         buffer_t.start()
         
@@ -341,7 +345,6 @@ class AsyncSACAgent(SAC_RAD):
             with self.save_buffer.get_lock():
                 save_buffer = self.save_buffer.value
                 if save_buffer:
-                    print("Saving buffer thread spawned ...")
                     buffer_save = threading.Thread(target=save_buffer_pkl)
                     buffer_save.start()
                 self.save_buffer.value = 0
@@ -377,7 +380,6 @@ class AsyncSACAgent(SAC_RAD):
             with self._nn_lock:
                 action, _ = self.pi(obs, with_lprob=False, det_rad=True)
         return action.detach().cpu().numpy()
-
 
     def set_pause(self, val):
         with self.pause.get_lock():
