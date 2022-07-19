@@ -212,8 +212,9 @@ class SACAgent(SAC):
 
 
 class ResetSACAgent(SAC):
-    def __init__(self, cfg, device=torch.device('cpu')):
+    def __init__(self, cfg, buffer, device=torch.device('cpu')):
         self.cfg = cfg
+        self._replay_buffer = buffer
         self.device = device
         self.gamma = cfg.gamma
         self.critic_tau = cfg.critic_tau
@@ -227,7 +228,7 @@ class ResetSACAgent(SAC):
 
         # Add one action for reset
         self.actor = SquashedGaussianMLPActor(cfg.obs_dim, cfg.action_dim+1, cfg.actor_nn_params, device)
-        self.critic = SACCritic(cfg.obs_dim, cfg.action_dim, cfg.critic_nn_params, device)
+        self.critic = SACCritic(cfg.obs_dim, cfg.action_dim+1, cfg.critic_nn_params, device)
         self.critic_target = copy.deepcopy(self.critic) # also copies the encoder instance
 
         self.log_alpha = torch.tensor(np.log(cfg.init_temperature)).to(device)
@@ -236,6 +237,7 @@ class ResetSACAgent(SAC):
         self.target_entropy = -np.prod((cfg.action_dim + 1,))
 
         self.num_updates = 0
+        self.steps = 0
 
         # optimizers
         self.init_optimizers()

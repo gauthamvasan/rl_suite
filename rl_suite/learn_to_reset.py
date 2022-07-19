@@ -4,7 +4,7 @@ import torch
 
 import numpy as np
 
-from rl_suite.algo.sac import SACAgent
+from rl_suite.algo.sac import ResetSACAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer
 from rl_suite.experiment import Experiment
 
@@ -94,8 +94,8 @@ class SACExperiment(Experiment):
         self.args.obs_dim = self.env.observation_space.shape[0]
         self.args.action_dim = self.env.action_space.shape[0]
 
-        buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim, self.args.replay_buffer_capacity, self.args.batch_size)
-        learner = SACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
+        buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim+1, self.args.replay_buffer_capacity, self.args.batch_size)
+        learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
 
         # Experiment block starts
         ret = 0
@@ -115,14 +115,18 @@ class SACExperiment(Experiment):
                 # action = self.env.action_space.sample()       
                 action = np.random.uniform(
                     low=self.env.action_space.low, high=self.env.action_space.high, size=self.args.action_dim)         
-                action = torch.as_tensor(action.astype(np.float32)).view((1, -1))
+                x_action = torch.as_tensor(action.astype(np.float32)).view((1, -1))
+                reset_action = np.random.uniform(-1, 1)
+                action = np.concatenate((action, np.array([reset_action])))
             else:
                 _, action, _, _ = learner.actor(obs)
                 action = action.detach().cpu()
+                x_action = action[:, :self.args.action_dim]
+                reset_action = action[:, -1]
             ####### End
 
             # Observe
-            next_obs, r, done, infos = self.env.step(action)
+            next_obs, r, done, infos = self.env.step(x_action)
 
             # Learn
             ####### Start
@@ -136,7 +140,7 @@ class SACExperiment(Experiment):
             # Log
             ret += r
             step += 1
-            if done or step == self.args.timeout:    # Bootstrap on timeout
+            if done:    # Bootstrap on timeout
                 i_episode += 1
                 rets.append(ret)
                 ep_lens.append(step)
