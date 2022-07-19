@@ -104,6 +104,7 @@ class SACExperiment(Experiment):
         ep_lens = []
         obs = self.env.reset()
         i_episode = 0
+        n_reset = 0
         for t in range(self.args.N):
             # Select an action
             ####### Start
@@ -126,7 +127,14 @@ class SACExperiment(Experiment):
             ####### End
 
             # Observe
-            next_obs, r, done, infos = self.env.step(x_action)
+            if reset_action > 0.9: 
+                n_reset += 1               
+                next_obs = self.env.reset()
+                r = -1
+                done = False
+                infos = "Agent chose to reset itself"
+            else:
+                next_obs, r, done, infos = self.env.step(x_action)
 
             # Learn
             ####### Start
@@ -144,10 +152,12 @@ class SACExperiment(Experiment):
                 i_episode += 1
                 rets.append(ret)
                 ep_lens.append(step)
-                print("Episode {} ended after {} steps with return {:.2f}. Total steps: {}".format(
-                    i_episode, step, ret, t))
+                print("Episode {} ended after {} steps with return {:.2f}. # resets: {}. Total steps: {}".format(
+                    i_episode, step, ret, n_reset, t))
+                
                 ret = 0
                 step = 0
+                n_reset = 0
                 obs = self.env.reset()
 
             if (t+1) % self.args.checkpoint == 0:
