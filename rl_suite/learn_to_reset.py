@@ -116,16 +116,13 @@ class SACExperiment(Experiment):
             # selecting an action
             # a = np.random.randint(a_dim)
             if t < self.args.init_steps:
-                # TODO: Fix bug with lack of reproducibility in using env.action_space.sample()
-                # action = self.env.action_space.sample()       
                 action = np.random.uniform(
                     low=self.env.action_space.low, high=self.env.action_space.high, size=self.args.action_dim)         
-                x_action = torch.as_tensor(action.astype(np.float32)).view((1, -1))
+                x_action = action.copy()
                 reset_action = np.random.uniform(-1, 1)
                 action = np.concatenate((action, np.array([reset_action])))
             else:
-                _, action, _, _ = learner.actor(obs)
-                action = action.detach().cpu()
+                action = learner.sample_action(obs)                
                 x_action = action[:, :self.args.action_dim]
                 reset_action = action[:, -1]
             ####### End
