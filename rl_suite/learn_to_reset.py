@@ -26,15 +26,11 @@ class SACExperiment(Experiment):
     def parse_args(self):
         parser = argparse.ArgumentParser()
         # Task
-        parser.add_argument('--env', default="dot_reacher", type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
+        parser.add_argument('--env', default="sparse_reacher", type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
         parser.add_argument('--N', default=150000, type=int, help="# timesteps for the run")
-        parser.add_argument('--timeout', default=10000, type=int, help="Timeout for the env")        
-        ## DotReacher
-        parser.add_argument('--pos_tol', default=0.25, type=float, help="Position tolerance in [0.05, ..., 0.25]")
-        parser.add_argument('--vel_tol', default=0.1, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
-        parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
-        parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")
+        ## Sparse reacher
+        parser.add_argument('--tol', default=0.0036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         # Reset threshold
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
         # Algorithm
