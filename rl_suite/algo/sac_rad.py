@@ -300,8 +300,13 @@ class AsyncSACAgent(SAC_RAD):
         """
         # TODO: Make buffer a configurable object
         # N.B: DO NOT pass the buffer as an arg. Python pickling causes large delays and often crashes
-        buffer = SACRADBuffer(self.cfg.image_shape, self.cfg.proprioception_shape, self.cfg.action_shape,
-                              self.cfg.replay_buffer_capacity, self.cfg.batch_size)
+        if self.cfg.load_buffer:
+            print("Loading buffer for Vector #: {}".format(self.cfg.robot_serial))
+            buffer = pickle.load(open("{}-sac_buffer.pkl".format(self.cfg.robot_serial), "rb"))
+            print("Buffer loaded successfully from disk...")
+        else:
+            buffer = SACRADBuffer(self.cfg.image_shape, self.cfg.proprioception_shape, self.cfg.action_shape,
+                                self.cfg.replay_buffer_capacity, self.cfg.batch_size)
 
         def async_recv_data():
             # TODO: Exit mechanism for buffer
