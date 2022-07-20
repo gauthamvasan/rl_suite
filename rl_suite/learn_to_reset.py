@@ -17,6 +17,7 @@ class SACExperiment(Experiment):
             self.run_id, self.env.name, self.args.description, self.args.seed))
         self.fname = base_fname + ".txt"
         self.plt_fname = base_fname + ".png"
+        self.base_fname = base_fname
 
         print('-'*50)
         print("{}-{}".format(self.run_id, base_fname))
@@ -62,7 +63,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--critic_hidden_sizes', default="512 512", type=str)
         parser.add_argument('--nn_activation', default="relu", type=str)
         # Misc
-        parser.add_argument('--work_dir', default='./results/sac_dot_reacher', type=str)
+        parser.add_argument('--work_dir', default='./results', type=str)
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         parser.add_argument('--description', required=True, type=str)
@@ -104,6 +105,7 @@ class SACExperiment(Experiment):
         step = 0
         rets = []
         ep_lens = []
+        n_resets = []
         obs = self.env.reset()
         i_episode = 0
         n_reset = 0
@@ -130,20 +132,21 @@ class SACExperiment(Experiment):
 
             # Observe
             if reset_action > self.args.reset_thresh: 
-                n_reset += 1               
+                n_reset += 1
+                t += 10
+                step += 10               
                 next_obs = self.env.reset()
                 r = -1
                 done = False
                 infos = "Agent chose to reset itself"
             else:
                 next_obs, r, done, infos = self.env.step(x_action)
-
             # Learn
             ####### Start
             learner.push_and_update(obs, action, r, done)
             # if t % 100 == 0:
                 # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
-                    # t, obs[:2], action, r, done))
+                    # t, obs, action, r, done))
             obs = next_obs
             ####### End
 
@@ -154,6 +157,7 @@ class SACExperiment(Experiment):
                 i_episode += 1
                 rets.append(ret)
                 ep_lens.append(step)
+                n_resets.append(n_reset)
                 print("Episode {} ended after {} steps with return {:.2f}. # resets: {}. Total steps: {}".format(
                     i_episode, step, ret, n_reset, t))
                 
@@ -165,8 +169,10 @@ class SACExperiment(Experiment):
             if (t+1) % self.args.checkpoint == 0:
                 self.learning_curve(rets, ep_lens, save_fig=self.plt_fname)
                 self.save_returns(rets, ep_lens, self.fname)
+                np.savetxt(self.base_fname + "num_resets.txt", np.array(n_resets))
 
         self.save_returns(rets, ep_lens, self.fname)
+        np.savetxt(self.base_fname + "num_resets.txt", np.array(n_resets))
         learner.save(model_dir=self.args.work_dir, step=self.args.N)
         # plt.show()
 
