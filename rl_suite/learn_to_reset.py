@@ -29,8 +29,9 @@ class SACExperiment(Experiment):
         parser.add_argument('--env', default="sparse_reacher", type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
         parser.add_argument('--N', default=150000, type=int, help="# timesteps for the run")
+        parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         ## Sparse reacher
-        parser.add_argument('--tol', default=0.0036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
+        parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         # Reset threshold
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
         # Algorithm
@@ -119,8 +120,8 @@ class SACExperiment(Experiment):
                 action = np.concatenate((action, np.array([reset_action])))
             else:
                 action = learner.sample_action(obs)                
-                x_action = action[:, :self.args.action_dim]
-                reset_action = action[:, -1]
+                x_action = action[:self.args.action_dim]
+                reset_action = action[-1]
             ####### End
 
             # Observe
