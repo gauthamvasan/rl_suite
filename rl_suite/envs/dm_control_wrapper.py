@@ -77,7 +77,11 @@ class ReacherWrapper(gym.Wrapper):
 
         dist_to_target = -info["reward_dist"]
 
-        reward = -0.1
+        if self._tol == 0.009:
+            reward = -0.01
+        else:
+            reward = -0.1
+    
         if dist_to_target <= self._tol:
             info['reached'] = True
             done = True
