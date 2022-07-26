@@ -13,14 +13,13 @@ class BallInCupWrapper:
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
         self._timeout = timeout
-        self._obs_dim = 9
+        self._obs_dim = 8
         self._action_dim = 2
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
         obs[:4] = x.observation['position'].astype(np.float32)
         obs[4:8] = x.observation['velocity'].astype(np.float32)
-        obs[-1] = (self._timeout - self.steps)/float(self._timeout)
         return obs
 
     def reset(self):
