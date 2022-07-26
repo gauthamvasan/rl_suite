@@ -7,6 +7,7 @@ import numpy as np
 from rl_suite.algo.sac import SACAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer
 from rl_suite.experiment import Experiment
+from rl_suite.running_stats import RunningStats
 
 
 class SACExperiment(Experiment):
@@ -44,6 +45,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--batch_size', default=64, type=int)
         parser.add_argument('--gamma', default=1, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
+        parser.add_argument('--normalize', default=0, type=int, help="Normalize observation")
         ## Actor
         parser.add_argument('--actor_lr', default=3e-4, type=float)
         parser.add_argument('--actor_update_freq', default=2, type=int)
@@ -93,6 +95,9 @@ class SACExperiment(Experiment):
     def run(self):
         # Reproducibility
         self.set_seed()
+
+        # Normalize wrapper
+        rms = RunningStats()
                 
         # args.observation_shape = env.observation_space.shape
         self.args.action_shape = self.env.action_space.shape
@@ -115,6 +120,10 @@ class SACExperiment(Experiment):
             # Replace the following statement with your own code for
             # selecting an action
             # a = np.random.randint(a_dim)
+            if self.args.normalize:
+                rms.push(obs)
+                obs = rms.zscore(obs)
+
             if t < self.args.init_steps:
                 # TODO: Fix bug with lack of reproducibility in using env.action_space.sample()
                 # action = self.env.action_space.sample()       
