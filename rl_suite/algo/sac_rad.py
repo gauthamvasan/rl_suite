@@ -1,5 +1,4 @@
 import torch
-import copy
 import time
 import pickle
 import threading
@@ -38,7 +37,7 @@ class SAC_RAD:
         self.critic = SACRADCritic(cfg.image_shape, cfg.proprioception_shape, cfg.action_shape[0], cfg.net_params,
                                 cfg.rad_offset, cfg.freeze_cnn).to(device)
 
-        self.critic_target = copy.deepcopy(self.critic) # also copies the encoder instance
+        self.critic_target = deepcopy(self.critic) # also copies the encoder instance
 
         if hasattr(self.actor.encoder, 'convs'):
             self.actor.encoder.convs = self.critic.encoder.convs
@@ -390,3 +389,10 @@ class AsyncSACAgent(SAC_RAD):
         with self.pause.get_lock():
             self.pause.value = val
             print("Learning paused!" if val else "Resuming async learning ...")
+
+
+class ResetSACRADAgent(SACRADAgent):
+    def __init__(self, cfg, device=torch.device('cpu')):
+        reset_cfg = deepcopy(cfg)
+        reset_cfg.action_dim += 1
+        super().__init__(cfg, device)

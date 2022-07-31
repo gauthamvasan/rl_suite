@@ -94,6 +94,7 @@ class SACExperiment(Experiment):
         self.args.obs_dim = self.env.observation_space.shape[0]
         self.args.action_dim = self.env.action_space.shape[0]
 
+        # One additonal action_dim for reset action
         buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim+1, self.args.replay_buffer_capacity, self.args.batch_size)
         learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
 
@@ -113,11 +114,9 @@ class SACExperiment(Experiment):
             # selecting an action
             # a = np.random.randint(a_dim)
             if t < self.args.init_steps:
-                action = np.random.uniform(
-                    low=self.env.action_space.low, high=self.env.action_space.high, size=self.args.action_dim)         
-                x_action = action.copy()
+                x_action = np.random.uniform(low=-1, high=1, size=self.args.action_dim)
                 reset_action = np.random.uniform(-1, 1)
-                action = np.concatenate((action, np.array([reset_action])))
+                action = np.concatenate((x_action, np.array([reset_action])))
             else:
                 action = learner.sample_action(obs)                
                 x_action = action[:self.args.action_dim]
