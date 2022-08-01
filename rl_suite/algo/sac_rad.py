@@ -392,7 +392,7 @@ class AsyncSACAgent(SAC_RAD):
 
 
 class ResetSACRADAgent(SACRADAgent):
-    def __init__(self, cfg, device=torch.device('cpu')):
+    def __init__(self, cfg, buffer, device=torch.device('cpu')):
         reset_cfg = deepcopy(cfg)
         reset_cfg.action_dim += 1
-        super().__init__(cfg, device)
+        super().__init__(cfg, buffer, device)

@@ -5,7 +5,8 @@ import torch
 import numpy as np
 
 from rl_suite.algo.sac import ResetSACAgent
-from rl_suite.algo.replay_buffer import SACReplayBuffer
+from rl_suite.algo.sac_rad import ResetSACRADAgent
+from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 
 
@@ -35,6 +36,7 @@ class SACExperiment(Experiment):
         # Reset threshold
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
         # Algorithm
+        parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=150000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
         parser.add_argument('--update_every', default=50, type=int)
@@ -54,7 +56,10 @@ class SACExperiment(Experiment):
         parser.add_argument('--alpha_lr', default=1e-4, type=float)
         ## Encoder
         parser.add_argument('--encoder_tau', default=0.001, type=float)
-        parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")        
+        parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")
+        # RAD
+        parser.add_argument('--rad_offset', default=0.01, type=float)
+        parser.add_argument('--freeze_cnn', default=0, type=int)        
         # MLP params
         parser.add_argument('--actor_hidden_sizes', default="512 512", type=str)
         parser.add_argument('--critic_hidden_sizes', default="512 512", type=str)
@@ -66,18 +71,42 @@ class SACExperiment(Experiment):
         parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
 
-        args.actor_nn_params = {
-            'mlp': {
-                'hidden_sizes': list(map(int, args.actor_hidden_sizes.split())),
-                'activation': args.nn_activation,
+        assert args.algo in ["sac", "sac_rad"]        
+        if args.algo == "sac":
+            args.actor_nn_params = {
+                'mlp': {
+                    'hidden_sizes': list(map(int, args.actor_hidden_sizes.split())),
+                    'activation': args.nn_activation,
+                }
             }
-        }
-        args.critic_nn_params = {
-            'mlp': {
-                'hidden_sizes': list(map(int, args.critic_hidden_sizes.split())),
-                'activation': args.nn_activation,
+            args.critic_nn_params = {
+                'mlp': {
+                    'hidden_sizes': list(map(int, args.critic_hidden_sizes.split())),
+                    'activation': args.nn_activation,
+                }
             }
-        }
+        else:
+            # TODO: Fix this hardcoding by providing choice of network architectures
+            args.net_params = {
+                # Spatial softmax encoder net params
+                'conv': [
+                    # in_channel, out_channel, kernel_size, stride
+                    [-1, 32, 3, 2],
+                    [32, 32, 3, 2],
+                    [32, 32, 3, 2],
+                    [32, 32, 3, 1],
+                ],
+            
+                'latent': 50,
+
+                'mlp': [
+                    [-1, 1024],
+                    [1024, 1024],
+                    [1024, 1024],
+                    [1024, -1]
+                ],
+            }            
+
         if args.device == 'cpu':
             args.device = torch.device("cpu")
         else:
@@ -95,8 +124,16 @@ class SACExperiment(Experiment):
         self.args.action_dim = self.env.action_space.shape[0]
 
         # One additonal action_dim for reset action
-        buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim+1, self.args.replay_buffer_capacity, self.args.batch_size)
-        learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
+        if self.args.algo == "sac":
+            buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim+1, self.args.replay_buffer_capacity, self.args.batch_size)
+            learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
+        else:
+            self.args.image_shape = self.env.image_space.shape
+            self.args.proprioception_shape = self.env.proprioception_space.shape
+            self.args.action_shape = self.env.action_space.shape
+            buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
+                (self.args.action_dim+1,), self.args.replay_buffer_capacity, self.args.batch_size)
+            learner = ResetSACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
 
         # Experiment block starts
         ret = 0
@@ -124,6 +161,10 @@ class SACExperiment(Experiment):
             ####### End
 
             # Observe
+            if self.args.algo == "sac_rad":
+                img = obs.images
+                prop = obs.proprioception
+
             if reset_action > self.args.reset_thresh: 
                 n_reset += 1
                 t += 10
@@ -136,7 +177,11 @@ class SACExperiment(Experiment):
                 next_obs, r, done, infos = self.env.step(x_action)
             # Learn
             ####### Start
-            learner.push_and_update(obs, action, r, done)
+            if self.args.algo == "sac":
+                learner.push_and_update(obs, action, r, done)
+            else:
+                learner.push_and_update(img, prop, action, r, done)
+                
             # if t % 100 == 0:
                 # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
                     # t, obs, action, r, done))
