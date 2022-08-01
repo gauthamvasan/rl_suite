@@ -15,6 +15,7 @@ from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dm_control_wrapper import BallInCupWrapper, ReacherWrapper
 from rl_suite.envs.dot_reacher_env import DotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
+from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
 from rl_suite.plot import smoothed_curve
 from sys import platform
 
@@ -41,6 +42,8 @@ class Experiment:
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
+        elif self.args.env == "visual_sparse_reacher":
+            env = VisualMujocoReacher2D(tol=self.args.tol)            
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
