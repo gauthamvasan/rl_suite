@@ -38,7 +38,7 @@ class SACExperiment(Experiment):
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=150000, type=int)
-        parser.add_argument('--init_steps', default=5000, type=int)
+        parser.add_argument('--init_steps', default=1000, type=int)
         parser.add_argument('--update_every', default=50, type=int)
         parser.add_argument('--update_epochs', default=50, type=int)
         parser.add_argument('--batch_size', default=64, type=int)
@@ -130,7 +130,7 @@ class SACExperiment(Experiment):
         else:
             self.args.image_shape = self.env.image_space.shape
             self.args.proprioception_shape = self.env.proprioception_space.shape
-            self.args.action_shape = self.env.action_space.shape
+            self.args.action_shape = (self.env.action_space.shape[0]+1,)
             buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
                 (self.args.action_dim+1,), self.args.replay_buffer_capacity, self.args.batch_size)
             learner = ResetSACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
@@ -145,26 +145,24 @@ class SACExperiment(Experiment):
         i_episode = 0
         n_reset = 0
         for t in range(self.args.N):
+            if self.args.algo == "sac_rad":
+                img = obs.images
+                prop = obs.proprioception
+            
             # Select an action
-            ####### Start
-            # Replace the following statement with your own code for
-            # selecting an action
-            # a = np.random.randint(a_dim)
             if t < self.args.init_steps:
                 x_action = np.random.uniform(low=-1, high=1, size=self.args.action_dim)
                 reset_action = np.random.uniform(-1, 1)
                 action = np.concatenate((x_action, np.array([reset_action])))
             else:
-                action = learner.sample_action(obs)                
+                if self.args.algo == "sac":
+                    action = learner.sample_action(obs)                
+                else:
+                    action = learner.sample_action(img, prop)
                 x_action = action[:self.args.action_dim]
                 reset_action = action[-1]
-            ####### End
 
-            # Observe
-            if self.args.algo == "sac_rad":
-                img = obs.images
-                prop = obs.proprioception
-
+            # Reset action
             if reset_action > self.args.reset_thresh: 
                 n_reset += 1
                 t += 10
@@ -175,6 +173,7 @@ class SACExperiment(Experiment):
                 infos = "Agent chose to reset itself"
             else:
                 next_obs, r, done, infos = self.env.step(x_action)
+                
             # Learn
             ####### Start
             if self.args.algo == "sac":

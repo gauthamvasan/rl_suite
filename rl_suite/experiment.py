@@ -1,5 +1,4 @@
 import argparse
-from genericpath import exists
 import gym
 import torch
 import random
@@ -12,7 +11,6 @@ import matplotlib.pyplot as plt
 
 from datetime import datetime
 from rl_suite.mysql_db import MySQLDBManager
-from rl_suite.envs.dm_control_wrapper import BallInCupWrapper, ReacherWrapper
 from rl_suite.envs.dot_reacher_env import DotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
@@ -22,7 +20,6 @@ from sys import platform
 # For MacOS
 if platform == "darwin":    
     import matplotlib as mpl
-    # mpl.use("TKAgg")
     mpl.use("Qt5Agg")
 
 
@@ -33,8 +30,12 @@ class Experiment:
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
+            # TODO: Fix in-line imports to avoid glew not found error on Compute Canada
+            from rl_suite.envs.dm_control_wrapper import BallInCupWrapper
             env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout)
         elif self.args.env == "sparse_reacher":
+            # TODO: Fix in-line imports to avoid glew not found error on Compute Canada
+            from rl_suite.envs.dm_control_wrapper import ReacherWrapper
             env = ReacherWrapper(seed=self.args.seed, tol=self.args.tol, timeout=self.args.timeout)
         elif self.args.env == "dot_reacher":
             env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
