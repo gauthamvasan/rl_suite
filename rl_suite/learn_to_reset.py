@@ -138,13 +138,14 @@ class SACExperiment(Experiment):
         # Experiment block starts
         ret = 0
         step = 0
+        t = 0
         rets = []
         ep_lens = []
         n_resets = []
         obs = self.env.reset()
         i_episode = 0
         n_reset = 0
-        for t in range(self.args.N):
+        while t < self.args.N:
             if self.args.algo == "sac_rad":
                 img = obs.images
                 prop = obs.proprioception
@@ -190,6 +191,7 @@ class SACExperiment(Experiment):
             # Log
             ret += r
             step += 1
+            t += 1
             if done:    # Bootstrap on timeout
                 i_episode += 1
                 rets.append(ret)
