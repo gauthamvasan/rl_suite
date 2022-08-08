@@ -9,12 +9,15 @@ from gym.spaces import Box
 
 
 class BallInCupWrapper:
-    def __init__(self, seed, timeout):
+    def __init__(self, seed, timeout, penalty=0.01):
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
         self._timeout = timeout
         self._obs_dim = 8
         self._action_dim = 2
+        
+        assert penalty > 0
+        self.reward = -penalty
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
@@ -33,7 +36,7 @@ class BallInCupWrapper:
 
         x = self.env.step(action)
         next_obs = self.make_obs(x)
-        reward = -0.01
+        reward = self.reward
         done = x.reward # or self.steps == self._timeout
         info = {}
 

@@ -11,5 +11,5 @@ module load cuda/11.2.2
 source /home/vasan/src/rtrl/bin/activate
 
 SECONDS=0
-python learn_to_reset.py --description "reset_thresh_08_g995" --init_steps 5000 --work_dir "./results/reset_action/sparse_reacher_reset/tol_36" --N 100000 --gamma 0.995 --seed $SLURM_ARRAY_TASK_ID --reset_thresh 0.8 --env "sparse_reacher" --tol 0.036
+python sac_experiment.py --description "reward_neg01_g1" --init_steps 5000 --work_dir "/home/vasan/src/rl_suite/rl_suite/results/ball_in_cup/reward_neg01_t1000" --N 150000 --gamma 1 --env "ball_in_cup" --penalty 0.1 --timeout 1000 --actor_hidden_sizes "1024 1024" --critic_hidden_sizes "1024 1024" --seed $SLURM_ARRAY_TASK_ID
 echo "Baseline job $seed took $SECONDS"
