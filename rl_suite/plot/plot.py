@@ -1,6 +1,5 @@
 import glob
 import os
-from matplotlib.style import use
 import scipy.stats
 
 import matplotlib.pyplot as plt
@@ -187,73 +186,14 @@ def confidence_interval_plot(plt_cfg, confidence=0.95):
         plt.savefig(plt_cfg["save_path"], dpi=200)
     else:
         plt.show()
-
-def reset_action_plots():
-    dot_reacher_cfg = {
-        "x_tick": 5000,
-        "window_len": 5000,
-        "fp": "/Users/gautham/src/data_rl/reset_action/dot_reacher",
-        "key": "sac_dot_reacher_reset_thresh_09_g995",
-        "save_path": "/Users/gautham/src/research_log/reset_as_an_action/2022-07-27-dot-reacher-experiments/dot-reacher-learning.png",
-        # "save_path": "",
-        "title": "Dot Reacher",
-        "N": 150000,
-    }
-
-    dot_reacher_hard_cfg = {
-        "x_tick": 5000,
-        "window_len": 5000,
-        "fp": "/Users/gautham/src/data_rl/reset_action/dot_reacher_hard",
-        "key": "sac_dot_reacher_reset_thresh_09_g995",
-        "save_path": "/Users/gautham/src/research_log/reset_as_an_action/2022-07-27-dot-reacher-experiments/dot-reacher-hard-learning.png",
-        # "save_path": "",
-        "N": 100000,
-        "title": "Dot Reacher Hard",
-    }
-
-    sparse_reacher_cfg = {
-        "x_tick": 5000,
-        "window_len": 5000,
-        "fp": "/Users/gautham/src/data_rl/reset_action/visual_sparse_reacher/",
-        "key": "reset_thresh9_g995_tol36",
-        "save_path": "/Users/gautham/src/research_log/reset_as_an_action/2022-07-27-sparse-reacher-experiments/sparse_reacher_tol36.png",
-        "title": "Visual Sparse Reacher (0.036)",
-        "N": 50000,
-    }
-
-    sparse_reacher_tol9_cfg = {
-        "x_tick": 5000,
-        "window_len": 5000,
-        "fp": "/Users/gautham/src/data_rl/reset_action/visual_sparse_reacher/",
-        "key": "reset_thresh9_g995_tol9",
-        "save_path": "/Users/gautham/src/research_log/reset_as_an_action/2022-07-27-sparse-reacher-experiments/sparse_reacher_tol9.png",
-        "title": "Visual Sparse Reacher (0.009)",
-        "N": 50000,
-    }
-  
-    bic_n1_cfg = {
-        "x_tick": 5000,
-        "window_len": 5000,
-        "fp": "/Users/gautham/src/data_rl/reset_action/ball_in_cup/reward_neg1_t1000",
-        "key": "reward_neg1",
-        "save_path": "/Users/gautham/src/research_log/reset_as_an_action/2022-08-08-ball-in-cup-timeout1K/neg1_t1K_g995.png",
-        "title": "Ball in cup (r=-1), \ntimeout=1000, gamma=0.995",
-        "N": 145000,
-    }  
-  
-    confidence_interval_plot(bic_n1_cfg)
-        
-
-   
+       
 
 if __name__ == '__main__':
     # data = np.loadtxt("mover0.txt"); plt.close()
 
     # Plot all data without smoothing
     # raw_plot(data)
-    # x_tick = window_len = 5000
-    # fp = "results/ppo_visual_reacher_bs-2048_0.txt"
-    # data = np.loadtxt(fp)
-    # smoothed_plot(data, x_tick, window_len)
-
-    reset_action_plots()
+    x_tick = window_len = 5000
+    fp = "results/ppo_visual_reacher_bs-2048_0.txt"
+    data = np.loadtxt(fp)
+    smoothed_plot(data, x_tick, window_len)

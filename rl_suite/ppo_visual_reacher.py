@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from rl_suite.algo.ppo_rad import PPO_RAD
 from rl_suite.algo.replay_buffer import PPORADBuffer
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
-from rl_suite.plot import smoothed_curve
+from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 if platform == "darwin":    # For MacOS
     import matplotlib as mpl
