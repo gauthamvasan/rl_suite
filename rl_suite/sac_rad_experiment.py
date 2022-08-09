@@ -10,7 +10,7 @@ from datetime import datetime
 from rl_suite.algo.sac_rad import SACRADAgent
 from rl_suite.algo.replay_buffer import SACRADBuffer
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
-from rl_suite.plot import smoothed_curve
+from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 if platform == "darwin":    # For MacOS
     import matplotlib as mpl
