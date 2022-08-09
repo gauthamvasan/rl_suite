@@ -37,6 +37,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--penalty', default=0.1, type=float, help="Reward penalty")
         # Reset threshold
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
+        parser.add_argument('--reset_length', default=10, type=int, help= "Number of timesteps required to reset")
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=150000, type=int)
@@ -46,8 +47,6 @@ class SACExperiment(Experiment):
         parser.add_argument('--batch_size', default=64, type=int)
         parser.add_argument('--gamma', default=0.995, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
-        # Ball In A Cup
-        parser.add_argument('--penalty', default=0.1, type=float, help="Reward penalty")
         ## Actor
         parser.add_argument('--actor_lr', default=3e-4, type=float)
         parser.add_argument('--actor_update_freq', default=2, type=int)
@@ -170,10 +169,10 @@ class SACExperiment(Experiment):
             # Reset action
             if reset_action > self.args.reset_thresh: 
                 n_reset += 1
-                t += 10
-                step += 10               
+                t += self.args.reset_length - 1         # N.B: We add +1 to 'step' and 't' again below
+                step += self.args.reset_length - 1             
                 next_obs = self.env.reset()
-                r = -1
+                r = -self.args.penalty * self.args.reset_length
                 done = False
                 infos = "Agent chose to reset itself"
             else:
