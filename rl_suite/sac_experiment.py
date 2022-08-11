@@ -42,7 +42,7 @@ class SACExperiment(Experiment):
         # Algorithm
         parser.add_argument('--replay_buffer_capacity', default=100000, type=int)
         parser.add_argument('--init_steps', default=1000, type=int)
-        parser.add_argument('--update_every', default=5, type=int)
+        parser.add_argument('--update_every', default=2, type=int)
         parser.add_argument('--update_epochs', default=1, type=int)
         parser.add_argument('--batch_size', default=64, type=int)
         parser.add_argument('--gamma', default=1, type=float, help="Discount factor")
