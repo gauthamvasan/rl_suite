@@ -118,7 +118,7 @@ class SACExperiment(Experiment):
 
     @staticmethod
     def add_time_to_obs(obs, step):
-        return np.concatenate((obs, [step/1000.]))
+        return np.concatenate((obs, [float(step)/500.]))
 
     def run(self):
         # Reproducibility
