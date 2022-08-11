@@ -52,7 +52,7 @@ class BallInCupWrapper:
 
 
 class ReacherWrapper(gym.Wrapper):
-    def __init__(self, tol, seed, timeout=500):
+    def __init__(self, tol, seed, penalty, timeout=500):
         """
 
         Args:
@@ -61,7 +61,8 @@ class ReacherWrapper(gym.Wrapper):
         """
         super().__init__(gym.make('Reacher-v2').unwrapped)
         self.env.seed(seed)
-        self._tol = tol
+        self.penalty = penalty
+        self._tol = tol        
         self._timeout = timeout
         self._action_dim = 2
 
@@ -79,10 +80,7 @@ class ReacherWrapper(gym.Wrapper):
 
         dist_to_target = -info["reward_dist"]
 
-        if self._tol == 0.009:
-            reward = -0.01
-        else:
-            reward = -0.1
+        reward = -self.penalty
     
         if dist_to_target <= self._tol:
             info['reached'] = True
