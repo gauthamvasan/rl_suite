@@ -47,7 +47,7 @@ class Experiment:
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
         elif self.args.env == "visual_sparse_reacher":
-            env = VisualMujocoReacher2D(tol=self.args.tol)            
+            env = VisualMujocoReacher2D(tol=self.args.tol, penalty=self.args.penalty)            
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)

@@ -9,7 +9,7 @@ from rl_suite.envs.env_utils import Observation
 
 
 class VisualMujocoReacher2D(gym.Wrapper):
-    def __init__(self, tol, img_history=3, image_period=1, control_mode='accel'):
+    def __init__(self, tol, penalty, img_history=3, image_period=1, control_mode='accel'):
         """
 
         Args:
@@ -34,6 +34,7 @@ class VisualMujocoReacher2D(gym.Wrapper):
         self._latest_image = None
         self._reset = False
         self._step = 0
+        self.penalty = penalty
 
     def reset(self):
         prop = self.env.reset()
@@ -64,7 +65,7 @@ class VisualMujocoReacher2D(gym.Wrapper):
 
         dist_to_target = -info["reward_dist"]
 
-        reward = -0.1
+        reward = -self.penalty
         if dist_to_target <= self._tol:
             info['reached'] = True
             done = True
