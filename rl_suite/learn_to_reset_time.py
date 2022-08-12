@@ -39,7 +39,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--reset_length', default=10, type=int, help= "Number of timesteps required to reset")
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
-        parser.add_argument('--replay_buffer_capacity', default=150000, type=int)
+        parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
         parser.add_argument('--update_every', default=100, type=int)
         parser.add_argument('--update_epochs', default=50, type=int)
@@ -113,6 +113,8 @@ class SACExperiment(Experiment):
             args.device = torch.device("cpu")
         else:
             args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        args.replay_buffer_capacity = min(args.replay_buffer_capacity, args.N)
         return args
 
     @staticmethod
