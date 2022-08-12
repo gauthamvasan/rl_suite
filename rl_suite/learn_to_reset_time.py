@@ -29,9 +29,9 @@ class SACExperiment(Experiment):
         # Task
         parser.add_argument('--env', default="sparse_reacher", type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
-        parser.add_argument('--N', default=150000, type=int, help="# timesteps for the run")
+        parser.add_argument('--N', default=201000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
-        parser.add_argument('--penalty', default=0.1, type=float, help="Reward penalty")
+        parser.add_argument('--penalty', default=1, type=float, help="Reward penalty")
         ## Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")    
         # Reset as action
@@ -40,7 +40,7 @@ class SACExperiment(Experiment):
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=150000, type=int)
-        parser.add_argument('--init_steps', default=1000, type=int)
+        parser.add_argument('--init_steps', default=5000, type=int)
         parser.add_argument('--update_every', default=100, type=int)
         parser.add_argument('--update_epochs', default=50, type=int)
         parser.add_argument('--batch_size', default=64, type=int)
