@@ -27,8 +27,8 @@ class SACExperiment(Experiment):
     def parse_args(self):
         parser = argparse.ArgumentParser()
         # Task
-        parser.add_argument('--env', default="sparse_reacher", type=str, help="e.g., 'ball_in_cup', 'sparse_reacher', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
+        parser.add_argument('--env', default="mj_reacher", type=str, help="e.g., 'ball_in_cup', 'mj_reacher', 'Hopper-v2' ")
         parser.add_argument('--N', default=201000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         parser.add_argument('--penalty', default=1, type=float, help="Reward penalty")

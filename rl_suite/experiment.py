@@ -38,7 +38,7 @@ class Experiment:
     def make_env(self):
         if self.args.env == "ball_in_cup":
             env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty)
-        elif self.args.env == "sparse_reacher":
+        elif self.args.env == "mj_reacher":
             env = ReacherWrapper(seed=self.args.seed, tol=self.args.tol, timeout=self.args.timeout, penalty=self.args.penalty)
         elif self.args.env == "dot_reacher":
             env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
@@ -46,7 +46,7 @@ class Experiment:
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
-        elif self.args.env == "visual_sparse_reacher":
+        elif self.args.env == "visual_mj_reacher":
             env = VisualMujocoReacher2D(tol=self.args.tol, penalty=self.args.penalty)            
         else:
             env = gym.make(self.args.env)
