@@ -41,9 +41,9 @@ class SACExperiment(Experiment):
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
-        parser.add_argument('--update_every', default=100, type=int)
-        parser.add_argument('--update_epochs', default=50, type=int)
-        parser.add_argument('--batch_size', default=64, type=int)
+        parser.add_argument('--update_every', default=5, type=int)
+        parser.add_argument('--update_epochs', default=1, type=int)
+        parser.add_argument('--batch_size', default=256, type=int)
         parser.add_argument('--gamma', default=0.995, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
         ## Actor
@@ -51,11 +51,11 @@ class SACExperiment(Experiment):
         parser.add_argument('--actor_update_freq', default=2, type=int)
         ## Critic
         parser.add_argument('--critic_lr', default=3e-4, type=float)
-        parser.add_argument('--critic_tau', default=0.001, type=float)
+        parser.add_argument('--critic_tau', default=0.005, type=float)
         parser.add_argument('--critic_target_update_freq', default=2, type=int)
         ## Entropy
         parser.add_argument('--init_temperature', default=0.1, type=float)
-        parser.add_argument('--alpha_lr', default=1e-4, type=float)
+        parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
         parser.add_argument('--encoder_tau', default=0.001, type=float)
         parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")
@@ -136,9 +136,9 @@ class SACExperiment(Experiment):
             learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
         else:
             self.args.image_shape = self.env.image_space.shape
-            self.args.proprioception_shape = self.env.proprioception_space.shape + 1
+            self.args.proprioception_shape = (self.env.proprioception_space.shape[0] + 1),
             self.args.action_shape = (self.env.action_space.shape[0]+1,)
-            buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
+            buffer = SACRADBuffer(self.env.image_space.shape, self.args.proprioception_shape, 
                 (self.args.action_dim+1,), self.args.replay_buffer_capacity, self.args.batch_size)
             learner = ResetSACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
 
