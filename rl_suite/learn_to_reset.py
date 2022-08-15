@@ -41,8 +41,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
-        parser.add_argument('--update_every', default=5, type=int)
-        parser.add_argument('--update_epochs', default=1, type=int)
+        parser.add_argument('--update_every', default=100, type=int)
+        parser.add_argument('--update_epochs', default=50, type=int)
         parser.add_argument('--batch_size', default=256, type=int)
         parser.add_argument('--gamma', default=0.995, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
@@ -177,7 +177,7 @@ class SACExperiment(Experiment):
                 # Reset action
                 if reset_action > self.args.reset_thresh: 
                     n_reset += 1
-                    t += self.args.reset_length - 1         # N.B: We add +1 to 'step' and 't' again below
+                    # t += self.args.reset_length - 1         # N.B: We add +1 to 'step' and 't' again below
                     step += self.args.reset_length - 1             
                     next_obs = self.env.reset()
                     r = -self.args.penalty * self.args.reset_length
