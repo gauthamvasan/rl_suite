@@ -59,7 +59,7 @@ class VisualMujocoReacher2D(gym.Wrapper):
     def step(self, a):
         assert self._reset
 
-        prop, _, done, info = self.env.step(a)
+        prop, _, done, _, info = self.env.step(a)
         prop = self._get_ob(prop)
         self._step += 1
 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     print(torch.__version__)
-    env = VisualMujocoReacher2D(0.072, img_history=3, image_period=3)
+    env = VisualMujocoReacher2D(0.072, img_history=3, image_period=3, penalty=1)
     obs = env.reset()
     img = np.transpose(obs.images, [1, 2, 0])
     # create two subplots

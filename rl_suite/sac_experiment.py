@@ -175,7 +175,11 @@ class SACExperiment(Experiment):
             next_obs, r, done, infos = self.env.step(action)
 
             # Learn
-            learner.push_and_update(obs, action, r, done)
+            if self.args.algo == "sac":
+                learner.push_and_update(obs, action, r, done)
+            else:
+                learner.push_and_update(img, prop, action, r, done)
+                    
             # if t % 100 == 0:
                 # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
                     # t, obs[:2], action, r, done))

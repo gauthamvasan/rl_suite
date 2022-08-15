@@ -187,7 +187,6 @@ class SACExperiment(Experiment):
                     next_obs, r, done, infos = self.env.step(x_action)
                     
                 # Learn
-                ####### Start
                 if self.args.algo == "sac":
                     learner.push_and_update(obs, action, r, done)
                 else:
@@ -197,7 +196,6 @@ class SACExperiment(Experiment):
                     # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
                         # t, obs, action, r, done))
                 obs = next_obs
-                ####### End
 
                 # Log
                 ret += r
