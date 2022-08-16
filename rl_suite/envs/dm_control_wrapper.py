@@ -75,7 +75,8 @@ class ReacherWrapper(gym.Wrapper):
         if isinstance(action, torch.Tensor):            
             action = action.cpu().numpy().flatten()
         self.steps += 1
-        next_obs, _, done, info = self.env.step(action)
+        
+        next_obs, _, done, _, info = self.env.step(action)
         next_obs = next_obs.astype(np.float32)
 
         dist_to_target = -info["reward_dist"]
