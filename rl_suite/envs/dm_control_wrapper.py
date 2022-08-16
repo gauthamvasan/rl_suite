@@ -9,7 +9,7 @@ from gym.spaces import Box
 
 
 class BallInCupWrapper:
-    def __init__(self, seed, timeout, penalty=0.01):
+    def __init__(self, seed, timeout, penalty=0.1):
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
         self._timeout = timeout
@@ -168,14 +168,14 @@ def visualize_behavior(domain_name, task_name, seed=1):
 
 def random_policy_stats():
     # Problem
-    seed = 10
-    timeout = 1000
+    seed = 1
+    timeout = 20000
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # Env
-    # env = BallInCupWrapper(seed, timeout=5000)
-    env = ReacherWrapper(seed=seed, tol=0.009, timeout=timeout)
+    env = BallInCupWrapper(seed, timeout=timeout)
+    #env = ReacherWrapper(seed=seed, tol=0.009, timeout=timeout)
 
     # Experiment
     EP = 50
@@ -222,6 +222,7 @@ def random_policy_stats():
     print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
     print("Max length:", max(ep_lens))
     print("Min length:", min(ep_lens))
+    print(np.mean(ep_lens[np.where(ep_lens != env._timeout)]))
 
 def interaction(domain_name, task_name, seed=1):
     # Load one task:
