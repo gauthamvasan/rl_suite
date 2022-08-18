@@ -174,11 +174,11 @@ def random_policy_stats():
     np.random.seed(seed)
 
     # Env
-    env = BallInCupWrapper(seed, timeout=timeout)
+    env = BallInCupWrapper(seed, timeout=timeout, penalty=1)
     #env = ReacherWrapper(seed=seed, tol=0.009, timeout=timeout)
 
     # Experiment
-    EP = 50
+    EP = 40
     rets = []
     ep_lens = []
     steps = 0
@@ -215,10 +215,23 @@ def random_policy_stats():
     # Random policy stats
     rets = np.array(rets)
     ep_lens = np.array(ep_lens)
+
+    prev_steps = 0
+    new_ep_lens = []
+    for steps in ep_lens:
+        if steps == timeout:
+            prev_steps += steps
+        else:
+            new_ep_lens.append(steps + prev_steps)
+            prev_steps = 0
+    
+    print(new_ep_lens)
+    print(np.mean(new_ep_lens), np.median(new_ep_lens), np.std(new_ep_lens) / np.sqrt(len(new_ep_lens) - 1))
+
     print("Mean: {:.2f}".format(np.mean(ep_lens)))
     print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
     print("Median: {:.2f}".format(np.median(ep_lens)))
-    inds = np.where(ep_lens == env._timeout)
+    inds = np.where(ep_lens == timeout)
     print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
     print("Max length:", max(ep_lens))
     print("Min length:", min(ep_lens))

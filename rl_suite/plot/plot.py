@@ -106,7 +106,7 @@ def smoothed_plot(data, x_tick=1000, window_len=1000):
     rets, t = smoothed_curve(returns=returns, ep_lens=ep_lens, x_tick=x_tick, window_len=window_len)
     plt.plot(t, rets, color=color, linewidth=2)
     # plt.fill_between(x, rets - std_errs, rets + std_errs, alpha=0.6)
-    plt.xlabel('Steps', fontweight='bold', fontsize=14)
+    plt.xlabel('Timesteps', fontweight='bold', fontsize=14)
     h = plt.ylabel("Return", labelpad=25, fontweight='bold', fontsize=14)
     h.set_rotation(0)
     plt.pause(0.001)
@@ -127,7 +127,7 @@ def avg_run_plot(data, x_tick):
     x = np.arange(1, len(avg_rets) + 1) * x_tick
     plt.plot(x, avg_rets, color=color, linewidth=2)
     plt.fill_between(x, avg_rets - std_errs, avg_rets + std_errs, alpha=0.6)
-    plt.xlabel('Steps')
+    plt.xlabel('Time-steps')
     h = plt.ylabel("Return", labelpad=25)
     h.set_rotation(0)
     plt.tight_layout()
@@ -140,19 +140,37 @@ def mean_confidence_interval(data, confidence=0.95):
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
     return m, m-h, m+h
 
-def confidence_interval_plot(plt_cfg, confidence=0.95):
-    # Make plots pretty :)
-    setaxes()
-    setsizes()
-
+def get_confidence_intervals(plt_cfg, confidence, return_scale=1):
     all_files = glob.glob(os.path.join(plt_cfg["fp"], "*.txt"))
     plt_files = [x for x in all_files if plt_cfg["key"] in x and "num_resets" not in x]
 
     all_data = []
+    n_curves = 0
     for dfp in plt_files:
         data = np.loadtxt(dfp)
-        returns = data[1]
-        ep_lens = data[0]
+
+        if plt_cfg["timeout"] is None:
+            returns = data[1] * return_scale
+            ep_lens = data[0]
+        else:
+            raw_returns = data[1] * return_scale
+            raw_ep_lens = data[0]
+
+            prev_steps = 0
+            prev_ret = 0
+            returns = []
+            ep_lens = []
+            for steps, ret in zip(raw_ep_lens, raw_returns):
+                if steps == plt_cfg["timeout"]:
+                    prev_steps += steps
+                    prev_ret += ret
+                else:
+                    ep_lens.append(steps + prev_steps)
+                    returns.append(ret + prev_ret)
+                    prev_steps = 0
+                    prev_ret = 0
+            returns = np.array(returns)
+            ep_lens = np.array(ep_lens)
 
         rets, x = smoothed_curve(returns, ep_lens, plt_cfg["x_tick"], plt_cfg["window_len"])
         n_pts = plt_cfg["N"]//plt_cfg["x_tick"]
@@ -160,10 +178,20 @@ def confidence_interval_plot(plt_cfg, confidence=0.95):
         if sum(ep_lens) >= plt_cfg["N"] and len(rets) >= n_pts:
             rets = rets[:n_pts]        
             all_data.append(rets)
+            n_curves += 1
         
     avg_rets, ci_low, ci_up = mean_confidence_interval(np.vstack(all_data), confidence=confidence)
     ci_low = np.clip(ci_low, a_max=0, a_min=-10000)
     ci_up = np.clip(ci_up, a_max=0, a_min=-10000)
+
+    return avg_rets, ci_low, ci_up, n_curves
+
+def confidence_interval_plot(plt_cfg, confidence=0.95):
+    # Make plots pretty :)
+    setaxes()
+    setsizes()
+    
+    avg_rets, ci_low, ci_up, n_curves = get_confidence_intervals(plt_cfg, confidence)
     
     # Plot the confidence interval
     x = np.arange(1, len(avg_rets) + 1) * plt_cfg["x_tick"]
