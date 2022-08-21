@@ -39,7 +39,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
         parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")
         # Ball In A Cup
-        parser.add_argument('--penalty', default=0.1, type=float, help="Reward penalty")
+        parser.add_argument('--penalty', default=1, type=float, help="Reward penalty")
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=100000, type=int)

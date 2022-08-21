@@ -174,7 +174,10 @@ def random_policy_stats():
 
     # Env
     # env = BallInCupWrapper(seed, timeout=5000)
-    env = ReacherWrapper(seed=seed, tol=0.009, timeout=timeout)
+    # env = ReacherWrapper(seed=seed, tol=0.009, timeout=timeout)
+    env = suite.load(domain_name="cartpole", task_name="swingup_sparse", task_kwargs={'random': seed})
+    if not hasattr(env, "_action_dim"):
+        env._action_dim = env.action_spec().shape[0]
 
     # Experiment
     EP = 50
@@ -188,7 +191,7 @@ def random_policy_stats():
         while True:
             # Take action
             A = torch.rand((1, env._action_dim))
-            A = A * (env.action_space.high - env.action_space.low) + env.action_space.low
+            # A = A * (env.action_space.high - env.action_space.low) + env.action_space.low
             # print(A)
 
             # Receive reward and next state
@@ -217,7 +220,7 @@ def random_policy_stats():
     print("Mean: {:.2f}".format(np.mean(ep_lens)))
     print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
     print("Median: {:.2f}".format(np.median(ep_lens)))
-    inds = np.where(ep_lens == env._timeout)
+    inds = np.where(ep_lens == timeout)
     print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
     print("Max length:", max(ep_lens))
     print("Min length:", min(ep_lens))
@@ -262,7 +265,7 @@ def interaction(domain_name, task_name, seed=1):
     print("Min length:", min(ep_lens))
 
 if __name__ == '__main__':
-    # for domain_name, task_name in suite.BENCHMARKING: # suite.BENCHMARKING
+    # for domain_name, task_name in suite.ALL_TASKS: # suite.BENCHMARKING
         # print(domain_name, task_name)
         # env = suite.load(domain_name, task_name)
 
@@ -278,4 +281,3 @@ if __name__ == '__main__':
 
     # r = ReacherWrapper(seed=1)
     random_policy_stats()
-
