@@ -176,7 +176,7 @@ def random_policy_stats():
     # Env
     # env = BallInCupWrapper(seed, timeout=timeout, penalty=1)
     # env = ReacherWrapper(seed=seed, tol=0.009, timeout=timeout)
-    env = suite.load(domain_name="cartpole", task_name="swingup_sparse", task_kwargs={'random': seed})
+    env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
     if not hasattr(env, "_action_dim"):
         env._action_dim = env.action_spec().shape[0]
 
@@ -195,9 +195,13 @@ def random_policy_stats():
             # A = A * (env.action_space.high - env.action_space.low) + env.action_space.low
             # print(A)
 
-            # Receive reward and next state
-            next_obs, reward, done, _ = env.step(A)
-            # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs[:4], reward, done))
+            # Receive reward and next state            
+            # next_obs, reward, done, _ = env.step(A)
+            time_step = env.step(A)
+            next_obs = time_step.observation
+            reward = time_step.reward
+            
+            print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
 
             # Log
             ret += reward
