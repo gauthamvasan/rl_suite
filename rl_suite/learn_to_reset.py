@@ -36,7 +36,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")    
         # Reset as action
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
-        parser.add_argument('--reset_length', default=10, type=int, help= "Number of timesteps required to reset")
+        parser.add_argument('--reset_length', default=10, type=int, help="Number of timesteps required to reset")
+        parser.add_argument('--reset_time', default=1, type=int, help="Set episode step to zero on reset if reset_time is True")
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
@@ -153,13 +154,14 @@ class SACExperiment(Experiment):
             n_reset = 0
             ret = 0
             step = 0
+            reset_step = 0
             obs = self.env.reset()
             while not done:
                 if self.args.algo == "sac_rad":
                     img = obs.images
-                    prop = self.add_time_to_obs(obs.proprioception, step)
+                    prop = self.add_time_to_obs(obs.proprioception, reset_step)
                 else:
-                    obs = self.add_time_to_obs(obs, step)
+                    obs = self.add_time_to_obs(obs, reset_step)
                 
                 # Select an action
                 if t < self.args.init_steps:
@@ -178,7 +180,11 @@ class SACExperiment(Experiment):
                 if reset_action > self.args.reset_thresh: 
                     n_reset += 1
                     # t += self.args.reset_length - 1         # N.B: We add +1 to 'step' and 't' again below
-                    step += self.args.reset_length - 1             
+                    step += self.args.reset_length - 1
+                    if self.args.reset_time:
+                        reset_step = 0
+                    else:
+                        reset_step += self.args.reset_length - 1             
                     next_obs = self.env.reset()
                     r = -self.args.penalty * self.args.reset_length
                     done = False
@@ -200,6 +206,7 @@ class SACExperiment(Experiment):
                 # Log
                 ret += r
                 step += 1
+                reset_step += 1
                 t += 1
 
                 if (t+1) % self.args.checkpoint == 0:
