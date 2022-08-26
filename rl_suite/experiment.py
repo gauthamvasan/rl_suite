@@ -38,9 +38,9 @@ class Experiment:
     def make_env(self):
         if self.args.env == "ball_in_cup":
             env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty)
-        elif self.args.env == "mj_reacher_easy":
+        elif self.args.env == "dm_reacher_easy":
             env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="easy")
-        elif self.args.env == "mj_reacher_hard":
+        elif self.args.env == "dm_reacher_hard":
             env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="hard")
         elif self.args.env == "dot_reacher":
             env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
