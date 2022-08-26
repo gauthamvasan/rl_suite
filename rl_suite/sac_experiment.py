@@ -29,7 +29,7 @@ class SACExperiment(Experiment):
         # Task
         parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'mj_reacher_easy', 'mj_reacher_hard', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
-        parser.add_argument('--N', default=500000, type=int, help="# timesteps for the run")
+        parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         ## Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")

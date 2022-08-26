@@ -29,7 +29,7 @@ class SACExperiment(Experiment):
         # Task
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
         parser.add_argument('--env', default="mj_reacher", type=str, help="e.g., 'ball_in_cup', 'mj_reacher', 'Hopper-v2' ")
-        parser.add_argument('--N', default=201000, type=int, help="# timesteps for the run")
+        parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         parser.add_argument('--penalty', default=1, type=float, help="Reward penalty")
         ## Sparse reacher
@@ -42,14 +42,14 @@ class SACExperiment(Experiment):
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
-        parser.add_argument('--update_every', default=100, type=int)
-        parser.add_argument('--update_epochs', default=50, type=int)
+        parser.add_argument('--update_every', default=2, type=int)
+        parser.add_argument('--update_epochs', default=1, type=int)
         parser.add_argument('--batch_size', default=256, type=int)
-        parser.add_argument('--gamma', default=0.995, type=float, help="Discount factor")
+        parser.add_argument('--gamma', default=0.99, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
         ## Actor
         parser.add_argument('--actor_lr', default=3e-4, type=float)
-        parser.add_argument('--actor_update_freq', default=2, type=int)
+        parser.add_argument('--actor_update_freq', default=1, type=int)
         ## Critic
         parser.add_argument('--critic_lr', default=3e-4, type=float)
         parser.add_argument('--critic_tau', default=0.005, type=float)
@@ -58,7 +58,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--init_temperature', default=0.1, type=float)
         parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
-        parser.add_argument('--encoder_tau', default=0.001, type=float)
+        parser.add_argument('--encoder_tau', default=0.005, type=float)
         parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")
         # RAD
         parser.add_argument('--rad_offset', default=0.01, type=float)
