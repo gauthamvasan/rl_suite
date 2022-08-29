@@ -27,9 +27,9 @@ class SACExperiment(Experiment):
     def parse_args(self):
         parser = argparse.ArgumentParser()
         # Task
-        parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'mj_reacher_easy', 'mj_reacher_hard', 'Hopper-v2' ")
+        parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
-        parser.add_argument('--N', default=100000, type=int, help="# timesteps for the run")
+        parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         ## Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
@@ -42,26 +42,26 @@ class SACExperiment(Experiment):
         parser.add_argument('--penalty', default=1, type=float, help="Reward penalty")
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
-        parser.add_argument('--replay_buffer_capacity', default=100000, type=int)
-        parser.add_argument('--init_steps', default=1000, type=int)
+        parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)
+        parser.add_argument('--init_steps', default=5000, type=int)
         parser.add_argument('--update_every', default=2, type=int)
         parser.add_argument('--update_epochs', default=1, type=int)
-        parser.add_argument('--batch_size', default=64, type=int)
-        parser.add_argument('--gamma', default=1, type=float, help="Discount factor")
+        parser.add_argument('--batch_size', default=256, type=int)
+        parser.add_argument('--gamma', default=0.99, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
         parser.add_argument('--normalize', default=0, type=int, help="Normalize observation")
         ## Actor
         parser.add_argument('--actor_lr', default=3e-4, type=float)
-        parser.add_argument('--actor_update_freq', default=2, type=int)
+        parser.add_argument('--actor_update_freq', default=1, type=int)
         ## Critic
         parser.add_argument('--critic_lr', default=3e-4, type=float)
-        parser.add_argument('--critic_tau', default=0.001, type=float)
-        parser.add_argument('--critic_target_update_freq', default=2, type=int)
+        parser.add_argument('--critic_tau', default=0.005, type=float)
+        parser.add_argument('--critic_target_update_freq', default=1, type=int)
         ## Entropy
         parser.add_argument('--init_temperature', default=0.1, type=float)
-        parser.add_argument('--alpha_lr', default=1e-4, type=float)
+        parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
-        parser.add_argument('--encoder_tau', default=0.001, type=float)
+        parser.add_argument('--encoder_tau', default=0.005, type=float)
         parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")        
         # MLP params
         parser.add_argument('--actor_hidden_sizes', default="512 512", type=str)
