@@ -1,12 +1,15 @@
+from tkinter import N
 import torch
 import gym
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+from rl_suite.envs.env_utils import Observation
 from dm_control import suite
 from gym.spaces import Box
-
+from collections import deque
+import cv2 
 
 class BallInCupWrapper:
     def __init__(self, seed, timeout, penalty=0.1):
@@ -52,27 +55,50 @@ class BallInCupWrapper:
 
 
 class ReacherWrapper(gym.Wrapper):
-    def __init__(self, seed, timeout, penalty=1, mode="easy"):
+    def __init__(self, seed, timeout, penalty=1, mode="easy", use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         assert mode in ["easy", "hard"]
         self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed})
         self._timeout = timeout
-        self._obs_dim = 6
+        self._obs_dim = 4 if use_image else 6
         self._action_dim = 2
         
         assert penalty > 0
         self.reward = -penalty
-
+        self._use_image = use_image
+        
+        if use_image:
+            self._image_buffer = deque([], maxlen=img_history)
+            
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
         obs[:2] = x.observation['position'].astype(np.float32)
         obs[2:4] = x.observation['velocity'].astype(np.float32)
-        obs[4:6] = x.observation['to_target'].astype(np.float32)
+
+        if not self._use_image: # this should be inferred from image
+            obs[4:6] = x.observation['to_target'].astype(np.float32)
+        
         return obs
+
+    def _get_new_img(self):
+        img = self.env.physics.render()
+        img = img[85:155, 110:210, :]
+        img = np.transpose(img, [2, 0, 1])  # c, h, w
+        return img
 
     def reset(self):
         self.steps = 0
-        return self.make_obs(self.env.reset())
+        obs = Observation()
+        obs.proprioception = self.make_obs(self.env.reset())
+        
+        if self._use_image:
+            new_img = self._get_new_img()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+
+            obs.images = np.concatenate(self._image_buffer, axis=0)
+        
+        return obs
 
     def step(self, action):
         if isinstance(action, torch.Tensor):
@@ -80,10 +106,16 @@ class ReacherWrapper(gym.Wrapper):
         self.steps += 1
 
         x = self.env.step(action)
-        next_obs = self.make_obs(x)
+        next_obs = Observation()
+        next_obs.proprioception = self.make_obs(x)
         reward = self.reward
         done = x.reward # or self.steps == self._timeout
         info = {}
+
+        if self._use_image:
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
 
         return next_obs, reward, done, info
 
@@ -91,6 +123,21 @@ class ReacherWrapper(gym.Wrapper):
     def observation_space(self):
         return Box(shape=(self._obs_dim,), high=10, low=-10)
 
+    @property
+    def image_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+
+        image_shape = (3*self._image_buffer.maxlen, 70, 100)
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+        
+        return self.observation_space
+        
     @property
     def action_space(self):
         return Box(shape=(self._action_dim,), high=1, low=-1)
@@ -301,4 +348,19 @@ if __name__ == '__main__':
     # visualize_behavior("acrobot", "swingup_sparse")
 
     # r = ReacherWrapper(seed=1)
-    random_policy_stats()
+    # random_policy_stats()
+    env = ReacherWrapper(0, 1000, use_image=True)
+    (img, obs) = env.reset()
+    print(img.shape)
+    img_to_show = np.transpose(img, [1, 2, 0])
+    img_to_show = img_to_show[:,:,-3:]
+    cv2.imshow('', img_to_show)
+    cv2.waitKey(0)
+
+    for _ in range(1000):
+        action = env.action_space.sample()
+        (next_img, _), _, _, _ = env.step(action)
+        img_to_show = np.transpose(next_img, [1, 2, 0])
+        img_to_show = img_to_show[:,:,-3:]
+        cv2.imshow('', img_to_show)
+        cv2.waitKey(50)
