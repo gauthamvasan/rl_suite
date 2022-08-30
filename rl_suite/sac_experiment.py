@@ -2,8 +2,6 @@ import argparse
 import os
 import torch
 
-import numpy as np
-
 from rl_suite.algo.sac import SACAgent
 from rl_suite.algo.sac_rad import SACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
@@ -27,13 +25,15 @@ class SACExperiment(Experiment):
     def parse_args(self):
         parser = argparse.ArgumentParser()
         # Task
-        parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")
+        parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")        
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
         parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         # Minimum-time tasks
         parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
-        ## Sparse reacher
+        ## DM sparse reacher
+        parser.add_argument('--use_image', default=False, action='store_true')
+        ## Mujoco sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
         parser.add_argument('--pos_tol', default=0.1, type=float, help="Position tolerance in [0.05, ..., 0.25]")
@@ -62,7 +62,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
         parser.add_argument('--encoder_tau', default=0.005, type=float)
-        parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")        
+        parser.add_argument('--l2_reg', default=1e-4, type=float, help="L2 regularization coefficient")        
         # MLP params
         parser.add_argument('--actor_hidden_sizes', default="512 512", type=str)
         parser.add_argument('--critic_hidden_sizes', default="512 512", type=str)
@@ -106,10 +106,9 @@ class SACExperiment(Experiment):
                 'latent': 50,
 
                 'mlp': [
-                    [-1, 1024],
-                    [1024, 1024],
-                    [1024, 1024],
-                    [1024, -1]
+                    [-1, 512],
+                    [512, 512],
+                    [512, -1]
                 ],
             }            
 
@@ -163,8 +162,7 @@ class SACExperiment(Experiment):
             if t < self.args.init_steps:
                 # TODO: Fix bug with lack of reproducibility in using env.action_space.sample()
                 # action = self.env.action_space.sample()       
-                action = np.random.uniform(
-                    low=self.env.action_space.low, high=self.env.action_space.high, size=self.args.action_dim)         
+                action = self.env.action_space.sample()
             else:
                 if self.args.algo == "sac":
                     action = learner.sample_action(obs)                
