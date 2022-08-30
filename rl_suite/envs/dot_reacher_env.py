@@ -10,7 +10,7 @@ from beautifultable import BeautifulTable
 
 
 class DotReacherEnv(Env):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=0.1):
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=-0.1):
         """ Continuous Action Space; Acceleration Control
 
         Args:
@@ -24,6 +24,7 @@ class DotReacherEnv(Env):
         self._pos_tol = pos_tol
         self._vel_tol = vel_tol
         self._timeout = timeout
+        self.reward = penalty
         self._clamp_action = clamp_action
         self.dt = dt
 
@@ -81,7 +82,7 @@ class DotReacherEnv(Env):
         next_obs = torch.cat((self.pos, self.vel), 1)
 
         # Reward
-        reward = -0.01
+        reward = self.reward
 
         # Done
         done = torch.allclose(self.pos, torch.zeros(2), atol=self._pos_tol) and \
