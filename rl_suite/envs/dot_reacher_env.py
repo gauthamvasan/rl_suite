@@ -96,8 +96,9 @@ class DotReacherEnv(Env):
 
 
 class VisualDotReacherEnv(DotReacherEnv):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, img_dim=(640, 640, 3)):
-        super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, clamp_action)
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, 
+        img_dim=(120, 160, 3), penalty=-0.1):
+        super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, clamp_action, penalty)
         self.img_dim = np.array(img_dim)
         self.target_radius = np.round(self._pos_tol * img_dim[0] / 2.).astype(np.int)
         self.dot_radius = np.round(0.02 * img_dim[0]).astype(np.int)
