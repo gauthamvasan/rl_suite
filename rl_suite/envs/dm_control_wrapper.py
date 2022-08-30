@@ -88,16 +88,18 @@ class ReacherWrapper(gym.Wrapper):
 
     def reset(self):
         self.steps = 0
-        obs = Observation()
-        obs.proprioception = self.make_obs(self.env.reset())
-        
         if self._use_image:
+            obs = Observation()
+            obs.proprioception = self.make_obs(self.env.reset())
+
             new_img = self._get_new_img()
             for _ in range(self._image_buffer.maxlen):
                 self._image_buffer.append(new_img)
 
             obs.images = np.concatenate(self._image_buffer, axis=0)
-        
+        else:
+            obs = self.make_obs(self.env.reset())
+
         return obs
 
     def step(self, action):
@@ -106,17 +108,20 @@ class ReacherWrapper(gym.Wrapper):
         self.steps += 1
 
         x = self.env.step(action)
-        next_obs = Observation()
-        next_obs.proprioception = self.make_obs(x)
+
         reward = self.reward
         done = x.reward # or self.steps == self._timeout
         info = {}
 
         if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self.make_obs(x)
             new_img = self._get_new_img()
             self._image_buffer.append(new_img)
             next_obs.images = np.concatenate(self._image_buffer, axis=0)
-
+        else:
+            next_obs = self.make_obs(x)
+            
         return next_obs, reward, done, info
 
     @property
