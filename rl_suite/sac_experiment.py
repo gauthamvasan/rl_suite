@@ -31,15 +31,15 @@ class SACExperiment(Experiment):
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
         parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
+        # Minimum-time tasks
+        parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
         ## Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
-        parser.add_argument('--pos_tol', default=0.25, type=float, help="Position tolerance in [0.05, ..., 0.25]")
-        parser.add_argument('--vel_tol', default=0.1, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
+        parser.add_argument('--pos_tol', default=0.1, type=float, help="Position tolerance in [0.05, ..., 0.25]")
+        parser.add_argument('--vel_tol', default=0.05, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
         parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
-        parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")
-        # Ball In A Cup
-        parser.add_argument('--penalty', default=1, type=float, help="Reward penalty")
+        parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")        
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)
@@ -199,8 +199,9 @@ class SACExperiment(Experiment):
                 obs = self.env.reset()
 
             if (t+1) % self.args.checkpoint == 0:
-                self.learning_curve(rets, ep_lens, save_fig=self.plt_fname)
-                self.save_returns(rets, ep_lens, self.fname)
+                if rets:
+                    self.learning_curve(rets, ep_lens, save_fig=self.plt_fname)
+                    self.save_returns(rets, ep_lens, self.fname)
 
         self.save_returns(rets, ep_lens, self.fname)
         learner.save(model_dir=self.args.work_dir, step=self.args.N)
