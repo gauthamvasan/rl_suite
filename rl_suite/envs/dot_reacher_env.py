@@ -10,7 +10,7 @@ from beautifultable import BeautifulTable
 
 
 class DotReacherEnv(Env):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False):
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=0.1):
         """ Continuous Action Space; Acceleration Control
 
         Args:
@@ -61,6 +61,9 @@ class DotReacherEnv(Env):
         Returns:
 
         """
+        if isinstance(action, np.ndarray):
+            action = torch.as_tensor(action.astype(np.float32)).view((1, -1))
+
         self.steps += 1
 
         # Clamp the action
