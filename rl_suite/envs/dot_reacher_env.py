@@ -10,7 +10,7 @@ from beautifultable import BeautifulTable
 
 
 class DotReacherEnv(Env):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False):
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=-0.1):
         """ Continuous Action Space; Acceleration Control
 
         Args:
@@ -24,6 +24,7 @@ class DotReacherEnv(Env):
         self._pos_tol = pos_tol
         self._vel_tol = vel_tol
         self._timeout = timeout
+        self.reward = penalty
         self._clamp_action = clamp_action
         self.dt = dt
 
@@ -61,6 +62,9 @@ class DotReacherEnv(Env):
         Returns:
 
         """
+        if isinstance(action, np.ndarray):
+            action = torch.as_tensor(action.astype(np.float32)).view((1, -1))
+
         self.steps += 1
 
         # Clamp the action
@@ -78,7 +82,7 @@ class DotReacherEnv(Env):
         next_obs = torch.cat((self.pos, self.vel), 1)
 
         # Reward
-        reward = -0.01
+        reward = self.reward
 
         # Done
         done = torch.allclose(self.pos, torch.zeros(2), atol=self._pos_tol) and \
@@ -92,8 +96,9 @@ class DotReacherEnv(Env):
 
 
 class VisualDotReacherEnv(DotReacherEnv):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, img_dim=(640, 640, 3)):
-        super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, clamp_action)
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, 
+        img_dim=(120, 160, 3), penalty=-0.1):
+        super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, clamp_action, penalty)
         self.img_dim = np.array(img_dim)
         self.target_radius = np.round(self._pos_tol * img_dim[0] / 2.).astype(np.int)
         self.dot_radius = np.round(0.02 * img_dim[0]).astype(np.int)

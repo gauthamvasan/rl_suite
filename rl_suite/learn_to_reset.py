@@ -31,7 +31,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--env', default="mj_reacher", type=str, help="e.g., 'ball_in_cup', 'mj_reacher', 'Hopper-v2' ")
         parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
-        parser.add_argument('--penalty', default=1, type=float, help="Reward penalty")
+        parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty")
         ## Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")    
         # Reset as action
@@ -210,9 +210,10 @@ class SACExperiment(Experiment):
                 t += 1
 
                 if (t+1) % self.args.checkpoint == 0:
-                    self.learning_curve(rets, ep_lens, save_fig=self.plt_fname)
-                    self.save_returns(rets, ep_lens, self.fname)
-                    np.savetxt(self.base_fname + "num_resets.txt", np.array(n_resets))
+                    if rets:
+                        self.learning_curve(rets, ep_lens, save_fig=self.plt_fname)
+                        self.save_returns(rets, ep_lens, self.fname)
+                        np.savetxt(self.base_fname + "num_resets.txt", np.array(n_resets))
 
             # Bootstrap on timeout
             i_episode += 1

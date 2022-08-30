@@ -16,8 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from datetime import datetime
-# from rl_suite.mysql_db import MySQLDBManager
-from rl_suite.envs.dot_reacher_env import DotReacherEnv
+from rl_suite.mysql_db import MySQLDBManager
+from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
 from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper
@@ -43,7 +43,10 @@ class Experiment:
         elif self.args.env == "dm_reacher_hard":
             env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "dot_reacher":
-            env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
+            env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
+                    dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
+        elif self.args.env == "visual_dot_reacher":
+            env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)

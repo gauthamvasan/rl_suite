@@ -1,26 +1,25 @@
-from tkinter import N
+import cv2
 import torch
 import gym
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+from tkinter import N
 from rl_suite.envs.env_utils import Observation
 from dm_control import suite
 from gym.spaces import Box
 from collections import deque
-import cv2 
+
 
 class BallInCupWrapper:
-    def __init__(self, seed, timeout, penalty=0.1):
+    def __init__(self, seed, timeout, penalty=-0.1):
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
         self._timeout = timeout
+        self.reward = penalty
         self._obs_dim = 8
         self._action_dim = 2
-        
-        assert penalty > 0
-        self.reward = -penalty
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
@@ -55,21 +54,21 @@ class BallInCupWrapper:
 
 
 class ReacherWrapper(gym.Wrapper):
-    def __init__(self, seed, timeout, penalty=1, mode="easy", use_image=False, img_history=3):
+    def __init__(self, seed, timeout, penalty=-1, mode="easy", use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         assert mode in ["easy", "hard"]
         self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed})
         self._timeout = timeout
+
         self._obs_dim = 4 if use_image else 6
         self._action_dim = 2
         
-        assert penalty > 0
-        self.reward = -penalty
+        self.reward = penalty
         self._use_image = use_image
         
         if use_image:
-            self._image_buffer = deque([], maxlen=img_history)
-            
+            self._image_buffer = deque([], maxlen=img_history)            
+
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
         obs[:2] = x.observation['position'].astype(np.float32)
@@ -230,7 +229,7 @@ def random_policy_stats():
     np.random.seed(seed)
 
     # Env
-    # env = BallInCupWrapper(seed, timeout=timeout, penalty=1)
+    # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
     env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
     # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
     # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
