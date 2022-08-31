@@ -198,3 +198,40 @@ class SACCritic(nn.Module):
         q1 = self.Q1(obs, action)
         q2 = self.Q2(obs, action)
         return q1, q2
+
+
+class LinearSquashedPolicy(nn.Module):
+    """ Continous MLP Actor for Soft Actor-Critic """
+
+    LOG_STD_MAX = 2
+    LOG_STD_MIN = -20
+
+    def __init__(self, obs_dim, action_dim, device):
+        super(LinearSquashedPolicy, self).__init__()
+        self.device = device       
+
+        self.mu = nn.Linear(obs_dim, action_dim)
+        self.log_std = nn.Linear(obs_dim, action_dim)
+
+        # Orthogonal Weight Initialization
+        self.apply(orthogonal_weight_init)
+        self.to(device=device)
+
+    def _dist(self, x):
+        mu = self.mu(x)
+        log_std = self.log_std(x)
+        log_std = torch.clamp(log_std, self.LOG_STD_MIN, self.LOG_STD_MAX)
+        std = torch.exp(log_std)
+        return Normal(mu, std)
+
+    def forward(self, x, with_lprob=True):
+        x = x.to(self.device)
+        dist = self._dist(x)
+        action = dist.rsample()
+        if with_lprob:
+            lprob = dist.log_prob(action).sum(axis=-1)
+            lprob -= (2 * (np.log(2) - action - F.softplus(-2 * action))).sum(axis=1)
+        else:
+            lprob = None
+        action = torch.tanh(action)
+        return dist.mean, action, lprob, torch.log(dist.stddev)
