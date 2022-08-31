@@ -104,7 +104,7 @@ class VisualDotReacherEnv(DotReacherEnv):
         self.dot_radius = np.round(0.02 * img_dim[0]).astype(np.int)
 
         self.proprioception_dim = 2 # Velocity
-        self.pixel_target = (self.img_dim[0] // 2, self.img_dim[1] // 2)
+        self.pixel_target = (self.img_dim[1] // 2, self.img_dim[0] // 2)
         self.pt1 = (self.pixel_target[0] - self.target_radius, self.pixel_target[1] - self.target_radius)
         self.pt2 = (self.pixel_target[0] + self.target_radius, self.pixel_target[1] + self.target_radius)
 
@@ -117,7 +117,7 @@ class VisualDotReacherEnv(DotReacherEnv):
         Returns:
 
         """
-        pixel_loc = (pos + 1) * self.img_dim[:2] * 0.5
+        pixel_loc = (pos + 1) * np.array([self.img_dim[1], self.img_dim[0]]) * 0.5
         pixel_loc = [round(x.item()) for x in pixel_loc.flatten()]
         return tuple(pixel_loc)
 
@@ -248,12 +248,14 @@ def viz_dot_reacher():
     # create two image plots
     plt.ion()
     for ep in range(EP):
-        img, proprioception = env.reset()
-        im1 = ax1.imshow(img.numpy().astype(np.uint8))
+        obs = env.reset()
+        im1 = ax1.imshow(np.ones(env.img_dim, dtype=np.uint8)*255)
         ret = 0
         epi_steps = 0
         while True:
-            im1.set_data(img.numpy().astype(np.uint8))
+            img = obs.images
+            proprioception = obs.proprioception
+            im1.set_data(np.transpose(img.numpy(), [1, 2, 0]).astype(np.uint8))            
             # Take action
             A = torch.rand((1, 2))
             A = A * (env._action_high - env._action_low) + env._action_low
@@ -261,8 +263,8 @@ def viz_dot_reacher():
 
             # Receive reward and next state
             plt.pause(0.02)
-            next_img, next_proprioception, R, done, _ = env.step(A)
-            print("Step: {}, Obs: {}, Next Obs: {}".format(steps, proprioception, next_proprioception))
+            next_obs, R, done, _ = env.step(A)            
+            print("Step: {}, Obs: {}, Next Obs: {}".format(steps, obs.proprioception, next_obs.proprioception))
 
             # Log
             # Slogs[-1].append(next_obs)
@@ -279,8 +281,7 @@ def viz_dot_reacher():
                 time.sleep(2)
                 break
 
-            img = next_img
-            proprioception = next_proprioception
+            obs = next_obs
 
     # Plotting
     plt.plot(-100 * torch.tensor(rets))
@@ -350,6 +351,6 @@ def p_value_table():
 
 if __name__ == '__main__':
     # random_pi_dot_reacher()
-    # viz_dot_reacher()
-    p_value_table()
+    viz_dot_reacher()
+    # p_value_table()
     
