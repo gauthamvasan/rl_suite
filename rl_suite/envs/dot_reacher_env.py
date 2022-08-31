@@ -7,7 +7,7 @@ import numpy as np
 from gym.core import Env
 from gym.spaces.box import Box
 from beautifultable import BeautifulTable
-
+from rl_suite.envs.env_utils import Observation
 
 class DotReacherEnv(Env):
     def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=-0.1):
@@ -96,8 +96,8 @@ class DotReacherEnv(Env):
 
 
 class VisualDotReacherEnv(DotReacherEnv):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, 
-        img_dim=(120, 160, 3), penalty=-0.1):
+    def __init__(self, pos_tol=0.1, vel_tol=0.05, dt=1, timeout=20000, clamp_action=False, 
+            img_dim=(120, 160, 3), penalty=-0.1):
         super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, clamp_action, penalty)
         self.img_dim = np.array(img_dim)
         self.target_radius = np.round(self._pos_tol * img_dim[0] / 2.).astype(np.int)
@@ -127,21 +127,33 @@ class VisualDotReacherEnv(DotReacherEnv):
         image = cv2.rectangle(img=img, pt1=self.pt1, pt2=self.pt2, color=(25, 25, 200), thickness=-1)
         pixel_pos = self.pos_to_pixel(pos)
         image = cv2.circle(img=image, center=pixel_pos, radius=self.dot_radius, color=(255, 83, 73), thickness=-1)
-        image = image.astype(np.float32)
+        image = np.transpose(image, [2, 0, 1]).astype(np.float32)  # c, h, w
+
         return torch.as_tensor(image)
+
+    def get_obs(self):
+        obs = Observation()
+        obs.images = self.get_image(self.pos)
+        obs.proprioception = self.vel.view(-1)
+        return obs
 
     def reset(self):
         super(VisualDotReacherEnv, self).reset()
-        img = self.get_image(self.pos)
-        proprioception = self.vel
-        return img, proprioception
+        return self.get_obs()
 
     def step(self, action):
         _, reward, done, info = super(VisualDotReacherEnv, self).step(action)
-        img = self.get_image(self.pos)
-        proprioception = self.vel
-        return img, proprioception, reward, done, info
+        obs = self.get_obs()
+        return obs, reward, done, info
 
+    @property
+    def image_space(self):
+        image_shape = (self.img_dim[2], self.img_dim[0], self.img_dim[1])
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        return Box(low=-10, high=10, shape=(2,))
 
 def random_pi_dot_reacher():
     # Problem

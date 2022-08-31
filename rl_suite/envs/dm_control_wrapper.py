@@ -132,7 +132,7 @@ class ReacherWrapper(gym.Wrapper):
         if not self._use_image:
             raise AttributeError(f'use_image={self._use_image}')
 
-        image_shape = (3*self._image_buffer.maxlen, 70, 100)
+        image_shape = (3 * self._image_buffer.maxlen, 70, 100)
         return Box(low=0, high=255, shape=image_shape)
 
     @property
