@@ -134,7 +134,7 @@ class VisualDotReacherEnv(DotReacherEnv):
     def get_obs(self):
         obs = Observation()
         obs.images = self.get_image(self.pos)
-        obs.proprioception = self.vel
+        obs.proprioception = self.vel.view(-1)
         return obs
 
     def reset(self):
