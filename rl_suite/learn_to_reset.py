@@ -4,8 +4,7 @@ import torch
 
 import numpy as np
 
-from rl_suite.algo.sac import ResetSACAgent
-from rl_suite.algo.sac_rad import ResetSACRADAgent
+from rl_suite.algo.reset_sac import ResetSACAgent, ResetSACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 
@@ -30,9 +29,17 @@ class SACExperiment(Experiment):
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
         parser.add_argument('--env', default="mj_reacher", type=str, help="e.g., 'ball_in_cup', 'mj_reacher', 'Hopper-v2' ")
         parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
-        parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
-        parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty")
-        ## Sparse reacher
+        parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")        
+        # Minimum-time tasks
+        parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
+        ## DM sparse reacher
+        parser.add_argument('--use_image', default=False, action='store_true')
+        ## DotReacher
+        parser.add_argument('--pos_tol', default=0.1, type=float, help="Position tolerance in [0.05, ..., 0.25]")
+        parser.add_argument('--vel_tol', default=0.05, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
+        parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
+        parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")    
+        ## Mujoco Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")    
         # Reset as action
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
@@ -40,7 +47,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--reset_time', default=1, type=int, help="Set episode step to zero on reset if reset_time is True")
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
-        parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
+        parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
         parser.add_argument('--update_every', default=2, type=int)
         parser.add_argument('--update_epochs', default=1, type=int)
@@ -53,13 +60,13 @@ class SACExperiment(Experiment):
         ## Critic
         parser.add_argument('--critic_lr', default=3e-4, type=float)
         parser.add_argument('--critic_tau', default=0.005, type=float)
-        parser.add_argument('--critic_target_update_freq', default=2, type=int)
+        parser.add_argument('--critic_target_update_freq', default=1, type=int)
         ## Entropy
         parser.add_argument('--init_temperature', default=0.1, type=float)
         parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
         parser.add_argument('--encoder_tau', default=0.005, type=float)
-        parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")
+        parser.add_argument('--l2_reg', default=1e-4, type=float, help="L2 regularization coefficient")
         # RAD
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)        
@@ -103,10 +110,9 @@ class SACExperiment(Experiment):
                 'latent': 50,
 
                 'mlp': [
-                    [-1, 1024],
-                    [1024, 1024],
-                    [1024, 1024],
-                    [1024, -1]
+                    [-1, 512],
+                    [512, 512],
+                    [512, -1]
                 ],
             }            
 
