@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 from rl_suite.algo.reset_sac import ResetSACAgent, ResetSACRADAgent
-from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
+from rl_suite.algo.replay_buffer import ResetSACBuffer
 from rl_suite.experiment import Experiment
 
 
@@ -139,9 +139,10 @@ class SACExperiment(Experiment):
 
         # One additonal action_dim for reset action
         if self.args.algo == "sac":
-            buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim+1, self.args.replay_buffer_capacity, self.args.batch_size)
+            buffer = ResetSACBuffer(self.args.obs_dim, self.args.action_dim, self.args.replay_buffer_capacity, self.args.batch_size, self.args.reset_thresh)
             learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
         else:
+            raise NotImplemented
             self.args.image_shape = self.env.image_space.shape
             self.args.proprioception_shape = (self.env.proprioception_space.shape[0] + 1),
             self.args.action_shape = (self.env.action_space.shape[0]+1,)
@@ -171,16 +172,13 @@ class SACExperiment(Experiment):
                 
                 # Select an action
                 if t < self.args.init_steps:
-                    x_action = np.random.uniform(low=-1, high=1, size=self.args.action_dim)
-                    reset_action = np.random.uniform(-1, 1)
-                    action = np.concatenate((x_action, np.array([reset_action])))
+                    action = np.random.uniform(low=-1, high=1, size=self.args.action_dim)
+                    reset_action = np.random.uniform(-1, 1)                    
                 else:
                     if self.args.algo == "sac":
-                        action = learner.sample_action(obs)                
+                        action, reset_action = learner.sample_action(obs)                
                     else:
-                        action = learner.sample_action(img, prop)
-                    x_action = action[:self.args.action_dim]
-                    reset_action = action[-1]
+                        action, reset_action= learner.sample_action(img, prop)
 
                 # Reset action
                 if reset_action > self.args.reset_thresh: 
@@ -196,13 +194,13 @@ class SACExperiment(Experiment):
                     done = False
                     infos = "Agent chose to reset itself"
                 else:
-                    next_obs, r, done, infos = self.env.step(x_action)
+                    next_obs, r, done, infos = self.env.step(action)
                     
                 # Learn
                 if self.args.algo == "sac":
-                    learner.push_and_update(obs, action, r, done)
+                    learner.push_and_update(obs, action, r, done, reset_action)
                 else:
-                    learner.push_and_update(img, prop, action, r, done)
+                    learner.push_and_update(img, prop, action, r, done, reset_action)
                     
                 # if t % 100 == 0:
                     # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
