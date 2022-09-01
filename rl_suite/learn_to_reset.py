@@ -190,7 +190,7 @@ class SACExperiment(Experiment):
                     else:
                         reset_step += self.args.reset_length - 1             
                     next_obs = self.env.reset()
-                    r = -self.args.penalty * self.args.reset_length
+                    r = self.args.penalty * self.args.reset_length
                     done = False
                     infos = "Agent chose to reset itself"
                 else:
