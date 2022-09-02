@@ -152,3 +152,53 @@ class SACReplayBuffer:
 
     def __len__(self):
         return self.size
+
+
+class ResetSACBuffer(SACReplayBuffer):
+    def __init__(self, obs_dim, act_dim, capacity, batch_size, reset_thresh):
+        super().__init__(obs_dim, act_dim, capacity, batch_size)
+        self.reset_actions = np.zeros(capacity, dtype=np.float32)
+        self.reset_thresh = reset_thresh
+    
+    def add(self, obs, action, reward, done, reset_action):
+        super().add(obs, action, reward, done)
+        with self.lock:
+            self.reset_actions[self.ptr] = reset_action
+
+    def sample(self):
+        with self.lock:
+            idxs = np.random.randint(0, self.size-1, size=self.batch_size)
+            observations = torch.from_numpy(self.observations[idxs, :])
+            next_observations = torch.from_numpy(self.observations[idxs+1, :])
+            actions = torch.from_numpy(self.actions[idxs])
+            rewards = torch.from_numpy(self.rewards[idxs])
+            dones = torch.from_numpy(self.dones[idxs])
+            reset_actions = torch.from_numpy(self.reset_actions[idxs])
+            return (observations, actions, rewards, dones, next_observations, reset_actions)
+
+    def sample(self):
+        with self.lock:
+            # TODOL Heuristic to ensure we have enough samples
+            idxs = np.random.randint(0, self.size-1, size=self.batch_size*4)
+            reset_actions = torch.from_numpy(self.reset_actions[idxs])
+            idxs = (reset_actions < self.reset_thresh).nonzero().view(-1).numpy()[:self.batch_size]
+
+            observations = torch.from_numpy(self.observations[idxs, :])
+            next_observations = torch.from_numpy(self.observations[idxs+1, :])
+            actions = torch.from_numpy(self.actions[idxs])
+            rewards = torch.from_numpy(self.rewards[idxs])
+            dones = torch.from_numpy(self.dones[idxs])
+            
+            return (observations, actions, rewards, dones, next_observations)
+    
+    def reset_action_sample(self):
+        with self.lock:            
+            idxs = np.random.randint(0, self.size-1, size=self.batch_size)                       
+
+            observations = torch.from_numpy(self.observations[idxs, :])
+            next_observations = torch.from_numpy(self.observations[idxs+1, :])
+            rewards = torch.from_numpy(self.rewards[idxs])
+            dones = torch.from_numpy(self.dones[idxs])
+            reset_actions = torch.from_numpy(self.reset_actions[idxs]).view((-1, 1))
+            
+            return (observations, reset_actions, rewards, dones, next_observations)
