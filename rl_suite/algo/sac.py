@@ -208,3 +208,10 @@ class SACAgent(SAC):
             return stat
         
         self.steps += 1
+
+
+class ResetSACAgent(SACAgent):
+    def __init__(self, cfg, buffer, device=torch.device('cpu')):
+        reset_cfg = deepcopy(cfg)
+        reset_cfg.action_dim += 1
+        super().__init__(reset_cfg, buffer, device)

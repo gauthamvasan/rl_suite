@@ -4,9 +4,8 @@ import torch
 
 import numpy as np
 
-from rl_suite.algo.sac import ResetSACAgent
-from rl_suite.algo.sac_rad import ResetSACRADAgent
-from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
+from rl_suite.algo.reset_sac import ResetSACAgent, ResetSACRADAgent
+from rl_suite.algo.replay_buffer import ResetSACBuffer
 from rl_suite.experiment import Experiment
 
 
@@ -30,9 +29,17 @@ class SACExperiment(Experiment):
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
         parser.add_argument('--env', default="mj_reacher", type=str, help="e.g., 'ball_in_cup', 'mj_reacher', 'Hopper-v2' ")
         parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
-        parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
-        parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty")
-        ## Sparse reacher
+        parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")        
+        # Minimum-time tasks
+        parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
+        ## DM sparse reacher
+        parser.add_argument('--use_image', default=False, action='store_true')
+        ## DotReacher
+        parser.add_argument('--pos_tol', default=0.1, type=float, help="Position tolerance in [0.05, ..., 0.25]")
+        parser.add_argument('--vel_tol', default=0.05, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
+        parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
+        parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")    
+        ## Mujoco Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")    
         # Reset as action
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
@@ -40,7 +47,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--reset_time', default=1, type=int, help="Set episode step to zero on reset if reset_time is True")
         # Algorithm
         parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
-        parser.add_argument('--replay_buffer_capacity', default=500000, type=int)
+        parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
         parser.add_argument('--update_every', default=2, type=int)
         parser.add_argument('--update_epochs', default=1, type=int)
@@ -53,13 +60,13 @@ class SACExperiment(Experiment):
         ## Critic
         parser.add_argument('--critic_lr', default=3e-4, type=float)
         parser.add_argument('--critic_tau', default=0.005, type=float)
-        parser.add_argument('--critic_target_update_freq', default=2, type=int)
+        parser.add_argument('--critic_target_update_freq', default=1, type=int)
         ## Entropy
         parser.add_argument('--init_temperature', default=0.1, type=float)
         parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
         parser.add_argument('--encoder_tau', default=0.005, type=float)
-        parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")
+        parser.add_argument('--l2_reg', default=1e-4, type=float, help="L2 regularization coefficient")
         # RAD
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)        
@@ -103,10 +110,9 @@ class SACExperiment(Experiment):
                 'latent': 50,
 
                 'mlp': [
-                    [-1, 1024],
-                    [1024, 1024],
-                    [1024, 1024],
-                    [1024, -1]
+                    [-1, 512],
+                    [512, 512],
+                    [512, -1]
                 ],
             }            
 
@@ -133,9 +139,10 @@ class SACExperiment(Experiment):
 
         # One additonal action_dim for reset action
         if self.args.algo == "sac":
-            buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim+1, self.args.replay_buffer_capacity, self.args.batch_size)
+            buffer = ResetSACBuffer(self.args.obs_dim, self.args.action_dim, self.args.replay_buffer_capacity, self.args.batch_size, self.args.reset_thresh)
             learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
         else:
+            raise NotImplemented
             self.args.image_shape = self.env.image_space.shape
             self.args.proprioception_shape = (self.env.proprioception_space.shape[0] + 1),
             self.args.action_shape = (self.env.action_space.shape[0]+1,)
@@ -165,16 +172,13 @@ class SACExperiment(Experiment):
                 
                 # Select an action
                 if t < self.args.init_steps:
-                    x_action = np.random.uniform(low=-1, high=1, size=self.args.action_dim)
-                    reset_action = np.random.uniform(-1, 1)
-                    action = np.concatenate((x_action, np.array([reset_action])))
+                    action = np.random.uniform(low=-1, high=1, size=self.args.action_dim)
+                    reset_action = np.random.uniform(-1, 1)                    
                 else:
                     if self.args.algo == "sac":
-                        action = learner.sample_action(obs)                
+                        action, reset_action = learner.sample_action(obs)                
                     else:
-                        action = learner.sample_action(img, prop)
-                    x_action = action[:self.args.action_dim]
-                    reset_action = action[-1]
+                        action, reset_action= learner.sample_action(img, prop)
 
                 # Reset action
                 if reset_action > self.args.reset_thresh: 
@@ -186,17 +190,17 @@ class SACExperiment(Experiment):
                     else:
                         reset_step += self.args.reset_length - 1             
                     next_obs = self.env.reset()
-                    r = -self.args.penalty * self.args.reset_length
+                    r = self.args.penalty * self.args.reset_length
                     done = False
                     infos = "Agent chose to reset itself"
                 else:
-                    next_obs, r, done, infos = self.env.step(x_action)
+                    next_obs, r, done, infos = self.env.step(action)
                     
                 # Learn
                 if self.args.algo == "sac":
-                    learner.push_and_update(obs, action, r, done)
+                    learner.push_and_update(obs, action, r, done, reset_action)
                 else:
-                    learner.push_and_update(img, prop, action, r, done)
+                    learner.push_and_update(img, prop, action, r, done, reset_action)
                     
                 # if t % 100 == 0:
                     # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(

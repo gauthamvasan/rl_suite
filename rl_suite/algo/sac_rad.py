@@ -389,3 +389,10 @@ class AsyncSACAgent(SAC_RAD):
         with self.pause.get_lock():
             self.pause.value = val
             print("Learning paused!" if val else "Resuming async learning ...")
+
+
+class ResetSACRADAgent(SACRADAgent):
+    def __init__(self, cfg, buffer, device=torch.device('cpu')):
+        reset_cfg = deepcopy(cfg)
+        reset_cfg.action_dim += 1
+        super(ResetSACRADAgent, self).__init__(reset_cfg, buffer, device)
