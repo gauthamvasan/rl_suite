@@ -131,3 +131,6 @@ dmypy.json
 # Compute Canada
 *.out
 *.sh
+
+# vscode
+.vscode/

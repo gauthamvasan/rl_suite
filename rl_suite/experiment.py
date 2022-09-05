@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from datetime import datetime
-from rl_suite.mysql_db import MySQLDBManager
+# from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
