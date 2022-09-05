@@ -39,9 +39,9 @@ class Experiment:
         if self.args.env == "ball_in_cup":
             env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty)
         elif self.args.env == "dm_reacher_easy":
-            env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="easy", use_image=self.args.use_image)
+            env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="easy", use_image='rad' in self.args.algo)
         elif self.args.env == "dm_reacher_hard":
-            env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="hard", use_image=self.args.use_image)
+            env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="hard", use_image='rad' in self.args.algo)
         elif self.args.env == "dot_reacher":
             env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)

@@ -134,3 +134,10 @@ dmypy.json
 
 # vscode
 .vscode/
+
+# results
+results/
+rl_suite/results/
+
+# local output
+*.err

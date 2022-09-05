@@ -1,99 +1,45 @@
 import torch
-import time
 
 import numpy as np
 
-from rl_suite.algo.mlp_policies_reset_action import SquashedGaussianMLPActor, SACCritic
+from rl_suite.algo.sac_reset_action import ResetSACAgent
+from cnn_policies import SSEncoderModel
 from copy import deepcopy
 
-
-class ResetSACAgent:
-    """ SAC with Automatic Entropy Adjustment. """
+class ResetSACRADAgent(ResetSACAgent):
     def __init__(self, cfg, buffer, device=torch.device('cpu')):
-        self.cfg = cfg
-        self.device = device
-        self.gamma = cfg.gamma
-        self.critic_tau = cfg.critic_tau
-        self.actor_update_freq = cfg.actor_update_freq
-        self.critic_target_update_freq = cfg.critic_target_update_freq
-
-        self.actor_lr = cfg.actor_lr
-        self.critic_lr = cfg.critic_lr
-        self.alpha_lr = cfg.alpha_lr
-
-        self.actor = SquashedGaussianMLPActor(cfg.obs_dim+1, cfg.action_dim+1, cfg.actor_nn_params, device)
-        self.critic = SACCritic(cfg.obs_dim, cfg.action_dim, cfg.critic_nn_params, device)
-        self.reset_critic = SACCritic(cfg.obs_dim+1, 1, cfg.critic_nn_params, device)
-
+        self.encoder_tau = cfg.encoder_tau
+        self.rad_offset = cfg.rad_offset
+        self.encoder = SSEncoderModel(cfg.image_shape, (0,), cfg.net_params,
+                                        cfg.rad_offset, cfg.freeze_cnn).to(device) # only used for image encoding
+        
         if cfg.load_step > -1:
-            self.actor.load_state_dict(
-                torch.load('%s/actor_%s.pt' % (cfg.model_dir, cfg.load_step))
+            self.encoder.load_state_dict(
+                torch.load('%s/encoder_%s.pt' % (cfg.model_dir, cfg.load_step))
             )
-            self.critic.load_state_dict(
-                torch.load('%s/critic_%s.pt' % (cfg.model_dir, cfg.load_step))
-            )
-            self.reset_critic.load_state_dict(
-                torch.load('%s/reset_critic_%s.pt' % (cfg.model_dir, cfg.load_step))
-            )
+        
+        self.encoder_target = deepcopy(self.encoder)
+        self.encoder_target.train()
+        cfg.obs_dim += self.encoder.latent_dim
 
-        self.critic_target = deepcopy(self.critic) 
-        self.reset_critic_target = deepcopy(self.reset_critic)
-
-        self.log_alpha = torch.tensor(np.log(cfg.init_temperature)).to(device)
-        self.log_alpha.requires_grad = True
-        # set target entropy to -|A|
-        self.target_entropy = -np.prod(cfg.action_shape)
-
-        self.num_updates = 0
-
-        # optimizers
-        self.init_optimizers()
-        self.train()
-        self.critic_target.train()
-        self.reset_critic_target.train()
-
-        self._replay_buffer = buffer
-        self.steps = 0
-
+        super().__init__(cfg, buffer, device)
+    
     def train(self, training=True):
-        self.training = training
-        self.actor.train(training)
-        self.critic.train(training)
-        self.reset_critic.train(training)
+        super().train(training)
+        self.encoder.train(training)
 
     def share_memory(self):
-        self.actor.share_memory()
-        self.critic.share_memory()
-        self.critic_target.share_memory()
-        self.log_alpha.share_memory_()
-        self.reset_critic.share_memory()
-        self.reset_critic_target.share_memory()
+        super().share_memory()
+        self.encoder.share_memory()
+        self.encoder_target.share_memory()
 
     def init_optimizers(self):
-        self.action_module_optimizer = torch.optim.Adam(
-            self.actor.get_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg
-        )
-
-        self.reset_action_module_optimizer = torch.optim.Adam(
-            self.actor.get_reset_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg
-        )
-
+        super().init_optimizers()
         self.critic_optimizer = torch.optim.Adam(
-            self.critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
+            list(self.critic.parameters())+list(self.encoder.parameters()), lr=self.critic_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
         )
 
-        self.reset_critic_optimizer = torch.optim.Adam(
-            self.reset_critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
-        )
-
-        self.log_alpha_optimizer = torch.optim.Adam(
-            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999), weight_decay=self.cfg.l2_reg,
-        )
-
-    @property
-    def alpha(self):
-        return self.log_alpha.exp()
-
+# tbd
     def update_critic(self, obs, action, reward, next_obs, done):
         nonreset_sample_indices = action[:,-1] < self.cfg.reset_thresh
         with torch.no_grad():
@@ -191,18 +137,6 @@ class ResetSACAgent:
         self.num_updates += 1
         return stats
 
-    def push_and_update(self, obs, action, reward, done):
-        self._replay_buffer.add(obs, action, reward, done)
-        
-        if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
-            for _ in range(self.cfg.update_epochs):
-                # tic = time.time()
-                stat = self.update(*self._replay_buffer.sample())
-                # print(time.time() - tic)
-            return stat
-        
-        self.steps += 1
-
     @staticmethod
     def soft_update_params(net, target_net, tau):
         for param, target_param in zip(net.parameters(), target_net.parameters()):
@@ -224,6 +158,18 @@ class ResetSACAgent:
             self.reset_critic.Q2, self.reset_critic_target.Q2, self.critic_tau
         )
 
+    def save(self):
+        super().save()
+        torch.save(
+            self.encoder.state_dict(), '%s/encoder_%s.pt' % (self.cfg.model_dir, self.steps)
+        )
+
+class ResetSACAgent(ResetSAC):
+    def __init__(self, cfg, buffer, device=torch.device('cpu')):
+        super().__init__(cfg, device)
+        self._replay_buffer = buffer
+        self.steps = 0
+
     def sample_action(self, x, deterministic=False):
         if self.steps < self.cfg.init_steps:
             return np.random.uniform(-1, 1, size=self.cfg.action_dim+1)
@@ -239,14 +185,15 @@ class ResetSACAgent:
                 return mu_ext.cpu().data.numpy().flatten()
             else:
                 return action.cpu().data.numpy().flatten()
-                
-    def save(self):
-        torch.save(
-            self.actor.state_dict(), '%s/actor_%s.pt' % (self.cfg.model_dir, self.steps)
-        )
-        torch.save(
-            self.critic.state_dict(), '%s/critic_%s.pt' % (self.cfg.model_dir, self.steps)
-        )
-        torch.save(
-            self.reset_critic.state_dict(), '%s/reset_critic_%s.pt' % (self.cfg.model_dir, self.steps)
-        )
+
+    def push_and_update(self, obs, action, reward, done):
+        self._replay_buffer.add(obs, action, reward, done)
+        
+        if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
+            for _ in range(self.cfg.update_epochs):
+                # tic = time.time()
+                stat = self.update(*self._replay_buffer.sample())
+                # print(time.time() - tic)
+            return stat
+        
+        self.steps += 1

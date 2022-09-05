@@ -59,12 +59,12 @@ class SquashedGaussianMLPActor(nn.Module):
         super(SquashedGaussianMLPActor, self).__init__()
         self.device = device
 
-        layers = mlp_hidden_layers(input_dim=obs_dim+1, hidden_sizes=nn_params["mlp"]["hidden_sizes"],
+        layers = mlp_hidden_layers(input_dim=obs_dim, hidden_sizes=nn_params["mlp"]["hidden_sizes"],
                                    activation=nn_params["mlp"]["activation"])
         self.phi = nn.Sequential(*layers)
 
-        self.mu = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim)
-        self.log_std = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim)
+        self.mu = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim-1)
+        self.log_std = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim-1)
 
         self.reset_mu = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], 1)
         self.reset_log_std = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], 1)
@@ -135,7 +135,6 @@ class SquashedGaussianMLPActor(nn.Module):
             x = x.to(self.device)
             phi = self.phi(x)
         return phi
-
 
 class MLPQFunction(nn.Module):
     def __init__(self, obs_dim, action_dim, nn_params, device):

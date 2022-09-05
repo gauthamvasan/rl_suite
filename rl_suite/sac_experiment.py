@@ -28,15 +28,12 @@ class SACExperiment(Experiment):
     def parse_args(self):
         parser = argparse.ArgumentParser()
         # Task
-        # parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")        
-        parser.add_argument('--env', default='dm_reacher_easy', type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")        
-        parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
-        parser.add_argument('--N', default=100000, type=int, help="# timesteps for the run")
+        parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")        
+        parser.add_argument('--seed', required=True, type=int, help="Seed for random number generator")       
+        parser.add_argument('--N', required=True, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         # Minimum-time tasks
         parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
-        ## DM sparse reacher
-        parser.add_argument('--use_image', default=False, action='store_true')
         ## Mujoco sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
@@ -45,8 +42,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
         parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")        
         # Algorithm
-        parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
-        parser.add_argument('--reset_action', default=True, action='store_true', help="Use reset action")
+        parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad'], 'sac_rad will enable image")
+        parser.add_argument('--reset_action', default=False, action='store_true', help="Use reset action")
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
         parser.add_argument('--reset_steps', default=1, type=int)
         parser.add_argument('--reset_penalty', default=-1, type=float)
@@ -79,11 +76,11 @@ class SACExperiment(Experiment):
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)
         # Misc
+        parser.add_argument('--load_step', default=-1, type=int)
         parser.add_argument('--work_dir', default='./results', type=str)
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
-        # parser.add_argument('--description', required=True, type=str)
-        parser.add_argument('--description', default='', type=str)
+        parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
 
         assert args.algo in ["sac", "sac_rad"]        
@@ -141,6 +138,7 @@ class SACExperiment(Experiment):
         self.args.action_shape = self.env.action_space.shape
         self.args.obs_dim = self.env.observation_space.shape[0]
         self.args.action_dim = self.env.action_space.shape[0]
+        self.args.model_dir = self.args.work_dir + '/models'
 
         if self.args.algo == "sac":
             if self.args.reset_action:
@@ -224,7 +222,7 @@ class SACExperiment(Experiment):
                     self.save_returns(rets, ep_lens, self.fname)
 
         self.save_returns(rets, ep_lens, self.fname)
-        learner.save(model_dir=self.args.work_dir, step=self.args.N)
+        learner.save()
         # plt.show()
 
     def reset_action_loop(self, learner, rms):
@@ -289,7 +287,7 @@ class SACExperiment(Experiment):
             episodes += 1
 
         self.save_returns(rets, ep_lens, self.fname)
-        learner.save(model_dir=self.args.work_dir, step=self.args.N)
+        learner.save()
 
 def main():
     runner = SACExperiment()
