@@ -114,7 +114,7 @@ class SACRADBuffer(object):
         rewards = torch.as_tensor(self.rewards[idxs])
         dones = torch.as_tensor(self.dones[idxs])
 
-        return images, propris, actions, rewards, next_images, next_propris, dones
+        return images, propris, actions, rewards, dones, next_images, next_propris
 
 
 class SACReplayBuffer:

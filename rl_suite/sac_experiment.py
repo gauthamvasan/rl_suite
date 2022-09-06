@@ -6,7 +6,7 @@ import numpy as np
 from rl_suite.algo.sac import SACAgent
 from rl_suite.algo.sac_reset_action import ResetSACAgent
 from rl_suite.algo.sac_rad import SACRADAgent
-# from rl_suite.algo.sac_rad import ResetSACRADAgent
+from rl_suite.algo.sac_rad_reset_action import ResetSACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 from rl_suite.running_stats import RunningStats
@@ -84,22 +84,23 @@ class SACExperiment(Experiment):
         args = parser.parse_args()
 
         assert args.algo in ["sac", "sac_rad"]        
-        if args.algo == "sac":
-            args.actor_nn_params = {
-                'mlp': {
-                    'hidden_sizes': list(map(int, args.actor_hidden_sizes.split())),
-                    'activation': args.nn_activation,
-                }
+
+        args.actor_nn_params = {
+            'mlp': {
+                'hidden_sizes': list(map(int, args.actor_hidden_sizes.split())),
+                'activation': args.nn_activation,
             }
-            args.critic_nn_params = {
-                'mlp': {
-                    'hidden_sizes': list(map(int, args.critic_hidden_sizes.split())),
-                    'activation': args.nn_activation,
-                }
+        }
+        args.critic_nn_params = {
+            'mlp': {
+                'hidden_sizes': list(map(int, args.critic_hidden_sizes.split())),
+                'activation': args.nn_activation,
             }
-        else:
+        }
+
+        if args.algo == "sac_rad":
             # TODO: Fix this hardcoding by providing choice of network architectures
-            args.net_params = {
+            args.encoder_nn_params = {
                 # Spatial softmax encoder net params
                 'conv': [
                     # in_channel, out_channel, kernel_size, stride
@@ -110,12 +111,6 @@ class SACExperiment(Experiment):
                 ],
             
                 'latent': 50,
-
-                'mlp': [
-                    [-1, 512],
-                    [512, 512],
-                    [512, -1]
-                ],
             }            
 
         if args.device == 'cpu':
@@ -151,12 +146,16 @@ class SACExperiment(Experiment):
                 buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim, self.args.replay_buffer_capacity, self.args.batch_size)
                 learner = SACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
         else:
+            self.args.image_shape = self.env.image_space.shape
             if self.args.reset_action:
-                # buffer = 
-                # learner = ResetSACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
-                # self.reset_action_loop(learner)
-                # return
-                pass
+                prop_t_shape = (self.env.proprioception_space.shape[0]+1,)
+                action_reset_shape = (self.env.action_space.shape[0]+1,)
+                buffer = SACRADBuffer(self.env.image_space.shape, prop_t_shape, 
+                    action_reset_shape, self.args.replay_buffer_capacity, self.args.batch_size)
+                learner = ResetSACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
+                self.reset_action_loop(learner, rms)
+                
+                return
             else:
                 buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
                     self.env.action_shape, self.args.replay_buffer_capacity, self.args.batch_size)
