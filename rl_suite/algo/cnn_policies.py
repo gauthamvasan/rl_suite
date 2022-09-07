@@ -1,3 +1,4 @@
+from matplotlib.pyplot import axis
 import torch
 
 import numpy as np
@@ -163,7 +164,6 @@ class SSEncoderModel(nn.Module):
             return h
         else:
             raise NotImplementedError('Invalid encoder type')
-
 
 class ActorModel(nn.Module):
     """MLP actor network."""
@@ -360,6 +360,115 @@ class SACRADCritic(nn.Module):
 
         return q1, q2
 
+class ResetActionActorModel(nn.Module):
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset):
+        super().__init__()
+
+        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+
+        mlp_params = net_params['mlp']
+        mlp_params[0][0] = self.encoder.latent_dim
+        mlp_params[-1][-1] = action_dim*2 - 2
+        layers = []
+        for _, (in_dim, out_dim) in enumerate(mlp_params[:-1]):
+            layers.append(nn.Linear(in_dim, out_dim))
+            # change: if i < len(mlp_params) - 1:
+            layers.append(nn.ReLU())
+
+        self.trunk = nn.Sequential(
+            *layers
+        )
+
+        self.action_layer = nn.Linear(mlp_params[-1][0], mlp_params[-1][-1])
+        self.reset_action_layer = nn.Linear(mlp_params[-1][0], 2)
+        
+        self.apply(weight_init)
+        # change, initial the last layer to be 0 mean, 0 log std
+        self.action_layer.weight.data.fill_(0.0)
+        self.action_layer.bias.data.fill_(0.0)
+        self.reset_action_layer.weight.data.fill_(0.0)
+        self.reset_action_layer.bias.data.fill_(0.0)
+
+    def forward(self, images, proprioceptions, random_rad=True, compute_log_pi=True, detach_encoder=False):
+        latents = self.trunk(self.encoder(images, proprioceptions, random_rad, detach=detach_encoder))
+        mu, log_std = self.action_layer(latents).chunk(2, dim=-1)
+        latents_no_grad = latents.detach()
+        reset_mu, reset_log_std = self.reset_action_layer(latents_no_grad).chunk(2, dim=-1)
+        
+        std = log_std.exp()
+        dist = Normal(mu, std)
+
+        x_action = dist.sample()
+        lprob = dist.log_prob(x_action).sum(axis=-1)
+
+        reset_std = reset_log_std.exp()
+        reset_dist = Normal(reset_mu, reset_std)
+
+        reset_action = reset_dist.sample()
+        log_reset_action_prob = reset_dist.log_prob(reset_action).sum(axis=-1)
+
+        return mu, x_action, lprob, reset_mu, reset_action, log_reset_action_prob
+
+    def get_action_module_parameters(self):
+        return list(self.trunk.parameters()) + list(self.action_layer.parameters()) 
+    
+    def get_reset_action_module_parameters(self):
+        return self.reset_action_layer.parameters()
+
+
+class SAC_RAD_ResetActionActor(ResetActionActorModel):
+    LOG_STD_MIN = -10
+    LOG_STD_MAX = 2
+    
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset):
+        super().__init__(image_shape, proprioception_shape, action_dim, net_params, rad_offset)
+    
+    @staticmethod
+    def squash(mu, action, log_p):
+        """Apply squashing function.
+        See appendix C from https://arxiv.org/pdf/1812.05905.pdf.
+        """
+        mu = torch.tanh(mu)
+        if action is not None: 
+            action = torch.tanh(action)
+        if log_p is not None:
+            log_p -= torch.log(F.relu(1 - action.pow(2)) + 1e-6).sum(-1, keepdim=True)
+        return mu, action, log_p
+
+    def forward(self, images, proprioceptions, random_rad=True, compute_log_pi=True, detach_encoder=False):
+        
+        latents = self.trunk(self.encoder(images, proprioceptions, random_rad, detach=detach_encoder))
+        mu, log_std = self.action_layer(latents).chunk(2, dim=-1)
+        latents_no_grad = latents.detach()
+        reset_mu, reset_log_std = self.reset_action_layer(latents_no_grad).chunk(2, dim=-1)
+        # mu, log_std = self.trunk(latents).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.clamp(log_std, self.LOG_STD_MIN, self.LOG_STD_MAX)
+
+        reset_log_std = torch.clamp(reset_log_std, self.LOG_STD_MIN, self.LOG_STD_MAX)
+
+        # compute_pi:
+        std = log_std.exp()
+        dist = Normal(mu, std)
+        x_action = dist.rsample()
+        log_p = None
+        if compute_log_pi:
+            log_p = dist.log_prob(x_action).sum(axis=-1)
+            log_p -= (2 * (np.log(2) - x_action - F.softplus(-2 * x_action))).sum(axis=-1)
+
+        reset_std = reset_log_std.exp()
+        reset_dist = Normal(reset_mu, reset_std)
+        reset_action = reset_dist.rsample()
+        log_reset_action_prob = None
+        if compute_log_pi:
+            log_reset_action_prob = reset_dist.log_prob(reset_action).sum(axis=-1)
+            log_reset_action_prob -= (2 * (np.log(2) - reset_action - F.softplus(-2 * reset_action))).sum(axis=-1)
+
+        x_action = torch.tanh(x_action)
+        reset_action = torch.tanh(reset_action)
+
+        return torch.tanh(mu), x_action, log_p, log_std, torch.tanh(reset_mu), reset_action, log_reset_action_prob, reset_log_std
 
 if __name__ == '__main__':
     ss_config = {

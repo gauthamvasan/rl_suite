@@ -3,10 +3,8 @@ import os
 import torch
 import numpy as np
 
-from rl_suite.algo.sac import SACAgent
-from rl_suite.algo.sac_reset_action import ResetSACAgent
-from rl_suite.algo.sac_rad import SACRADAgent
-from rl_suite.algo.sac_rad_reset_action import ResetSACRADAgent
+from rl_suite.algo.sac import SACAgent, SAC_ResetActionAgent
+from rl_suite.algo.sac_rad import SACRADAgent, SAC_RAD_ResetActionAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 from rl_suite.running_stats import RunningStats
@@ -85,22 +83,23 @@ class SACExperiment(Experiment):
 
         assert args.algo in ["sac", "sac_rad"]        
 
-        args.actor_nn_params = {
-            'mlp': {
-                'hidden_sizes': list(map(int, args.actor_hidden_sizes.split())),
-                'activation': args.nn_activation,
+        if args.algo == 'sac':
+            args.actor_nn_params = {
+                'mlp': {
+                    'hidden_sizes': list(map(int, args.actor_hidden_sizes.split())),
+                    'activation': args.nn_activation,
+                }
             }
-        }
-        args.critic_nn_params = {
-            'mlp': {
-                'hidden_sizes': list(map(int, args.critic_hidden_sizes.split())),
-                'activation': args.nn_activation,
+            args.critic_nn_params = {
+                'mlp': {
+                    'hidden_sizes': list(map(int, args.critic_hidden_sizes.split())),
+                    'activation': args.nn_activation,
+                }
             }
-        }
 
-        if args.algo == "sac_rad":
+        else:
             # TODO: Fix this hardcoding by providing choice of network architectures
-            args.encoder_nn_params = {
+            args.net_params = {
                 # Spatial softmax encoder net params
                 'conv': [
                     # in_channel, out_channel, kernel_size, stride
@@ -111,6 +110,13 @@ class SACExperiment(Experiment):
                 ],
             
                 'latent': 50,
+
+                'mlp': [
+                    [-1, 1024],
+                    [1024, 1024],
+                    # [1024, 1024],
+                    [1024, -1]
+    ],
             }            
 
         if args.device == 'cpu':
@@ -138,7 +144,7 @@ class SACExperiment(Experiment):
         if self.args.algo == "sac":
             if self.args.reset_action:
                 buffer = SACReplayBuffer(self.args.obs_dim+1, self.args.action_dim+1, self.args.replay_buffer_capacity, self.args.batch_size)
-                learner = ResetSACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
+                learner = SAC_ResetActionAgent(cfg=self.args, buffer=buffer, device=self.args.device)
                 self.reset_action_loop(learner, rms)
                 
                 return 
@@ -148,11 +154,11 @@ class SACExperiment(Experiment):
         else:
             self.args.image_shape = self.env.image_space.shape
             if self.args.reset_action:
+                self.args.proprioception_shape = self.env.proprioception_space.shape
                 prop_t_shape = (self.env.proprioception_space.shape[0]+1,)
-                action_reset_shape = (self.env.action_space.shape[0]+1,)
-                buffer = SACRADBuffer(self.env.image_space.shape, prop_t_shape, 
-                    action_reset_shape, self.args.replay_buffer_capacity, self.args.batch_size)
-                learner = ResetSACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
+                action_reset_shape = (self.args.action_dim+1,)
+                buffer = SACRADBuffer(self.env.image_space.shape, prop_t_shape, action_reset_shape, self.args.replay_buffer_capacity, self.args.batch_size)
+                learner = SAC_RAD_ResetActionAgent(cfg=self.args, buffer=buffer, device=self.args.device)
                 self.reset_action_loop(learner, rms)
                 
                 return
@@ -237,12 +243,13 @@ class SACExperiment(Experiment):
                 if self.args.algo == "sac_rad":
                     img = obs.images
                     prop = obs.proprioception
-                    prop_t = self.append_time(prop, reset_2_reset_steps)
-                    action = learner.sample_action(img, prop_t)
+                    prop_t = self.append_time(prop, reset_2_reset_steps)     
+                    action = learner.sample_action(img, prop_t, steps)
                 else:
                     if self.args.normalize:
                         rms.push(obs)
                         obs = rms.zscore(obs)
+
                     obs_t = self.append_time(obs, reset_2_reset_steps)
                     action = learner.sample_action(obs_t)
                 
