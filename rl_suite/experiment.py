@@ -20,7 +20,7 @@ from datetime import datetime
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
-# from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper
+from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 

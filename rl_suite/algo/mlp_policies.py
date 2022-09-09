@@ -112,7 +112,7 @@ class SquashedGaussianMLPActor(nn.Module):
     """ Continous MLP Actor for Soft Actor-Critic """
 
     LOG_STD_MAX = 2
-    LOG_STD_MIN = -20
+    LOG_STD_MIN = -10
 
     def __init__(self, obs_dim, action_dim, nn_params, device):
         super(SquashedGaussianMLPActor, self).__init__()
@@ -201,15 +201,21 @@ class SquashedGaussianMLP_ResetActionActor(nn.Module):
         phi = self.phi(x)
         mu = self.mu(phi)
         log_std = self.log_std(phi)
-        log_std = torch.clamp(log_std, self.LOG_STD_MIN, self.LOG_STD_MAX)
-        
+        log_std = torch.tanh(log_std)
+        log_std = self.LOG_STD_MIN + 0.5 * (
+            self.LOG_STD_MAX - self.LOG_STD_MIN
+        ) * (log_std + 1)
+
         std = torch.exp(log_std)
 
         phi_no_grad = phi.detach()
         reset_mu = self.reset_mu(phi_no_grad)
         reset_log_std = self.reset_log_std(phi_no_grad)
-        reset_log_std = torch.clamp(reset_log_std, self.LOG_STD_MIN, self.LOG_STD_MAX)
-        
+        reset_log_std = torch.tanh(reset_log_std)
+        reset_log_std = self.LOG_STD_MIN + 0.5 * (
+            self.LOG_STD_MAX - self.LOG_STD_MIN
+        ) * (reset_log_std + 1)
+
         reset_std = torch.exp(reset_log_std)
 
         return Normal(mu, std), Normal(reset_mu, reset_std)
@@ -221,18 +227,18 @@ class SquashedGaussianMLP_ResetActionActor(nn.Module):
         x_action = dist.rsample()
         reset_action = reset_dist.rsample()
 
-        lprob = dist.log_prob(x_action).sum(axis=-1)
-        reset_lprob = reset_dist.log_prob(reset_action).sum(axis=-1)
-
-        x_action = torch.tanh(x_action)
-        reset_action = torch.tanh(reset_action)
-
         if with_lprob:
-            lprob -= (2 * (np.log(2) - x_action - F.softplus(-2 * x_action))).sum(axis=-1)
-            reset_lprob -= (2 * (np.log(2) - reset_action - F.softplus(-2 * reset_action))).sum(axis=-1)
+            lprob = dist.log_prob(x_action).sum(axis=-1)
+            reset_lprob = reset_dist.log_prob(reset_action).sum(axis=-1)
+
+            lprob -= (2 * (np.log(2) - x_action - F.softplus(-2 * x_action))).sum(axis=1)
+            reset_lprob -= (2 * (np.log(2) - reset_action - F.softplus(-2 * reset_action))).sum(axis=1)
         else:
             lprob = None
             reset_lprob = None
+        
+        x_action = torch.tanh(x_action)
+        reset_action = torch.tanh(reset_action)
 
         return torch.tanh(dist.mean), x_action, lprob, torch.log(dist.stddev), torch.tanh(reset_dist.mean), reset_action, reset_lprob, torch.log(reset_dist.stddev)
 

@@ -77,7 +77,7 @@ class ReacherWrapper(gym.Wrapper):
         if not self._use_image: # this should be inferred from image
             obs[4:6] = x.observation['to_target'].astype(np.float32)
         
-        return obs
+        return obs/10.0
 
     def _get_new_img(self):
         img = self.env.physics.render()

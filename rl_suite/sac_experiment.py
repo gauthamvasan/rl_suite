@@ -2,7 +2,7 @@ import argparse
 import os
 import torch
 import numpy as np
-
+import cv2
 from rl_suite.algo.sac import SACAgent, SAC_ResetActionAgent
 from rl_suite.algo.sac_rad import SACRADAgent, SAC_RAD_ResetActionAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
@@ -65,7 +65,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
         parser.add_argument('--encoder_tau', default=0.005, type=float)
-        parser.add_argument('--l2_reg', default=2e-4, type=float, help="L2 regularization coefficient")        
+        parser.add_argument('--l2_reg', default=1e-4, type=float, help="L2 regularization coefficient")        
         # MLP params
         parser.add_argument('--actor_hidden_sizes', default="512 512", type=str)
         parser.add_argument('--critic_hidden_sizes', default="512 512", type=str)
@@ -242,6 +242,11 @@ class SACExperiment(Experiment):
             while not done:
                 if self.args.algo == "sac_rad":
                     img = obs.images
+                    img_2_show = np.transpose(img, [1, 2, 0])
+                    img_2_show = img_2_show[:,:,-3:]
+                    cv2.imshow('', img_2_show)
+                    cv2.waitKey(1)
+
                     prop = obs.proprioception
                     prop_t = self.append_time(prop, reset_2_reset_steps)     
                     action = learner.sample_action(img, prop_t, steps)
