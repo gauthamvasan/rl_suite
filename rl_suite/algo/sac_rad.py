@@ -289,23 +289,23 @@ class SAC_RAD_ResetAction:
 
     def init_optimizers(self):
         self.action_module_optimizer = torch.optim.Adam(
-            self.actor.get_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
+            self.actor.get_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999)
         )
 
         self.reset_action_module_optimizer = torch.optim.Adam(
-            self.actor.get_reset_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
+            self.actor.get_reset_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999)
         )
 
         self.critic_optimizer = torch.optim.Adam(
-            self.critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
+            self.critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999)
         )
 
         self.log_alpha_optimizer = torch.optim.Adam(
-            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999), weight_decay=self.cfg.l2_reg,
+            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999)
         )
 
         self.reset_critic_optimizer = torch.optim.Adam(
-            self.reset_critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
+            self.reset_critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999)
         )
 
     @property
@@ -467,10 +467,10 @@ class SAC_RAD_ResetAction:
             self.critic.encoder, self.critic_target.encoder,
             self.encoder_tau
         )
-        #self.soft_update_params(
-        #    self.reset_critic.encoder, self.reset_critic_target.encoder,
-        #    self.encoder_tau
-        #)
+        # self.soft_update_params(
+        #     self.reset_critic.encoder, self.reset_critic_target.encoder,
+        #     self.encoder_tau
+        # )
 
     def save(self):
         torch.save(

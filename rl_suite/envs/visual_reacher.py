@@ -59,16 +59,17 @@ class VisualMujocoReacher2D(gym.Wrapper):
     def step(self, a):
         assert self._reset
 
-        prop, _, done, _, info = self.env.step(a)
+        prop, _, done, info = self.env.step(a)
+        dist_to_target = np.linalg.norm(prop[-3:])
+
         prop = self._get_ob(prop)
         self._step += 1
 
-        dist_to_target = -info["reward_dist"]
-
-        reward = -self.penalty
+        reward = self.penalty
         if dist_to_target <= self._tol:
-            info['reached'] = True
             done = True
+        else:
+            done = False
 
         if self._use_image and (self._step % self._image_period) == 0:
             new_img = self._get_new_img()
@@ -82,7 +83,7 @@ class VisualMujocoReacher2D(gym.Wrapper):
         obs.images = self._latest_image
         obs.proprioception = prop
         obs.metadata = [self._step]
-
+        info['dist_to_target'] = dist_to_target
         return obs, reward, done, info
 
     def _get_new_img(self):

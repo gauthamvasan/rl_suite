@@ -1,0 +1,628 @@
+def weight_init(m):
+    """Custom weight init for Conv2D and Linear layers."""
+    if isinstance(m, nn.Linear):
+        nn.init.orthogonal_(m.weight.data)
+        m.bias.data.fill_(0.0)
+    elif isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+        # delta-orthogonal init from https://arxiv.org/pdf/1806.05393.pdf
+        assert m.weight.size(2) == m.weight.size(3)
+        m.weight.data.fill_(0.0)
+        m.bias.data.fill_(0.0)
+        mid = m.weight.size(2) // 2
+        gain = nn.init.calculate_gain('relu')
+        nn.init.orthogonal_(m.weight.data[:, :, mid, mid], gain)
+
+def conv_out_size(input_size, kernel_size, stride, padding=0):
+    return ((input_size - kernel_size + 2 * padding) // stride) + 1
+
+class SpatialSoftmax(torch.nn.Module):
+    def __init__(self, height, width, channel, temperature=None, data_format='NCHW'):
+        super(SpatialSoftmax, self).__init__()
+        self.data_format = data_format
+        self.height = height
+        self.width = width
+        self.channel = channel
+
+        if temperature:
+            self.temperature = Parameter(torch.ones(1)*temperature)
+        else:
+            self.temperature = 1.
+
+        pos_x, pos_y = np.meshgrid(
+                np.linspace(-1., 1., self.height),
+                np.linspace(-1., 1., self.width)
+                )
+        pos_x = torch.from_numpy(pos_x.reshape(self.height*self.width)).float()
+        pos_y = torch.from_numpy(pos_y.reshape(self.height*self.width)).float()
+        self.register_buffer('pos_x', pos_x)
+        self.register_buffer('pos_y', pos_y)
+
+    def forward(self, feature):
+        # Output:
+        #   (N, C*2) x_0 y_0 ...
+        if self.data_format == 'NHWC':
+            feature = feature.transpose(1, 3).tranpose(2, 3).view(-1, self.height*self.width)
+        else:
+            feature = feature.contiguous().view(-1, self.height*self.width)
+
+        softmax_attention = F.softmax(feature/self.temperature, dim=-1)
+        expected_x = torch.sum(self.pos_x*softmax_attention, dim=1, keepdim=True)
+        expected_y = torch.sum(self.pos_y*softmax_attention, dim=1, keepdim=True)
+        expected_xy = torch.cat([expected_x, expected_y], 1)
+        feature_keypoints = expected_xy.view(-1, self.channel*2)
+
+        return feature_keypoints
+
+class EncoderModel(nn.Module):
+    """Convolutional encoder of pixels observations."""
+    def __init__(self, image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax=True):
+        super().__init__()
+
+        if image_shape[-1] != 0: # use image
+            c, h, w = image_shape
+            self.rad_h = round(rad_offset * h)
+            self.rad_w = round(rad_offset * w)
+            image_shape = (c, h-2*self.rad_h, w-2*self.rad_w)
+            self.init_conv(image_shape, net_params)
+            if spatial_softmax:
+                self.latent_dim = net_params['conv'][-1][1] * 2
+            else:
+                self.latent_dim = net_params['latent']
+            
+            if proprioception_shape[-1] == 0: # no proprioception readings
+                self.encoder_type = 'pixel'
+                
+            else: # image with proprioception
+                self.encoder_type = 'multi' 
+                self.latent_dim += proprioception_shape[0]
+
+        elif proprioception_shape[-1] != 0:
+            self.encoder_type = 'proprioception'
+            self.latent_dim = proprioception_shape[0]
+
+        else:
+            raise NotImplementedError('Invalid observation combination')
+        
+
+    def init_conv(self, image_shape, net_params):
+        conv_params = net_params['conv']
+        latent_dim = net_params['latent']
+        channel, height, width = image_shape
+        conv_params[0][0] = channel
+        layers = []
+        for i, (in_channel, out_channel, kernel_size, stride) in enumerate(conv_params):
+            layers.append(nn.Conv2d(in_channel, out_channel, kernel_size, stride))
+            if i < len(conv_params) - 1:
+                layers.append(nn.ReLU())
+            width = conv_out_size(width, kernel_size, stride)
+            height = conv_out_size(height, kernel_size, stride)
+
+        self.convs = nn.Sequential(
+            *layers
+        )
+        self.ss = SpatialSoftmax(width, height, conv_params[-1][1])
+        self.fc = nn.Linear(conv_params[-1][1] * width * height, latent_dim)
+        self.ln = nn.LayerNorm(latent_dim)
+        self.apply(weight_init)
+
+    def forward(self, images, proprioceptions, random_rad=True, detach=False):
+        if self.encoder_type == 'proprioception':
+            return proprioceptions
+
+        if self.encoder_type == 'pixel' or self.encoder_type == 'multi':
+            images = images / 255.
+            if random_rad:
+                images = random_augment(images, self.rad_h, self.rad_w)
+            else:
+                n, c, h, w = images.shape
+                images = images[:, :,
+                  self.rad_h : h-self.rad_h,
+                  self.rad_w : w-self.rad_w,
+                  ]
+
+            h = self.ss(self.convs(images))
+            if detach:
+                h = h.detach()
+
+            if self.encoder_type == 'multi':
+                h = torch.cat([h, proprioceptions], dim=-1)
+
+            return h
+        else:
+            raise NotImplementedError('Invalid encoder type')
+
+class QFunction(nn.Module):
+    """MLP for q-function."""
+    def __init__(self, latent_dim, action_dim, net_params):
+        super().__init__()
+
+        mlp_params = net_params['mlp']
+        mlp_params[0][0] = latent_dim + action_dim
+        mlp_params[-1][-1] = 1
+        layers = []
+        for i, (in_dim, out_dim) in enumerate(mlp_params):
+            layers.append(nn.Linear(in_dim, out_dim))
+            if i < len(mlp_params) - 1:
+                layers.append(nn.ReLU())
+        self.trunk = nn.Sequential(
+            *layers
+        )
+
+    def forward(self, latents, actions):
+        latent_actions = torch.cat([latents, actions], dim=1)
+        
+        return self.trunk(latent_actions)
+
+class ActorModel(nn.Module):
+    """MLP actor network."""
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset):
+        super().__init__()
+
+        self.encoder = EncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+
+        mlp_params = net_params['mlp']
+        mlp_params[0][0] = self.encoder.latent_dim
+        mlp_params[-1][-1] = action_dim*2 - 2
+        layers = []
+        for _, (in_dim, out_dim) in enumerate(mlp_params[:-1]):
+            layers.append(nn.Linear(in_dim, out_dim))
+            # change: if i < len(mlp_params) - 1:
+            layers.append(nn.ReLU())
+
+        self.trunk = nn.Sequential(
+            *layers
+        )
+
+        self.action_layer = nn.Linear(mlp_params[-1][0], mlp_params[-1][-1])
+        self.reset_action_layer = nn.Linear(mlp_params[-1][0], 2)
+        
+        self.apply(weight_init)
+        # change, initial the last layer to be 0 mean, 0 log std
+        self.action_layer.weight.data.fill_(0.0)
+        self.action_layer.bias.data.fill_(0.0)
+        self.reset_action_layer.weight.data.fill_(0.0)
+        self.reset_action_layer.bias.data.fill_(0.0)
+
+    def get_action_module_parameters(self):
+        return list(self.trunk.parameters()) + list(self.action_layer.parameters()) 
+    
+    def get_reset_action_module_parameters(self):
+        return self.reset_action_layer.parameters()
+
+    def forward(self, images, proprioceptions, random_rad=True, compute_log_pi=True, detach_encoder=False):
+        
+        latents = self.trunk(self.encoder(images, proprioceptions, random_rad, detach=detach_encoder))
+        mu, log_std = self.action_layer(latents).chunk(2, dim=-1)
+        latents_no_grad = latents.detach()
+        reset_mu, reset_log_std = self.reset_action_layer(latents_no_grad).chunk(2, dim=-1)
+        # mu, log_std = self.trunk(latents).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = LOG_STD_MIN + 0.5 * (
+            LOG_STD_MAX - LOG_STD_MIN
+        ) * (log_std + 1)
+
+        reset_log_std = torch.tanh(reset_log_std)
+        reset_log_std = LOG_STD_MIN + 0.5 * (
+            LOG_STD_MAX - LOG_STD_MIN
+        ) * (reset_log_std + 1)
+
+        # compute_pi:
+        std = log_std.exp()
+        noise = torch.randn_like(mu)
+        pi = mu + noise * std
+        if compute_log_pi:
+            log_pi = gaussian_logprob(noise, log_std)
+        else:
+            log_pi = None
+
+        reset_std = reset_log_std.exp()
+        reset_noise = torch.randn_like(reset_mu)
+        reset_action = reset_mu + reset_noise*reset_std
+        if compute_log_pi:
+            log_reset_action_prob = gaussian_logprob(reset_noise, reset_log_std)
+        else:
+            log_reset_action_prob = None
+
+        mu, pi, log_pi = squash(mu, pi, log_pi)
+        reset_mu, reset_action, log_reset_action_prob = squash(reset_mu, reset_action, log_reset_action_prob)
+        return mu, pi, log_pi, log_std, reset_mu, reset_action, log_reset_action_prob, reset_log_std
+
+class CriticModel(nn.Module):
+    """Critic network, employes two q-functions."""
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset):
+        super().__init__()
+
+        self.encoder = EncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+
+        self.Q1 = QFunction(
+            self.encoder.latent_dim, action_dim, net_params
+        )
+        self.Q2 = QFunction(
+            self.encoder.latent_dim, action_dim, net_params
+        )
+
+        self.apply(weight_init)
+
+    def forward(self, images, proprioceptions, actions, detach_encoder=False):
+        # detach_encoder allows to stop gradient propogation to encoder
+        latents = self.encoder(images, proprioceptions, detach=detach_encoder)
+        q1s = self.Q1(latents, actions)
+        q2s = self.Q2(latents, actions)
+
+        return q1s, q2s
+
+class SacRadAgent:
+    """SAC algorithm."""
+    def __init__(
+        self,
+        image_shape,
+        proprioception_shape,
+        action_shape,
+        device,
+        net_params,
+        reset_thresh,
+        discount=0.99,
+        init_temperature=0.1,
+        alpha_lr=1e-3,
+        actor_lr=1e-3,
+        actor_update_freq=2,
+        critic_lr=1e-3,
+        critic_tau=0.005,
+        critic_target_update_freq=2,
+        encoder_tau=0.005,
+        rad_offset=0.01,
+        async_mode=False,
+        replay_buffer_capacity=100000,
+        batch_size=256,
+        update_every=50,
+        update_epochs=50,
+        max_updates_per_step=0.6,
+        init_steps=1000,
+    ):
+        self.device = device
+        self.reset_thresh = reset_thresh
+        self.discount = discount
+        self.critic_tau = critic_tau
+        self.encoder_tau = encoder_tau
+        self.actor_update_freq = actor_update_freq
+        self.critic_target_update_freq = critic_target_update_freq
+        self.async_mode = async_mode
+        self.update_every = update_every
+        self.update_epochs = update_epochs
+        self.init_steps = init_steps
+
+        if not 'conv' in net_params: # no image
+            image_shape = (0, 0, 0)
+
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+        self.alpha_lr = alpha_lr
+
+        # change: self.reset_action_shape = (action_shape[0]+1,)
+        prop_t_shape = (proprioception_shape[0]+1,)
+
+        self.actor = ActorModel(image_shape, prop_t_shape, action_shape[0]+1, net_params, rad_offset).to(device)
+
+        self.critic = CriticModel(image_shape, proprioception_shape, action_shape[0], net_params, rad_offset).to(device)
+
+        self.reset_critic = CriticModel(image_shape, prop_t_shape, 1, net_params, rad_offset).to(device)
+
+        if hasattr(self.actor.encoder, 'convs'):
+            self.actor.encoder.convs = self.critic.encoder.convs
+            self.reset_critic.encoder.convs = self.critic.encoder.convs
+
+        self.critic_target = copy.deepcopy(self.critic) # also copies the encoder instance
+        self.reset_critic_target = copy.deepcopy(self.reset_critic) # also copies the encoder instance
+
+        if hasattr(self.actor.encoder, 'convs'):
+            self.reset_critic_target.encoder.convs = self.critic_target.encoder.convs
+
+        self.log_alpha = torch.tensor(np.log(init_temperature)).to(device)
+        self.log_alpha.requires_grad = True
+        # set target entropy to -|A|
+        self.target_entropy = -np.prod(action_shape)
+
+        self.num_updates = 0
+
+        # optimizers
+        self.init_optimizers()
+        self.train()
+        self.critic_target.train()
+        self.reset_critic_target.train()
+
+        self.action_reset_shape = (action_shape[0]+1,)
+        if async_mode:
+            self.share_memory()
+            
+            # initialize processes in 'spawn' mode, required by CUDA runtime
+            ctx = mp.get_context('spawn')
+
+            MAX_QSIZE = 2
+            self.sample_queue = ctx.Queue(MAX_QSIZE)
+            self.update_stat_queue = ctx.Queue(MAX_QSIZE)
+            self.minibatch_queue = ctx.Queue(MAX_QSIZE)
+
+            # initialize data augmentation process
+            self.replay_buffer_process = ctx.Process(target=sac_rad_buffer.AsyncRadReplayBuffer,
+                                    args=(
+                                        image_shape,
+                                        prop_t_shape,
+                                        self.reset_action_shape,
+                                        replay_buffer_capacity,
+                                        batch_size,
+                                        self.sample_queue,
+                                        self.minibatch_queue,
+                                        init_steps,
+                                        max_updates_per_step
+                                        )
+                                )
+            self.replay_buffer_process.start()
+            # initialize SAC update process
+            self.update_process = ctx.Process(target=self.async_update)
+            self.update_process.start()
+
+        else:
+            self.replay_buffer = sac_rad_buffer.RadReplayBuffer(
+                image_shape=image_shape,
+                proprioception_shape=prop_t_shape,
+                action_shape=self.action_reset_shape,
+                capacity=replay_buffer_capacity,
+                batch_size=batch_size)
+
+    def train(self, training=True):
+        self.training = training
+        self.actor.train(training)
+        self.critic.train(training)
+        self.reset_critic.train(training)
+
+    def share_memory(self):
+        self.actor.share_memory()
+        self.critic.share_memory()
+        self.critic_target.share_memory()
+        self.log_alpha.share_memory_()
+        self.reset_critic.share_memory()
+        self.reset_critic_target.share_memory()
+
+    def init_optimizers(self):
+        self.action_module_optimizer = torch.optim.Adam(
+            self.actor.get_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999)
+        )
+
+        self.reset_action_module_optimizer = torch.optim.Adam(
+            self.actor.get_reset_action_module_parameters(), lr=self.actor_lr, betas=(0.9, 0.999)
+        )
+
+        self.critic_optimizer = torch.optim.Adam(
+            self.critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999)
+        )
+
+        self.log_alpha_optimizer = torch.optim.Adam(
+            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999)
+        )
+
+        self.reset_critic_optimizer = torch.optim.Adam(
+            self.reset_critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999)
+        )
+
+    @property
+    def alpha(self):
+        return self.log_alpha.exp()
+
+    def sample_action(self, image, state, step, deterministic=False):
+        if step < self.init_steps:
+            return np.random.uniform(-1, 1, self.action_reset_shape)
+
+        with torch.no_grad():
+            if image is not None:
+                image = torch.FloatTensor(image).to(self.device)
+                image.unsqueeze_(0)
+
+            if state is not None:
+                state = torch.FloatTensor(state).to(self.device)
+                state.unsqueeze_(0)
+
+            mu, pi, _, _, reset_mu, reset_action, _, _ = self.actor(
+                image, state, random_rad=False, compute_log_pi=False, 
+            )
+
+            mu = torch.cat([mu, reset_mu], dim=-1)
+            pi = torch.cat([pi, reset_action], dim=-1)
+            if deterministic:
+                return mu.cpu().data.numpy().flatten()
+            else:
+                return pi.cpu().data.numpy().flatten()
+
+    def update_critic(self, images, states, actions, rewards, next_images, next_states, dones):
+        nonreset_sample_indices = actions[:,-1] < self.reset_thresh
+        nonreset_images = images if images is None else images[nonreset_sample_indices]
+        nonreset_next_images = next_images if next_images is None else next_images[nonreset_sample_indices]
+        with torch.no_grad():
+            _, policy_actions, log_pis, _, _, reset_actions, log_reset_action_probs, _ = self.actor(next_images, next_states)
+            
+            target_Q1, target_Q2 = self.critic_target(nonreset_next_images, next_states[nonreset_sample_indices,:-1], policy_actions[nonreset_sample_indices])
+
+            target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_pis[nonreset_sample_indices]
+
+            target_Q = rewards[nonreset_sample_indices] + ((1.0 - dones[nonreset_sample_indices]) * self.discount * target_V)
+
+            target_reset_Q1, target_reset_Q2 = self.reset_critic_target(next_images, next_states, reset_actions)
+            target_reset_V = torch.min(target_reset_Q1, target_reset_Q2) - self.alpha.detach() * log_reset_action_probs
+            target_reset_Q = rewards + ((1.0 - dones) * self.discount * target_reset_V)
+
+        # get current Q estimates
+        current_Q1, current_Q2 = self.critic(nonreset_images, states[nonreset_sample_indices,:-1], actions[nonreset_sample_indices,:-1], detach_encoder=False)
+
+        critic_loss = torch.mean((current_Q1 - target_Q) ** 2 + (current_Q2 - target_Q) ** 2)
+
+        current_reset_Q1, current_reset_Q2 = self.reset_critic(images, states, actions[:,-1:], detach_encoder=True)
+
+        reset_critic_loss = torch.mean((current_reset_Q1 - target_reset_Q)**2 + (current_reset_Q2 - target_reset_Q)**2)
+
+        # Optimize the critic
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        #torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
+        self.critic_optimizer.step()
+
+        # optimize the reset_critic
+        self.reset_critic_optimizer.zero_grad()
+        reset_critic_loss.backward()
+        self.reset_critic_optimizer.step()
+
+        critic_stats = {
+            'train_critic/critic_loss': critic_loss.item(),
+            'train_critic/reset_critic_loss': reset_critic_loss.item(),
+        }
+
+        return critic_stats
+
+    def update_actor_and_alpha(self, images, states):
+        
+        # detach encoder, so we don't update it with the actor loss
+        _, pis, log_pis, log_stds, _, reset_actions, log_reset_action_probs, reset_log_stds = self.actor(images, states ,detach_encoder=True)
+        action_Q1, action_Q2 = self.critic(images, states[:,:-1], pis, detach_encoder=True)
+        reset_action_Q1, reset_action_Q2 = self.reset_critic(images, states, reset_actions, detach_encoder=True)
+
+        action_Q = torch.min(action_Q1, action_Q2)
+        reset_action_Q = torch.min(reset_action_Q1, reset_action_Q2)
+        action_loss = (self.alpha.detach() * log_pis - action_Q).mean()
+        # reset_action_loss = (self.alpha.detach() * log_pis - reset_action_Q).mean() # fix this
+        reset_action_loss = (self.alpha.detach() * log_reset_action_probs - reset_action_Q).mean()
+        entropy = 0.5 * log_stds.shape[1] * (1.0 + np.log(2 * np.pi)
+                                            ) + log_stds.sum(dim=-1)
+
+        # optimize the actor
+        self.action_module_optimizer.zero_grad()
+        action_loss.backward()
+        self.action_module_optimizer.step()
+
+        self.reset_action_module_optimizer.zero_grad()
+        reset_action_loss.backward()
+        self.reset_action_module_optimizer.step()
+
+        self.log_alpha_optimizer.zero_grad()
+        alpha_loss = (self.alpha * (-log_pis - self.target_entropy).detach()).mean()
+        alpha_loss.backward()
+        self.log_alpha_optimizer.step()
+
+        actor_stats = {
+            'train_actor/log_pis': log_pis.mean().item(),
+            'train_actor/action_loss': action_loss.item(),
+            'train_actor/reset_action_loss': reset_action_loss.item(),
+            'train_actor/log_std': log_stds.mean().item(),
+            'train_alpha/loss': alpha_loss.item(),
+            'train_alpha/value': self.alpha.item(),
+            'train_alpha/entropy': entropy.mean().item()
+        }
+        return actor_stats
+
+    def push_sample(self, image, state, action, reward, next_image, next_state, done):
+        if self.async_mode:
+            self.sample_queue.put((image, state, action, reward, next_image, next_state, done))
+        else:
+            self.replay_buffer.add(image, state, action, reward, next_image, next_state, done)
+
+    def update_networks(self, step):
+        if self.async_mode:
+            try:
+                stat = self.update_stat_queue.get_nowait()
+            except queue.Empty:
+                return {}
+
+            return stat
+        
+        if step >= self.init_steps and (step % self.update_every == 0):
+            for _ in range(self.update_epochs):
+
+                stat = self.update(*self.replay_buffer.sample())
+                
+            return stat
+        
+        return {}
+
+    def update(self, images, states, actions, rewards, next_images, next_states, dones):
+        # regular update of SAC_RAD, sequentially augment data and train
+        if images is not None:
+            images = torch.as_tensor(images, device=self.device).float()
+            next_images = torch.as_tensor(next_images, device=self.device).float()
+        if states is not None:
+            states = torch.as_tensor(states, device=self.device).float()
+            next_states = torch.as_tensor(next_states, device=self.device).float()
+        actions = torch.as_tensor(actions, device=self.device)
+        rewards = torch.as_tensor(rewards, device=self.device)
+        dones = torch.as_tensor(dones, device=self.device)
+        
+        stats = self.update_critic(images, states, actions, rewards, next_images, next_states, dones)
+        if self.num_updates % self.actor_update_freq == 0:
+            actor_stats = self.update_actor_and_alpha(images, states)
+            stats = {**stats, **actor_stats}
+        if self.num_updates % self.critic_target_update_freq == 0:
+            self.soft_update_target()
+        stats['train/batch_reward'] = rewards.mean().item()
+        stats['train/num_updates'] = self.num_updates
+        self.num_updates += 1
+        
+        return stats
+    
+    @staticmethod
+    def soft_update_params(net, target_net, tau):
+        for param, target_param in zip(net.parameters(), target_net.parameters()):
+            target_param.data.copy_(
+                tau * param.data + (1 - tau) * target_param.data
+            )
+
+    def soft_update_target(self):
+        utils.soft_update_params(
+            self.critic.Q1, self.critic_target.Q1, self.critic_tau
+        )
+        utils.soft_update_params(
+            self.critic.Q2, self.critic_target.Q2, self.critic_tau
+        )
+        utils.soft_update_params(
+            self.reset_critic.Q1, self.reset_critic_target.Q1, self.critic_tau
+        )
+        utils.soft_update_params(
+            self.reset_critic.Q2, self.reset_critic_target.Q2, self.critic_tau
+        )
+        utils.soft_update_params(
+            self.critic.encoder, self.critic_target.encoder,
+            self.encoder_tau
+        )
+        # utils.soft_update_params(
+        #    self.reset_critic.encoder, self.reset_critic_target.encoder,
+        #    self.encoder_tau
+        #)
+
+
+    def save(self, model_dir, step):
+        torch.save(
+            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
+        )
+        torch.save(
+            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
+        )
+        torch.save(
+            self.reset_critic.state_dict(), '%s/reset_critic_%s.pt' % (model_dir, step)
+        )
+
+    def load(self, model_dir, step):
+        self.actor.load_state_dict(
+            torch.load('%s/actor_%s.pt' % (model_dir, step))
+        )
+        self.critic.load_state_dict(
+            torch.load('%s/critic_%s.pt' % (model_dir, step))
+        )
+        self.reset_critic.load_state_dict(
+            torch.load('%s/reset_critic_%s.pt' % (model_dir, step))
+        )
+
+    def close(self):
+        if self.async_mode:
+            self.replay_buffer_process.terminate()
+            self.update_process.terminate()
+            self.replay_buffer_process.join()
+            self.update_process.join()
+
+        del self
