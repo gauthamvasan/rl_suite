@@ -32,6 +32,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty")
+        ## dm_control
+        parser.add_argument('--use_image', default=False, action='store_true')
         ## Sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")    
         # Reset as action
@@ -73,6 +75,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--device', default="cuda", type=str)
         parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
+
+        assert args.penalty < 0, "Penalty must be negative for minimum-time tasks"
 
         assert args.algo in ["sac", "sac_rad"]        
         if args.algo == "sac":
@@ -125,8 +129,7 @@ class SACExperiment(Experiment):
     def run(self):
         # Reproducibility
         self.set_seed()
-                
-        # args.observation_shape = env.observation_space.shape
+               
         self.args.action_shape = self.env.action_space.shape
         self.args.obs_dim = self.env.observation_space.shape[0] + 1
         self.args.action_dim = self.env.action_space.shape[0]
@@ -186,7 +189,7 @@ class SACExperiment(Experiment):
                     else:
                         reset_step += self.args.reset_length - 1             
                     next_obs = self.env.reset()
-                    r = -self.args.penalty * self.args.reset_length
+                    r = self.args.penalty * self.args.reset_length
                     done = False
                     infos = "Agent chose to reset itself"
                 else:
