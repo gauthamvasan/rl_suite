@@ -28,7 +28,7 @@ class SACExperiment(Experiment):
         parser = argparse.ArgumentParser()
         # Task
         parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
-        parser.add_argument('--env', default="mj_reacher", type=str, help="e.g., 'ball_in_cup', 'mj_reacher', 'Hopper-v2' ")
+        parser.add_argument('--env', default="dm_reacher_easy", type=str, help="e.g., 'ball_in_cup', 'mj_reacher', 'Hopper-v2' ")
         parser.add_argument('--N', default=501000, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', default=500, type=int, help="Timeout for the env")
         parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty")
@@ -74,6 +74,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
 
+        assert args.penalty < 0, "Penalty must be negative for minimum-time tasks"
+        
         assert args.algo in ["sac", "sac_rad"]        
         if args.algo == "sac":
             args.actor_nn_params = {
@@ -186,7 +188,7 @@ class SACExperiment(Experiment):
                     else:
                         reset_step += self.args.reset_length - 1             
                     next_obs = self.env.reset()
-                    r = -self.args.penalty * self.args.reset_length
+                    r = self.args.penalty * self.args.reset_length
                     done = False
                     infos = "Agent chose to reset itself"
                 else:
