@@ -100,6 +100,10 @@ class SAC_Discrete:
         q2 = q2.gather(1, action.long()).view(-1)
         critic_loss = torch.mean((q1 - target_Q) ** 2 + (q2 - target_Q) ** 2)
 
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
         # Calculating the Policy target
         _, probs = self.actor(obs)
         log_probs = torch.log(probs)
@@ -108,10 +112,6 @@ class SAC_Discrete:
             q = torch.min(q1, q2)
 
         actor_loss = (probs * (self.alpha.detach() * log_probs - q)).sum(-1).mean()        
-
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
