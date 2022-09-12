@@ -155,6 +155,7 @@ class SquashedGaussianMLPActor(nn.Module):
             phi = self.phi(x)
         return phi
 
+
 class SquashedGaussianMLP_ResetActionActor(nn.Module):
     """ Continous MLP Actor for Soft Actor-Critic """
 
@@ -248,6 +249,7 @@ class SquashedGaussianMLP_ResetActionActor(nn.Module):
             phi = self.phi(x)
         return phi
 
+
 class MLPQFunction(nn.Module):
     def __init__(self, obs_dim, action_dim, nn_params, device):
         super(MLPQFunction, self).__init__()
@@ -275,6 +277,7 @@ class MLPQFunction(nn.Module):
             x = x.to(self.device)
             phi = self.phi(x)
         return phi
+
 
 class SACCritic(nn.Module):
     def __init__(self, obs_dim, action_dim, nn_params, device):
@@ -327,3 +330,79 @@ class LinearSquashedPolicy(nn.Module):
             lprob = None
         action = torch.tanh(action)
         return dist.mean, action, lprob, torch.log(dist.stddev)
+
+
+class MLPDiscreteActor(nn.Module):
+    """ Discrete MLP Actor for Soft Actor-Critic """
+
+    def __init__(self, obs_dim, action_dim, nn_params, device):
+        super().__init__()
+        self.device = device
+
+        layers = mlp_hidden_layers(input_dim=obs_dim, hidden_sizes=nn_params["mlp"]["hidden_sizes"],
+                                   activation=nn_params["mlp"]["activation"])
+        self.phi = nn.Sequential(*layers)
+
+        self.logits = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim)
+        
+        # Orthogonal Weight Initialization
+        self.apply(orthogonal_weight_init)
+        self.to(device=device)       
+
+    def forward(self, x):
+        x = x.to(self.device)
+        phi = self.phi(x)
+        logits = self.logits(phi)        
+        probs = F.softmax(logits, -1)
+        z = probs == 0.0
+        z = z.float() * 1e-8
+        return Categorical(probs), probs + z
+
+    def get_features(self, x):
+        with torch.no_grad():
+            x = x.to(self.device)
+            phi = self.phi(x)
+        return phi
+
+
+class DiscreteQFunction(nn.Module):
+    def __init__(self, obs_dim, action_dim, nn_params, device):
+        super(DiscreteQFunction, self).__init__()
+        self.device = device
+
+        layers = mlp_hidden_layers(input_dim=obs_dim,
+                                   hidden_sizes=nn_params["mlp"]["hidden_sizes"], 
+                                   activation=nn_params["mlp"]["activation"])
+        self.phi = nn.Sequential(*layers)
+        self.q = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim)
+
+        # Orthogonal Weight Initialization
+        self.apply(orthogonal_weight_init)
+        self.to(device=device)
+
+    def forward(self, obs):
+        obs = obs.to(self.device)        
+        q = self.q(self.phi(obs))
+        return torch.squeeze(q, -1) # Critical to ensure q has right shape.
+
+    def get_features(self, x):
+        with torch.no_grad():
+            x = x.to(self.device)
+            phi = self.phi(x)
+        return phi
+
+
+class SACDiscreteCritic(nn.Module):
+    def __init__(self, obs_dim, action_dim, nn_params, device):
+        super(SACDiscreteCritic, self).__init__()
+        self.device = device
+
+        # build value functions
+        self.Q1 = DiscreteQFunction(obs_dim, action_dim, nn_params, device)
+        self.Q2 = DiscreteQFunction(obs_dim, action_dim, nn_params, device)
+        self.to(device)
+
+    def forward(self, obs):
+        q1 = self.Q1(obs)
+        q2 = self.Q2(obs)
+        return q1, q2
