@@ -166,7 +166,7 @@ class SSEncoderModel(nn.Module):
             raise NotImplementedError('Invalid encoder type')
 
 class ActorModel(nn.Module):
-    """MLP actor network."""
+    """ MLP actor network. """
     def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False):
         super().__init__()
 
