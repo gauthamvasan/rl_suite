@@ -49,6 +49,11 @@ def orthogonal_weight_init(m):
         gain = nn.init.calculate_gain('relu')
         nn.init.orthogonal_(m.weight.data[:, :, mid, mid], gain)
 
+def kaiming_init(m):
+    if isinstance(m, nn.Linear):
+        nn.init.kaiming_normal_(m.weight.data, nonlinearity="relu")
+        m.bias.data.zero_()
+    
 
 class MLPGaussianActor(nn.Module):
     def __init__(self, obs_dim, action_dim, nn_params, device):
@@ -345,8 +350,11 @@ class MLPDiscreteActor(nn.Module):
 
         self.logits = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim)
         
-        # Orthogonal Weight Initialization
-        self.apply(orthogonal_weight_init)
+        # Weight Initialization
+        self.apply(kaiming_init)
+        nn.init.xavier_uniform_(self.logits.weight)
+        self.logits.bias.data.zero_()
+
         self.to(device=device)       
 
     def forward(self, x):
@@ -376,8 +384,11 @@ class DiscreteQFunction(nn.Module):
         self.phi = nn.Sequential(*layers)
         self.q = nn.Linear(nn_params["mlp"]["hidden_sizes"][-1], action_dim)
 
-        # Orthogonal Weight Initialization
-        self.apply(orthogonal_weight_init)
+        # Weight Initialization
+        self.apply(kaiming_init)
+        nn.init.xavier_uniform_(self.q.weight)
+        self.q.bias.data.zero_()
+
         self.to(device=device)
 
     def forward(self, obs):
