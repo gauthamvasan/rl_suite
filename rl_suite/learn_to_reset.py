@@ -44,11 +44,12 @@ class InvokeResetSAC(Experiment):
         parser.add_argument('--vel_tol', default=0.05, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
         parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
         parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")        
-        # Algorithm
-        parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad'], 'sac_rad will enable image")        
+        # Reset as action        
         parser.add_argument('--reset_thresh', default=0.9, type=float, help="Action threshold between [-1, 1]")
         parser.add_argument('--reset_steps', default=10, type=int)
-        parser.add_argument('--reset_penalty', default=-1, type=float)
+        parser.add_argument('--reset_penalty', default=-1, type=float)        
+        # Algorithm
+        parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad'], 'sac_rad will enable image")
         parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)
         parser.add_argument('--init_steps', default=5000, type=int)
         parser.add_argument('--update_every', default=2, type=int)
@@ -84,6 +85,8 @@ class InvokeResetSAC(Experiment):
         parser.add_argument('--device', default="cuda", type=str)
         parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
+
+        assert args.penalty < 0, "Penalty must be negative for minimum-time tasks"
 
         assert args.algo in ["sac", "sac_rad"]        
 
@@ -135,11 +138,10 @@ class InvokeResetSAC(Experiment):
     def run(self):
         # Reproducibility
         self.set_seed()
-
+        
         # Normalize wrapper
-        rms = RunningStats()
-                
-        # args.observation_shape = env.observation_space.shape
+        rms = RunningStats()        
+            
         self.args.action_shape = self.env.action_space.shape
         self.args.obs_dim = self.env.observation_space.shape[0]
         self.args.action_dim = self.env.action_space.shape[0]
@@ -190,7 +192,6 @@ class InvokeResetSAC(Experiment):
                     reset_2_reset_steps = -1                    
                     done = 0
                     reward = self.args.reset_penalty
-
                     obs = self.env.reset()
                 else:
                     obs, reward, done, info = self.env.step(x_action)
