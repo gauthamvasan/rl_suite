@@ -90,16 +90,17 @@ class SAC_Discrete:
         with torch.no_grad():
             _, next_probs = self.actor(next_obs)
             next_log_probs = torch.log(next_probs)
-            next_q1, next_q2 = self.critic(next_obs)
+            next_q1, next_q2 = self.critic_target(next_obs)
             next_q = torch.min(next_q1, next_q2)
             next_v = (next_probs * (next_q - self.alpha * next_log_probs)).sum(-1).unsqueeze(-1)
             target_q = reward + self.gamma * (1 - done) * next_v
 
-        q1 = self.critic.Q1(obs).gather(1, action.long())
-        q2 = self.critic.Q2(obs).gather(1, action.long())
+        q1, q2 = self.critic(obs)
+        q1 = q1.gather(1, action.long())
+        q2 = q2.gather(1, action.long())
         q1_loss = F.mse_loss(q1, target_q)
         q2_loss = F.mse_loss(q2, target_q)
-        critic_loss = q1_loss + q2_loss
+        critic_loss = torch.mean(q1_loss, q2_loss)
 
         # Calculating the Policy target
         _, probs = self.actor(obs)
@@ -124,7 +125,12 @@ class SAC_Discrete:
         self.log_alpha_optimizer.zero_grad()
         alpha_loss.backward()
         self.log_alpha_optimizer.step()      
-        
+
+        self.num_updates += 1
+        if self.num_updates % self.cfg.critic_target_update_freq == 0:
+                # self.hard_update_target_network()
+                self.soft_update_target()
+
         stats = {
             'train_actor/loss': actor_loss.item(),
             'train_actor/target_entropy': self.target_entropy.item(),            
@@ -134,7 +140,6 @@ class SAC_Discrete:
             'train/num_updates': self.num_updates,
         }
 
-        self.num_updates += 1
         return stats
 
     @staticmethod
@@ -152,6 +157,7 @@ class SAC_Discrete:
             self.critic.Q2, self.critic_target.Q2, self.critic_tau
         )
 
+
     def save(self, model_dir, step):
         torch.save(
             self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
@@ -167,6 +173,13 @@ class SAC_Discrete:
         self.critic.load_state_dict(
             torch.load('%s/critic_%s.pt' % (model_dir, step))
         )
+
+
+    def hard_update_target_network(self):
+        self.critic_target.Q1.load_state_dict(self.critic.Q1.state_dict())
+        self.critic_target.Q1.eval()
+        self.critic_target.Q2.load_state_dict(self.critic.Q2.state_dict())
+        self.critic_target.Q2.eval()
 
 
 class SAC_DiscreteAgent(SAC_Discrete):
