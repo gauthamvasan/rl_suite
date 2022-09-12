@@ -92,15 +92,13 @@ class SAC_Discrete:
             next_log_probs = torch.log(next_probs)
             next_q1, next_q2 = self.critic_target(next_obs)
             next_q = torch.min(next_q1, next_q2)
-            next_v = (next_probs * (next_q - self.alpha * next_log_probs)).sum(-1).unsqueeze(-1)
-            target_q = reward + self.gamma * (1 - done) * next_v
+            next_v = (next_probs * (next_q - self.alpha * next_log_probs)).sum(-1)
+            target_Q = reward + self.gamma * (1 - done) * next_v
 
         q1, q2 = self.critic(obs)
-        q1 = q1.gather(1, action.long())
-        q2 = q2.gather(1, action.long())
-        q1_loss = F.mse_loss(q1, target_q)
-        q2_loss = F.mse_loss(q2, target_q)
-        critic_loss = torch.mean(q1_loss, q2_loss)
+        q1 = q1.gather(1, action.long()).view(-1)
+        q2 = q2.gather(1, action.long()).view(-1)
+        critic_loss = torch.mean((q1 - target_Q) ** 2 + (q2 - target_Q) ** 2)
 
         # Calculating the Policy target
         _, probs = self.actor(obs)
