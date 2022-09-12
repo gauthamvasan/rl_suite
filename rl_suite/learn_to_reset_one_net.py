@@ -8,6 +8,7 @@ from rl_suite.algo.sac import ResetSACAgent
 from rl_suite.algo.sac_rad import ResetSACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
+from rl_suite.running_stats import RunningStats
 
 
 class SACExperiment(Experiment):
@@ -47,19 +48,20 @@ class SACExperiment(Experiment):
         parser.add_argument('--batch_size', default=256, type=int)
         parser.add_argument('--gamma', default=0.99, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
+        parser.add_argument('--normalize', default=False, action='store_true')
         ## Actor
         parser.add_argument('--actor_lr', default=3e-4, type=float)
         parser.add_argument('--actor_update_freq', default=1, type=int)
         ## Critic
         parser.add_argument('--critic_lr', default=3e-4, type=float)
         parser.add_argument('--critic_tau', default=0.005, type=float)
-        parser.add_argument('--critic_target_update_freq', default=2, type=int)
+        parser.add_argument('--critic_target_update_freq', default=1, type=int)
         ## Entropy
         parser.add_argument('--init_temperature', default=0.1, type=float)
         parser.add_argument('--alpha_lr', default=3e-4, type=float)
         ## Encoder
         parser.add_argument('--encoder_tau', default=0.005, type=float)
-        parser.add_argument('--l2_reg', default=0, type=float, help="L2 regularization coefficient")
+        parser.add_argument('--l2_reg', default=1e-4, type=float, help="L2 regularization coefficient")
         # RAD
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)        
@@ -127,6 +129,9 @@ class SACExperiment(Experiment):
     def run(self):
         # Reproducibility
         self.set_seed()
+
+        # Normalize wrapper
+        rms = RunningStats()
                 
         # args.observation_shape = env.observation_space.shape
         self.args.action_shape = self.env.action_space.shape
@@ -164,6 +169,9 @@ class SACExperiment(Experiment):
                     prop = self.add_time_to_obs(obs.proprioception, reset_step)
                 else:
                     obs = self.add_time_to_obs(obs, reset_step)
+                    if self.args.normalize:
+                        rms.push(obs)
+                        obs = rms.zscore(obs)                    
                 
                 # Select an action
                 if t < self.args.init_steps:
