@@ -4,8 +4,6 @@ import pickle
 import threading
 
 import numpy as np
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.multiprocessing as mp
 
 from copy import deepcopy
@@ -211,6 +209,7 @@ class SAC_RAD:
         self.actor_optimizer.load_state_dict(torch.load('%s/actor_opt_%s.pt' % (model_dir, step)))
         self.critic_optimizer.load_state_dict(torch.load('%s/critic_opt_%s.pt' % (model_dir, step)))
         self.log_alpha_optimizer.load_state_dict(torch.load('%s/log_alpha_opt_%s.pt' % (model_dir, step)))
+
 
 class SACRADAgent(SAC_RAD):
     def __init__(self, cfg, buffer, device=torch.device('cpu')):

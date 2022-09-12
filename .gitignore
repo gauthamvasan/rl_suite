@@ -131,3 +131,13 @@ dmypy.json
 # Compute Canada
 *.out
 *.sh
+
+# vscode
+.vscode/
+
+# results
+results/
+rl_suite/results/
+
+# local output
+*.err
