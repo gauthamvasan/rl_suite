@@ -169,10 +169,6 @@ class SAC:
         self.soft_update_params(
             self.critic.Q2, self.critic_target.Q2, self.critic_tau
         )
-        # self.soft_update_params(
-        #     self.critic.encoder, self.critic_target.encoder,
-        #     self.encoder_tau
-        # )
 
     def save(self, model_dir, step):
         torch.save(
@@ -189,7 +185,6 @@ class SAC:
         self.critic.load_state_dict(
             torch.load('%s/critic_%s.pt' % (model_dir, step))
         )
-
 
 
 class SACAgent(SAC):
