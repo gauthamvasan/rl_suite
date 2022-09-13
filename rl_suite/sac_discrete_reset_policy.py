@@ -143,6 +143,7 @@ class InvokeResetSACDiscrete(Experiment):
             buffer = ResetSACBuffer(self.args.obs_dim, self.args.action_dim, self.args.replay_buffer_capacity, self.args.batch_size)
             learner = SACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
             reset_buffer = SACReplayBuffer(self.args.obs_dim+1, 1, self.args.replay_buffer_capacity, self.args.batch_size)            
+            self.args.obs_dim = self.env.observation_space.shape[0] + 1
             reset_learner = SAC_DiscreteAgent(cfg=self.args, buffer=reset_buffer, device=self.args.device)
         else:
             raise NotImplemented
@@ -179,15 +180,15 @@ class InvokeResetSACDiscrete(Experiment):
                 # Select an action
                 if t < self.args.init_steps:
                     x_action = np.random.uniform(low=-1, high=1, size=self.args.action_dim)
-                    reset_action = np.random.uniform(-1, 1)                    
+                    reset_action = np.random.choice([0, 1], p=[0.9, 0.1])
                 else:
                     if self.args.algo == "sac":
                         x_action = learner.sample_action(obs)
                         reset_action = reset_learner.sample_action(reset_obs)                
                     else:
                         action = learner.sample_action(img, prop)
-
-                action = np.concatenate((x_action, reset_action))
+                                
+                action = np.concatenate((x_action, [reset_action]))
 
                 # Reset action
                 if reset_action: 
@@ -244,7 +245,7 @@ class InvokeResetSACDiscrete(Experiment):
         # plt.show()
 
 def main():
-    runner = SACExperiment()
+    runner = InvokeResetSACDiscrete()
     runner.run()
 
 

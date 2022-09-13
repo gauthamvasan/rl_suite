@@ -161,8 +161,8 @@ class ResetSACBuffer(SACReplayBuffer):
         self.reset_actions = np.zeros(capacity, dtype=np.float32)        
     
     def add(self, obs, action, reward, done):
-        reset_action = action[:, -1]
-        action = action[:, :-1]
+        reset_action = action[-1]
+        action = action[:-1]
         super().add(obs, action, reward, done)
         with self.lock:
             self.reset_actions[self.ptr] = reset_action
