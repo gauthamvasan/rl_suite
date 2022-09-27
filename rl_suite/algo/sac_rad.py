@@ -219,15 +219,14 @@ class SACRADAgent(SAC_RAD):
 
     def push_and_update(self, image, propri, action, reward, done):
         self._replay_buffer.add(image, propri, action, reward, done)
-        
+        self.steps += 1
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
             for _ in range(self.cfg.update_epochs):
                 # tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
                 # print(time.time() - tic)
             return stat
-        
-        self.steps += 1
+
 
 
 class AsyncSACAgent(SAC_RAD):
