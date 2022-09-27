@@ -4,7 +4,7 @@ from multiprocessing import Pool
 steps = {
         "ball_in_cup": 300000,
         "dm_reacher_hard": 500000,
-        "dm_reacher_easy": 200000
+        "dm_reacher_easy": 300000
         }
 
 def generate_exps():
