@@ -37,16 +37,17 @@ class Experiment:
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
-            env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty)
+            env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dm_reacher_easy":
             env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="easy", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dm_reacher_hard":
             env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="hard", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dot_reacher":
-            env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
+            if self.args.algo=="sac":
+                env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
-        elif self.args.env == "visual_dot_reacher":
-            env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
+            else:
+                env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)

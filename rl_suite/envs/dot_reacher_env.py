@@ -8,6 +8,7 @@ from gym.core import Env
 from gym.spaces.box import Box
 from beautifultable import BeautifulTable
 from rl_suite.envs.env_utils import Observation
+from collections import deque
 
 class DotReacherEnv(Env):
     def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=-0.1):
@@ -51,7 +52,7 @@ class DotReacherEnv(Env):
         self.pos = torch.rand((1, 2)) * (self._pos_high - self._pos_low) + self._pos_low
         self.vel = torch.zeros((1, 2))
         obs = torch.cat((self.pos, self.vel), 1)
-        return obs
+        return obs.numpy().squeeze()
 
     def step(self, action):
         """
@@ -92,21 +93,25 @@ class DotReacherEnv(Env):
         # Metadata
         info = {}
 
-        return next_obs, reward, done, info
+        return next_obs.numpy().squeeze(), reward, done, info
 
 
 class VisualDotReacherEnv(DotReacherEnv):
     def __init__(self, pos_tol=0.1, vel_tol=0.05, dt=1, timeout=20000, clamp_action=False, 
-            img_dim=(120, 160, 3), penalty=-0.1):
+            penalty=-0.1, img_dim=(120, 160, 3), img_history=3):
         super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, clamp_action, penalty)
         self.img_dim = np.array(img_dim)
+        self._img_history = img_history
         self.target_radius = np.round(self._pos_tol * img_dim[0] / 2.).astype(np.int)
-        self.dot_radius = np.round(0.02 * img_dim[0]).astype(np.int)
+        self.dot_radius = np.round(0.1 * img_dim[0]).astype(np.int)
 
-        self.proprioception_dim = 2 # Velocity
+        # self.proprioception_dim = 2 # Velocity
         self.pixel_target = (self.img_dim[1] // 2, self.img_dim[0] // 2)
         self.pt1 = (self.pixel_target[0] - self.target_radius, self.pixel_target[1] - self.target_radius)
         self.pt2 = (self.pixel_target[0] + self.target_radius, self.pixel_target[1] + self.target_radius)
+
+        self._image_buffer = deque([], maxlen=img_history)
+        print('visual dot reacher.')
 
     def pos_to_pixel(self, pos):
         """ Convert position in [-1, 1] to pixel space specified by img_dim
@@ -124,31 +129,40 @@ class VisualDotReacherEnv(DotReacherEnv):
     def get_image(self, pos):
         img = np.ones(self.img_dim, dtype=np.uint8) * 255
         # Red target, Blue agent
-        image = cv2.rectangle(img=img, pt1=self.pt1, pt2=self.pt2, color=(25, 25, 200), thickness=-1)
+        #image = cv2.rectangle(img=img, pt1=self.pt1, pt2=self.pt2, color=(25, 25, 200), thickness=-1)
         pixel_pos = self.pos_to_pixel(pos)
-        image = cv2.circle(img=image, center=pixel_pos, radius=self.dot_radius, color=(255, 83, 73), thickness=-1)
-        image = np.transpose(image, [2, 0, 1]).astype(np.float32)  # c, h, w
-
-        return torch.as_tensor(image)
+        image = cv2.circle(img=img, center=pixel_pos, radius=self.dot_radius, color=(255, 83, 73), thickness=-1)
+        image = np.transpose(image, [2, 0, 1])  # c, h, w
+        
+        return image
 
     def get_obs(self):
-        obs = Observation()
-        obs.images = self.get_image(self.pos)
-        obs.proprioception = self.vel.view(-1)
-        return obs
+        return self.vel.view(-1).numpy()
 
     def reset(self):
-        super(VisualDotReacherEnv, self).reset()
-        return self.get_obs()
+        _ = super(VisualDotReacherEnv, self).reset()
+        obs = Observation()
+        obs.proprioception = self.get_obs()
+
+        new_img = self.get_image(self.pos)
+        for _ in range(self._image_buffer.maxlen):
+            self._image_buffer.append(new_img)
+
+        obs.images = np.concatenate(self._image_buffer, axis=0)
+        return obs
 
     def step(self, action):
         _, reward, done, info = super(VisualDotReacherEnv, self).step(action)
-        obs = self.get_obs()
-        return obs, reward, done, info
+        next_obs = Observation()
+        next_obs.proprioception = self.get_obs()
+        new_img = self.get_image(self.pos)
+        self._image_buffer.append(new_img)
+        next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        return next_obs, reward, done, info
 
     @property
     def image_space(self):
-        image_shape = (self.img_dim[2], self.img_dim[0], self.img_dim[1])
+        image_shape = (self._img_history*self.img_dim[2], self.img_dim[0], self.img_dim[1])
         return Box(low=0, high=255, shape=image_shape)
 
     @property
@@ -243,26 +257,28 @@ def viz_dot_reacher():
     rets = []
     steps = 0
     # create two subplots
-    ax1 = plt.subplot(1, 1, 1)
+    # ax1 = plt.subplot(1, 1, 1)
 
     # create two image plots
-    plt.ion()
+    # plt.ion()
     for ep in range(EP):
         obs = env.reset()
-        im1 = ax1.imshow(np.ones(env.img_dim, dtype=np.uint8)*255)
+        # im1 = ax1.imshow(np.ones(env.img_dim, dtype=np.uint8)*255)
         ret = 0
         epi_steps = 0
         while True:
             img = obs.images
-            proprioception = obs.proprioception
-            im1.set_data(np.transpose(img.numpy(), [1, 2, 0]).astype(np.uint8))            
+            img_to_show = np.transpose(img, [1, 2, 0])
+            cv2.imshow("", img_to_show)
+            cv2.waitKey(50)
+            # im1.set_data(np.transpose(img.numpy(), [1, 2, 0]).astype(np.uint8))            
             # Take action
             A = torch.rand((1, 2))
             A = A * (env._action_high - env._action_low) + env._action_low
             # print(A)
 
             # Receive reward and next state
-            plt.pause(0.02)
+            # plt.pause(0.02)
             next_obs, R, done, _ = env.step(A)            
             print("Step: {}, Obs: {}, Next Obs: {}".format(steps, obs.proprioception, next_obs.proprioception))
 

@@ -13,23 +13,52 @@ from collections import deque
 
 
 class BallInCupWrapper:
-    def __init__(self, seed, timeout, penalty=-0.1):
+    def __init__(self, seed, timeout, penalty=-1, use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
         self._timeout = timeout
         self.reward = penalty
-        self._obs_dim = 8
+        self._obs_dim = 8 if not use_image else 4
         self._action_dim = 2
+
+        self._use_image = use_image
+        
+        if use_image:
+            self._image_buffer = deque([], maxlen=img_history)
+            print("Visual ball in cup")
+        else:
+            print('Non visual ball in cup')
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
-        obs[:4] = x.observation['position'].astype(np.float32)
-        obs[4:8] = x.observation['velocity'].astype(np.float32)
+        if not self._use_image:
+            obs[:4] = x.observation['position'].astype(np.float32)
+            obs[4:8] = x.observation['velocity'].astype(np.float32)
+        else:
+            obs[:4] = x.observation['velocity'].astype(np.float32)
         return obs
+
+    def _get_new_img(self):
+        img = self.env.physics.render()
+        img = img[20:120, 100:220, :]
+        img = np.transpose(img, [2, 0, 1])  # c, h, w
+        return img
 
     def reset(self):
         self.steps = 0
-        return self.make_obs(self.env.reset())
+        if self._use_image:
+            obs = Observation()
+            obs.proprioception = self.make_obs(self.env.reset())
+
+            new_img = self._get_new_img()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+
+            obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            obs = self.make_obs(self.env.reset())
+
+        return obs
 
     def step(self, action):
         if isinstance(action, torch.Tensor):
@@ -37,16 +66,40 @@ class BallInCupWrapper:
         self.steps += 1
 
         x = self.env.step(action)
-        next_obs = self.make_obs(x)
+
         reward = self.reward
         done = x.reward # or self.steps == self._timeout
         info = {}
+
+        if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self.make_obs(x)
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            next_obs = self.make_obs(x)
 
         return next_obs, reward, done, info
 
     @property
     def observation_space(self):
         return Box(shape=(self._obs_dim,), high=10, low=-10)
+
+    @property
+    def image_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+
+        image_shape = (3 * self._image_buffer.maxlen, 100, 120)
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+        
+        return self.observation_space
 
     @property
     def action_space(self):
@@ -67,7 +120,10 @@ class ReacherWrapper(gym.Wrapper):
         self._use_image = use_image
         
         if use_image:
-            self._image_buffer = deque([], maxlen=img_history)            
+            self._image_buffer = deque([], maxlen=img_history)
+            print(f'Visual dm reacher {mode}')
+        else:
+            print(f'Non visual dm reacher {mode}')
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
@@ -224,30 +280,33 @@ def visualize_behavior(domain_name, task_name, seed=1):
 def random_policy_stats():
     # Problem
     seed = 1
-    timeout = 1000
+    timeout = 5000
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # Env
     # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-    env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
+    task = 'dm_reacher_easy'
+    env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
     # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
     # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
     if not hasattr(env, "_action_dim"):
         env._action_dim = env.action_spec().shape[0]
 
     # Experiment
-    EP = 40
+    total_dones = 50
     rets = []
     ep_lens = []
     steps = 0
-    for ep in range(EP):
+    dones = 0
+    while dones < total_dones:
         obs = env.reset()
         ret = 0
         epi_steps = 0
         while True:
             # Take action
-            A = torch.rand((1, env._action_dim))
+            # A = torch.rand((1, env._action_dim))
+            A = env.action_space.sample()
             # A = A * (env.action_space.high - env.action_space.low) + env.action_space.low
             # print(A)
 
@@ -266,8 +325,12 @@ def random_policy_stats():
                 rets.append(ret)
                 ep_lens.append(epi_steps)
                 print('-' * 50)
-                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(ep, epi_steps, ret, steps))
+                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(dones, epi_steps, ret, steps))
                 print('-' * 50)
+
+                if done:
+                    dones += 1
+
                 break
 
             obs = next_obs
@@ -285,17 +348,23 @@ def random_policy_stats():
             new_ep_lens.append(steps + prev_steps)
             prev_steps = 0
     
-    print(new_ep_lens)
-    print(np.mean(new_ep_lens), np.median(new_ep_lens), np.std(new_ep_lens) / np.sqrt(len(new_ep_lens) - 1))
+    with open(task + '_timeout='+str(timeout)+'_random_stat.txt', 'w') as out_file:
+        for ep_len in new_ep_lens:
+            out_file.write(str(ep_len)+'\n')
 
-    print("Mean: {:.2f}".format(np.mean(ep_lens)))
-    print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
-    print("Median: {:.2f}".format(np.median(ep_lens)))
-    inds = np.where(ep_lens == timeout)
-    print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
-    print("Max length:", max(ep_lens))
-    print("Min length:", min(ep_lens))
-    print(np.mean(ep_lens[np.where(ep_lens != env._timeout)]))
+        out_file.write("\nMean: {:.2f}".format(np.mean(new_ep_lens)))
+        
+    # print(new_ep_lens)
+    # print(np.mean(new_ep_lens), np.median(new_ep_lens), np.std(new_ep_lens) / np.sqrt(len(new_ep_lens) - 1))
+
+    # print("Mean: {:.2f}".format(np.mean(ep_lens)))
+    # print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
+    # print("Median: {:.2f}".format(np.median(ep_lens)))
+    # inds = np.where(ep_lens == timeout)
+    # print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
+    # print("Max length:", max(ep_lens))
+    # print("Min length:", min(ep_lens))
+    # print(np.mean(ep_lens[np.where(ep_lens != env._timeout)]))
 
 def interaction(domain_name, task_name, seed=1):
     # Load one task:
@@ -353,8 +422,10 @@ if __name__ == '__main__':
 
     # r = ReacherWrapper(seed=1)
     # random_policy_stats()
-    env = ReacherWrapper(0, 1000, use_image=True)
-    (img, obs) = env.reset()
+    env = BallInCupWrapper(1, 1000, use_image=True)
+    obs = env.reset()
+    img = obs.images
+
     print(img.shape)
     img_to_show = np.transpose(img, [1, 2, 0])
     img_to_show = img_to_show[:,:,-3:]
@@ -363,7 +434,8 @@ if __name__ == '__main__':
 
     for _ in range(1000):
         action = env.action_space.sample()
-        (next_img, _), _, _, _ = env.step(action)
+        next_obs, _, _, _ = env.step(action)
+        next_img = next_obs.images
         img_to_show = np.transpose(next_img, [1, 2, 0])
         img_to_show = img_to_show[:,:,-3:]
         cv2.imshow('', img_to_show)
