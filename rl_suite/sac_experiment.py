@@ -13,8 +13,8 @@ class SACExperiment(Experiment):
     def __init__(self):
         super(SACExperiment, self).__init__(self.parse_args())
         self.env = self.make_env()
-        base_fname = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.args.work_dir, "{}_sac_{}_{}-{}".format(
-            self.run_id, self.env.name, self.args.description, self.args.seed))
+        base_fname = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.args.work_dir, 
+                                  f"{self.run_id}_{self.args.algo}_{self.env.name}_timeout={self.args.timeout}_seed={self.args.seed}_{self.args.description}")
         self.fname = base_fname + ".txt"
         self.plt_fname = base_fname + ".png"
 
@@ -26,9 +26,9 @@ class SACExperiment(Experiment):
         parser = argparse.ArgumentParser()
         # Task
         parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")        
-        parser.add_argument('--seed', default=0, type=int, help="Seed for random number generator")       
-        parser.add_argument('--N', default=100000, type=int, help="# timesteps for the run")
-        parser.add_argument('--timeout', default=50, type=int, help="Timeout for the env")
+        parser.add_argument('--seed', required=True, type=int, help="Seed for random number generator")       
+        parser.add_argument('--N', required=True, type=int, help="# timesteps for the run")
+        parser.add_argument('--timeout', required=True, type=int, help="Timeout for the env")
         # Minimum-time tasks
         parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
         ## Mujoco sparse reacher
@@ -39,9 +39,9 @@ class SACExperiment(Experiment):
         parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
         parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")        
         # Algorithm
-        parser.add_argument('--algo', default="sac", type=str, help="Choices: ['sac', 'sac_rad']")
-        parser.add_argument('--replay_buffer_capacity', default=1000000, type=int)
-        parser.add_argument('--init_steps', default=1000, type=int)
+        parser.add_argument('--algo', required=True, type=str, help="Choices: ['sac', 'sac_rad']")
+        parser.add_argument('--replay_buffer_capacity', required=True, type=int)
+        parser.add_argument('--init_steps', required=True, type=int)
         parser.add_argument('--update_every', default=2, type=int)
         parser.add_argument('--update_epochs', default=1, type=int)
         parser.add_argument('--batch_size', default=256, type=int)
