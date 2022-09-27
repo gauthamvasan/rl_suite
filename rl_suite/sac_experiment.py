@@ -31,8 +31,6 @@ class SACExperiment(Experiment):
         parser.add_argument('--timeout', default=50, type=int, help="Timeout for the env")
         # Minimum-time tasks
         parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
-        ## DM sparse reacher
-        parser.add_argument('--use_image', default=False, action='store_true')
         ## Mujoco sparse reacher
         parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
