@@ -138,6 +138,7 @@ dmypy.json
 # results
 results/
 rl_suite/results/
+*backup
 
 # local output
 *.err

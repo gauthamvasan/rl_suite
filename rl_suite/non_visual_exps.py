@@ -10,7 +10,7 @@ steps = {
 def generate_exps():
     exps = []
     
-    envs = ["dm_reacher_easy"]
+    envs = ["dm_reacher_hard"]
     timeouts = [50, 100, 500, 1000, 5000]
     seeds = range(30)
 
