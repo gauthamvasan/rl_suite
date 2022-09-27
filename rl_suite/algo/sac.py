@@ -200,7 +200,7 @@ class SACAgent(SAC):
 
     def push_and_update(self, obs, action, reward, done):
         self._replay_buffer.add(obs, action, reward, done)
-        
+        self.steps += 1
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
             for _ in range(self.cfg.update_epochs):
                 # tic = time.time()
@@ -208,7 +208,6 @@ class SACAgent(SAC):
                 # print(time.time() - tic)
             return stat
         
-        self.steps += 1
 
 
 class ResetSACAgent(SACAgent):
