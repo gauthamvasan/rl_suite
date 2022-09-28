@@ -3,14 +3,14 @@ from multiprocessing import Pool
 
 steps = {
         "ball_in_cup": 300000,
-        "dm_reacher_hard": 500000,
+        "dm_reacher_hard": 400000,
         "dm_reacher_easy": 300000
         }
 
 def generate_exps():
     exps = []
     
-    envs = ["dm_reacher_easy"]
+    envs = ["dm_reacher_hard"]
     timeouts = [50, 100, 500, 1000, 5000]
     seeds = range(30)
 
