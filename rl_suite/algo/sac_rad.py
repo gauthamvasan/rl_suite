@@ -151,14 +151,14 @@ class SAC_RAD:
         }
         return actor_stats
 
-    def update(self, img, prop, action, reward, next_img, next_prop, not_done):
+    def update(self, img, prop, action, reward, next_img, next_prop, done):
         # Move tensors to device
-        img, prop, action, reward, next_img, next_prop, not_done = img.to(self.device), prop.to(self.device), \
+        img, prop, action, reward, next_img, next_prop, done = img.to(self.device), prop.to(self.device), \
             action.to(self.device), reward.to(self.device), next_img.to(self.device), \
-                next_prop.to(self.device), not_done.to(self.device)
+                next_prop.to(self.device), done.to(self.device)
 
         # regular update of SAC_RAD, sequentially augment data and train
-        stats = self.update_critic(img, prop, action, reward, next_img, next_prop, not_done)
+        stats = self.update_critic(img, prop, action, reward, next_img, next_prop, done)
         if self.num_updates % self.actor_update_freq == 0:
             actor_stats = self.update_actor_and_alpha(img, prop)
             stats = {**stats, **actor_stats}
