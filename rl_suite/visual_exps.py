@@ -2,9 +2,9 @@ import subprocess
 from multiprocessing import Pool
 
 steps = {
-        "ball_in_cup": 200000,
-        "dm_reacher_hard": 500000,
-        "dm_reacher_easy": 300000
+        "ball_in_cup": 350000,
+        "dm_reacher_hard": 600000,
+        "dm_reacher_easy": 300000,
         }
 
 def generate_exps():
@@ -18,11 +18,11 @@ def generate_exps():
         for env in envs:
             for seed in seeds:
                 exp = {
-                    "name": f'sac_{env}_timeout={timeout}_seed={seed}_2nd_paper_no_image',
+                    "name": f'sac_rad_{env}_timeout={timeout}_seed={seed}_2nd_paper_with_image',
                     "env": env,
                     "seed": seed,
                     "timeout": timeout,
-                    "description": "2nd_paper_no_image"
+                    "description": "2nd_paper_with_image"
                 }
                 exps.append(exp)
 
@@ -42,8 +42,8 @@ def run_exp(exp):
                                     '--seed', str(seed), 
                                     '--N', str(N),
                                     '--timeout', str(timeout),
-                                    '--algo', 'sac',
-                                    '--replay_buffer_capacity', '1000000',
+                                    '--algo', 'sac_rad',
+                                    '--replay_buffer_capacity', '100000',
                                     '--init_steps', str(N//100),
                                     '--description', description
                 ]
