@@ -279,15 +279,15 @@ def visualize_behavior(domain_name, task_name, seed=1):
 
 def random_policy_stats():
     # Problem
-    seed = 1
+    seed = 0
     timeout = 5000
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # Env
-    # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-    task = 'dm_reacher_easy'
-    env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
+    task = 'ball in cup'
+    env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+    # env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
     # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
     # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
     if not hasattr(env, "_action_dim"):
@@ -421,22 +421,22 @@ if __name__ == '__main__':
     # visualize_behavior("acrobot", "swingup_sparse")
 
     # r = ReacherWrapper(seed=1)
-    # random_policy_stats()
-    env = BallInCupWrapper(1, 1000, use_image=True)
-    obs = env.reset()
-    img = obs.images
+    random_policy_stats()
+    # env = BallInCupWrapper(1, 1000, use_image=True)
+    # obs = env.reset()
+    # img = obs.images
 
-    print(img.shape)
-    img_to_show = np.transpose(img, [1, 2, 0])
-    img_to_show = img_to_show[:,:,-3:]
-    cv2.imshow('', img_to_show)
-    cv2.waitKey(0)
+    # print(img.shape)
+    # img_to_show = np.transpose(img, [1, 2, 0])
+    # img_to_show = img_to_show[:,:,-3:]
+    # cv2.imshow('', img_to_show)
+    # cv2.waitKey(0)
 
-    for _ in range(1000):
-        action = env.action_space.sample()
-        next_obs, _, _, _ = env.step(action)
-        next_img = next_obs.images
-        img_to_show = np.transpose(next_img, [1, 2, 0])
-        img_to_show = img_to_show[:,:,-3:]
-        cv2.imshow('', img_to_show)
-        cv2.waitKey(50)
+    # for _ in range(1000):
+    #     action = env.action_space.sample()
+    #     next_obs, _, _, _ = env.step(action)
+    #     next_img = next_obs.images
+    #     img_to_show = np.transpose(next_img, [1, 2, 0])
+    #     img_to_show = img_to_show[:,:,-3:]
+    #     cv2.imshow('', img_to_show)
+    #     cv2.waitKey(50)
