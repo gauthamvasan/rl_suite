@@ -11,6 +11,100 @@ from dm_control import suite
 from gym.spaces import Box
 from collections import deque
 
+class BallInCupWrapperFixReset:
+    def __init__(self, seed, timeout, penalty=-1, use_image=False, img_history=3):
+        """ Outputs state transition data as torch arrays """
+        self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
+        self._timeout = timeout
+        self.reward = penalty
+        self._obs_dim = 8 if not use_image else 4
+        self._action_dim = 2
+
+        self._use_image = use_image
+        
+        if use_image:
+            self._image_buffer = deque([], maxlen=img_history)
+            print("Visual ball in cup")
+        else:
+            print('Non visual ball in cup')
+
+    def make_obs(self, x):
+        obs = np.zeros(self._obs_dim, dtype=np.float32)
+        if not self._use_image:
+            obs[:4] = x.observation['position'].astype(np.float32)
+            obs[4:8] = x.observation['velocity'].astype(np.float32)
+        else:
+            obs[:4] = x.observation['velocity'].astype(np.float32)
+        return obs
+
+    def _get_new_img(self):
+        img = self.env.physics.render()
+        img = img[20:120, 100:220, :]
+        img = np.transpose(img, [2, 0, 1])  # c, h, w
+        return img
+
+    def reset(self):
+        self.steps = 0
+        x = self.env.reset()
+        while x.observation['position'][-1] > 0.4:
+            x = self.env.reset()
+
+        if self._use_image:
+            obs = Observation()
+            obs.proprioception = self.make_obs(x)
+            new_img = self._get_new_img()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+
+            obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            obs = self.make_obs(x)
+
+        return obs
+
+    def step(self, action):
+        if isinstance(action, torch.Tensor):
+            action = action.cpu().numpy().flatten()
+        self.steps += 1
+
+        x = self.env.step(action)
+
+        reward = self.reward
+        done = x.reward # or self.steps == self._timeout
+        info = {}
+
+        if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self.make_obs(x)
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            next_obs = self.make_obs(x)
+        return next_obs, reward, done, info
+
+    @property
+    def observation_space(self):
+        return Box(shape=(self._obs_dim,), high=10, low=-10)
+
+    @property
+    def image_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+
+        image_shape = (3 * self._image_buffer.maxlen, 100, 120)
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+        
+        return self.observation_space
+
+    @property
+    def action_space(self):
+        return Box(shape=(self._action_dim,), high=1, low=-1)
 
 class BallInCupWrapper:
     def __init__(self, seed, timeout, penalty=-1, use_image=False, img_history=3):
@@ -336,7 +430,13 @@ def random_policy_stats():
 
     # Env
     task = 'ball in cup'
-    env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+    env = BallInCupWrapper(seed, timeout=timeout, penalty=-1, use_image=True)
+    for _ in range(10000):
+        obs = env.reset()
+        img_to_show = np.transpose(obs.images, [1,2,0])[:,:,-3:]
+        cv2.imshow("", img_to_show)
+        cv2.waitKey(0)
+        
     # env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
     # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
     # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
