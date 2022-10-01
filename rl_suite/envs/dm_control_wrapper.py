@@ -10,6 +10,7 @@ from rl_suite.envs.env_utils import Observation
 from dm_control import suite
 from gym.spaces import Box
 from collections import deque
+from statistics import mean
 
 class BallInCupWrapperFixReset:
     def __init__(self, seed, timeout, penalty=-1, use_image=False, img_history=3):
@@ -46,7 +47,7 @@ class BallInCupWrapperFixReset:
     def reset(self):
         self.steps = 0
         x = self.env.reset()
-        while x.observation['position'][-1] > 0.4:
+        while x.observation['position'][-1] > 0.33:
             x = self.env.reset()
 
         if self._use_image:
@@ -372,54 +373,56 @@ def visualize_behavior(domain_name, task_name, seed=1):
         # print(time_step.reward, time_step.discount, time_step.observation)
 
 def ranndom_policy_done_2_done_length():
-    # Problem
     seed = 1
-    timeout = 1000
     torch.manual_seed(seed)
     np.random.seed(seed)
-
-    # Env
-    task = 'dm reacher hard'
-    # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-    env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
-    if not hasattr(env, "_action_dim"):
-        env._action_dim = env.action_spec().shape[0]
-
-    # Experiment
     total_dones = 50
-    done_2_done_lens = []
-    steps = 0
-    while len(done_2_done_lens) < total_dones:
-        env.reset()
-        epi_steps = 0
-        done = 0
-        done_2_done_steps = 0
-        while not done: 
-            A = env.action_space.sample()
+    for timeout in [1, 2, 5, 10, 25, 50, 100, 500, 1000]:
+        # Env
+        task = 'ball in cup 20'
+        env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+        # env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
+        if not hasattr(env, "_action_dim"):
+            env._action_dim = env.action_spec().shape[0]
 
-            # Receive reward and next state            
-            _, _, done, _ = env.step(A)
-            
-            # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
+        # Experiment
+        done_2_done_lens = []
+        steps = 0
+        while len(done_2_done_lens) < total_dones:
+            env.reset()
+            epi_steps = 0
+            done = 0
+            done_2_done_steps = 0
+            resets = 0
+            while not done: 
+                A = env.action_space.sample()
 
-            # Log
-            steps += 1
-            epi_steps += 1
-            done_2_done_steps += 1
+                # Receive reward and next state            
+                _, _, done, _ = env.step(A)
+                
+                # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
 
-            # Termination
-            if epi_steps == timeout:
-                env.reset()
-                epi_steps = 0
+                # Log
+                steps += 1
+                epi_steps += 1
+                done_2_done_steps += 1
 
-        done_2_done_lens.append(done_2_done_steps)
-        print('-' * 50)
-        print("Episode: {}: # done_2_done steps = {}. Total Steps: {}".format(len(done_2_done_lens), done_2_done_steps, steps))
-        print('-' * 50)
+                # Termination
+                if epi_steps == timeout:
+                    resets += 1
+                    env.reset()
+                    epi_steps = 0
+
+            done_2_done_lens.append(done_2_done_steps + resets*20)
+            print('-' * 50)
+            print("Episode: {}, done_2_done steps: {}, resets: {}, Total Steps: {}".format(len(done_2_done_lens), done_2_done_steps, resets, steps))
+            print('-' * 50)
     
-    with open(task + '_timeout='+str(timeout)+'_random_stat.txt', 'w') as out_file:
-        for length in done_2_done_lens:
-            out_file.write(str(length)+'\n')
+        with open(task + '_timeout='+str(timeout)+'_random_stat.txt', 'w') as out_file:
+            for length in done_2_done_lens:
+                out_file.write(str(length)+'\n')
+            
+            out_file.write(f"\nMean: {mean(done_2_done_lens)}")
         
 def random_policy_stats():
     # Problem

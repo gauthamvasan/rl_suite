@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 envs = ["ball in cup", "dm reacher easy", "dm reacher hard"]
+envs = ["ball in cup 20"]
 timeouts = ["1", "2", "5", "10", "25", "50", "100", "500", "1000"]
 
 for env in envs:
@@ -12,7 +13,7 @@ for env in envs:
         with open(env+"_timeout="+str(timeout)+"_random_stat.txt") as data_file:
             lines = data_file.readlines()
 
-        lengths = [ int(length) for length in lines]
+        lengths = [ int(length) for length in lines[:-2]]
         temp_df = pd.DataFrame(columns=["length", "timeout"])
         temp_df["length"] = lengths
         temp_df["timeout"] = timeout
