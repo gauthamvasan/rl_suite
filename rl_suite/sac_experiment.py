@@ -146,6 +146,7 @@ class SACExperiment(Experiment):
         rets = []
         ep_lens = []
         obs = self.env.reset()
+        print("image shape:", obs.images.shape)
         i_episode = 0
         for t in range(self.args.N):                      
             if self.args.algo == "sac_rad":
