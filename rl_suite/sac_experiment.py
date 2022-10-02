@@ -140,6 +140,7 @@ class SACExperiment(Experiment):
             learner = SACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
         else:
             self.args.image_shape = self.env.image_space.shape
+            print("image shape:", self.args.image_shape)
             self.args.proprioception_shape = self.env.proprioception_space.shape
             self.args.action_shape = self.env.action_space.shape
             buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
@@ -152,8 +153,6 @@ class SACExperiment(Experiment):
         rets = []
         ep_lens = []
         obs = self.env.reset()
-        if self.args.algo == "sac_rad":
-            print("image shape:", obs.images.shape)
         i_episode = 0
         for t in range(self.args.N):                      
             if self.args.algo == "sac_rad":
