@@ -1,0 +1,1 @@
+nohup python3 -u non_visual_exps.py 1> train.out 2> train.err &
