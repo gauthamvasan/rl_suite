@@ -43,7 +43,7 @@ def run_exp(exp):
                                     '--N', str(N),
                                     '--timeout', str(timeout),
                                     '--algo', 'sac_rad',
-                                    '--replay_buffer_capacity', '100000',
+                                    '--replay_buffer_capacity', '1000000',
                                     '--init_steps', str(N//100),
                                     '--description', description
                 ]
@@ -51,6 +51,6 @@ def run_exp(exp):
         subprocess.run(param, stdout=out_file)
 
 if __name__ == '__main__':
-    workers = 5
+    workers = 2
     with Pool(processes=workers) as p:
         p.map(run_exp, exps)
