@@ -18,11 +18,10 @@ class SACExperiment(Experiment):
                                   f"{self.run_id}_{self.args.algo}_{self.env.name}_timeout={self.args.timeout}_seed={self.args.seed}_{self.args.description}")
         self.fname = base_fname + ".txt"
         self.plt_fname = base_fname + ".png"
-        args_fname = base_fname + ".json"
 
         hyperparas_dict = vars(self.args)
         hyperparas_dict["device"] = str(hyperparas_dict["device"])
-        json.dump(hyperparas_dict, open(args_fname, 'w'), indent=4)
+        json.dump(hyperparas_dict, open(base_fname+".json", 'w'), indent=4)
 
         print('-'*50)
         print("{}-{}".format(self.run_id, base_fname))
