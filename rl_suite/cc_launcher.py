@@ -1,7 +1,6 @@
 import os
 import time
 from tqdm import tqdm
-from pathlib import Path
 
 visual_steps = {
         "ball_in_cup": 350000,

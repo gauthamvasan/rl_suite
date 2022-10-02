@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --gres=gpu:1       # Request GPU "generic resources"
 #SBATCH --cpus-per-task=1  # Cores proportional to GPUs: 6 on Cedar, 16 on Graham.
-#SBATCH --time=12:00:00    # Enough for visual tasks
+#SBATCH --time=18:00:00    # Enough for visual tasks
 #SBATCH --mem=48G          # Enough for visual tasks
 #SBATCH --account=rrg-ashique
 
