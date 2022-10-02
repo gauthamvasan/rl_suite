@@ -62,8 +62,6 @@ def run_exp():
 
         params = [  
             'sbatch',
-            "--time="+("03:00:00" if algo == "sac" else "02-00"),
-            "--mem="+("16G" if algo == "sac" else "128G"),
             "--output="+output_filename,
             'cc_job.sh', 
             env,
