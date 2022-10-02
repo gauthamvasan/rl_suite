@@ -5,7 +5,6 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tkinter import N
 from rl_suite.envs.env_utils import Observation
 from dm_control import suite
 from gym.spaces import Box
