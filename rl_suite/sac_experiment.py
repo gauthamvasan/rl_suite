@@ -1,6 +1,7 @@
 import argparse
 import os
 import torch
+import json
 
 from rl_suite.algo.sac import SACAgent
 from rl_suite.algo.sac_rad import SACRADAgent
@@ -17,6 +18,11 @@ class SACExperiment(Experiment):
                                   f"{self.run_id}_{self.args.algo}_{self.env.name}_timeout={self.args.timeout}_seed={self.args.seed}_{self.args.description}")
         self.fname = base_fname + ".txt"
         self.plt_fname = base_fname + ".png"
+        args_fname = base_fname + ".json"
+
+        hyperparas_dict = vars(self.args)
+        hyperparas_dict["device"] = str(hyperparas_dict["device"])
+        json.dump(hyperparas_dict, open(args_fname, 'w'), indent=4)
 
         print('-'*50)
         print("{}-{}".format(self.run_id, base_fname))
@@ -146,7 +152,8 @@ class SACExperiment(Experiment):
         rets = []
         ep_lens = []
         obs = self.env.reset()
-        print("image shape:", obs.images.shape)
+        if self.args.algo == "sac_rad":
+            print("image shape:", obs.images.shape)
         i_episode = 0
         for t in range(self.args.N):                      
             if self.args.algo == "sac_rad":
