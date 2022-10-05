@@ -8,7 +8,8 @@ from rl_suite.algo.sac_rad import SACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 from rl_suite.running_stats import RunningStats
-
+import numpy as np
+import cv2
 
 class SACExperiment(Experiment):
     def __init__(self):
@@ -152,6 +153,10 @@ class SACExperiment(Experiment):
         rets = []
         ep_lens = []
         obs = self.env.reset()
+        img_to_show = np.transpose(obs.images, [1, 2, 0])
+        img_to_show = img_to_show[:,:,-3:]
+        cv2.imshow("", img_to_show)
+        cv2.waitKey(0)
         i_episode = 0
         for t in range(self.args.N):                      
             if self.args.algo == "sac_rad":
