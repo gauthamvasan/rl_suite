@@ -38,8 +38,8 @@ for out_file in folder.iterdir():
                 longest_env = env
                 longest_job_id = run_id
 
-        elif res[3] == 'State: TIMEOUT (exit code 0)':
-            print(f"env: {env}, job id: {run_id} failed")
+        else:
+            print(f"env: {env}, job id: {run_id}, state: {res[3]}")
 
 print()
 for (env, total_seconds) in times.items():
