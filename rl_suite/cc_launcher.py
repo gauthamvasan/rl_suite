@@ -18,10 +18,8 @@ def generate_exps():
     exps = []
     
     algos = ["sac", "sac_rad"]
-    algos = ["sac_rad"]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["dm_reacher_hard", "dm_reacher_easy"]
-    timeouts = [50, 100, 500, 1000]
+    timeouts = [1000]
     seeds = range(30)
     for algo in algos:
         description = "2nd_paper_with_image" if algo == "sac_rad" else "2nd_paper_no_image"

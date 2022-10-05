@@ -153,10 +153,10 @@ class SACExperiment(Experiment):
         rets = []
         ep_lens = []
         obs = self.env.reset()
-        img_to_show = np.transpose(obs.images, [1, 2, 0])
-        img_to_show = img_to_show[:,:,-3:]
-        cv2.imshow("", img_to_show)
-        cv2.waitKey(0)
+        # img_to_show = np.transpose(obs.images, [1, 2, 0])
+        # img_to_show = img_to_show[:,:,-3:]
+        # cv2.imshow("", img_to_show)
+        # cv2.waitKey(0)
         i_episode = 0
         for t in range(self.args.N):                      
             if self.args.algo == "sac_rad":
