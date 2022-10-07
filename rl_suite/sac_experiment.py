@@ -1,32 +1,39 @@
 import argparse
-import os
 import torch
-import json
+import numpy as np
+import cv2
 
 from rl_suite.algo.sac import SACAgent
 from rl_suite.algo.sac_rad import SACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 from rl_suite.running_stats import RunningStats
-import numpy as np
-import cv2
+from datetime import datetime
 
 class SACExperiment(Experiment):
     def __init__(self):
         super(SACExperiment, self).__init__(self.parse_args())
         self.env = self.make_env()
-        base_fname = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.args.work_dir, 
-                                  f"{self.run_id}_{self.args.algo}_{self.env.name}_timeout={self.args.timeout}_seed={self.args.seed}_{self.args.description}")
-        self.fname = base_fname + ".txt"
-        self.plt_fname = base_fname + ".png"
+        
+        # Reproducibility
+        self.set_seed()
+                
+        # args.observation_shape = env.observation_space.shape
+        self.args.action_shape = self.env.action_space.shape
+        self.args.obs_dim = self.env.observation_space.shape[0]
+        self.args.action_dim = self.env.action_space.shape[0]
 
-        hyperparas_dict = vars(self.args)
-        hyperparas_dict["device"] = str(hyperparas_dict["device"])
-        json.dump(hyperparas_dict, open(base_fname+".json", 'w'), indent=4)
-
-        print('-'*50)
-        print("{}-{}".format(self.run_id, base_fname))
-        print('-'*50)               
+        if self.args.algo == "sac":
+            buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim, self.args.replay_buffer_capacity, self.args.batch_size)
+            self.learner = SACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
+        else:
+            self.args.image_shape = self.env.image_space.shape
+            print("image shape:", self.args.image_shape)
+            self.args.proprioception_shape = self.env.proprioception_space.shape
+            self.args.action_shape = self.env.action_space.shape
+            buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
+                self.args.action_shape, self.args.replay_buffer_capacity, self.args.batch_size)
+            self.learner = SACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
 
     def parse_args(self):
         parser = argparse.ArgumentParser()
@@ -75,7 +82,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)
         # Misc
-        parser.add_argument('--work_dir', default='./results', type=str)
+        parser.add_argument('--output_dir', default='./outputs', type=str, help="Save outputs to this dir")
+        parser.add_argument('--experiment_dir', required=True, type=str, help="Save experiment outputs, relative to output_dir")
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         parser.add_argument('--description', required=True, type=str)
@@ -124,32 +132,12 @@ class SACExperiment(Experiment):
 
 
     def run(self):
-        # Reproducibility
-        self.set_seed()
-
         # Normalize wrapper
         rms = RunningStats()
-                
-        # args.observation_shape = env.observation_space.shape
-        self.args.action_shape = self.env.action_space.shape
-        self.args.obs_dim = self.env.observation_space.shape[0]
-        self.args.action_dim = self.env.action_space.shape[0]
-
-        if self.args.algo == "sac":
-            buffer = SACReplayBuffer(self.args.obs_dim, self.args.action_dim, self.args.replay_buffer_capacity, self.args.batch_size)
-            learner = SACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
-        else:
-            self.args.image_shape = self.env.image_space.shape
-            print("image shape:", self.args.image_shape)
-            self.args.proprioception_shape = self.env.proprioception_space.shape
-            self.args.action_shape = self.env.action_space.shape
-            buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
-                self.args.action_shape, self.args.replay_buffer_capacity, self.args.batch_size)
-            learner = SACRADAgent(cfg=self.args, buffer=buffer, device=self.args.device)
 
         # Experiment block starts
         ret = 0
-        step = 0
+        epi_steps = 0
         rets = []
         ep_lens = []
         obs = self.env.reset()
@@ -158,6 +146,7 @@ class SACExperiment(Experiment):
         # cv2.imshow("", img_to_show)
         # cv2.waitKey(0)
         i_episode = 0
+        start_time = datetime.now()
         for t in range(self.args.N):                      
             if self.args.algo == "sac_rad":
                 img = obs.images
@@ -174,9 +163,9 @@ class SACExperiment(Experiment):
                 action = self.env.action_space.sample()
             else:
                 if self.args.algo == "sac":
-                    action = learner.sample_action(obs)                
+                    action = self.learner.sample_action(obs)                
                 else:
-                    action = learner.sample_action(img, prop)
+                    action = self.learner.sample_action(img, prop)
             
             # img_to_show = np.transpose(obs.images, [1, 2, 0])
             # img_to_show = img_to_show[:,:,-3:]
@@ -187,9 +176,9 @@ class SACExperiment(Experiment):
 
             # Learn
             if self.args.algo == "sac":
-                learner.push_and_update(obs, action, r, done)
+                self.learner.push_and_update(obs, action, r, done)
             else:
-                learner.push_and_update(img, prop, action, r, done)
+                self.learner.push_and_update(img, prop, action, r, done)
                     
             # if t % 100 == 0:
                 # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
@@ -198,15 +187,15 @@ class SACExperiment(Experiment):
 
             # Log
             ret += r
-            step += 1
-            if done or step == self.args.timeout:    # Bootstrap on timeout
+            epi_steps += 1
+            if done or epi_steps == self.args.timeout:    # Bootstrap on timeout
                 i_episode += 1
                 rets.append(ret)
-                ep_lens.append(step)
+                ep_lens.append(epi_steps)
                 print("Episode {} ended after {} steps with return {:.2f}. Total steps: {}".format(
-                    i_episode, step, ret, t))
+                    i_episode, epi_steps, ret, t))
                 ret = 0
-                step = 0
+                epi_steps = 0
                 
                 if 'dm_reacher' in self.args.env:
                     obs = self.env.reset(randomize_target=done)
@@ -215,12 +204,14 @@ class SACExperiment(Experiment):
 
             if (t+1) % self.args.checkpoint == 0:
                 if rets:
-                    self.learning_curve(rets, ep_lens, save_fig=self.plt_fname)
-                    self.save_returns(rets, ep_lens, self.fname)
+                    self.show_learning_curve(rets, ep_lens, save_fig=True)
+                    self.save_returns(rets, ep_lens)
+                    self.save_model(t)
 
-        self.save_returns(rets, ep_lens, self.fname)
-        learner.save(model_dir=self.args.work_dir, step=self.args.N)
-        # plt.show()
+        duration = datetime.now() - start_time
+        self.save_returns(rets, ep_lens)
+        self.save_model(t)
+        print(f"Finished in {duration}")
 
 def main():
     runner = SACExperiment()

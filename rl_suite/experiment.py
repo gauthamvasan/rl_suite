@@ -10,7 +10,7 @@ import torch
 import random
 import warnings
 import os
-import pickle
+import json
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,6 +23,7 @@ from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
 from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
+from pathlib import Path
 
 # For MacOS
 if platform == "darwin":    
@@ -32,8 +33,20 @@ if platform == "darwin":
 
 class Experiment:
     def __init__(self, args):
-        self.run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+        self.run_id = datetime.now().strftime("%Y%m%d-%H%M")
         self.args = args
+
+        assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
+
+        self._return_dir = Path(args.output_dir)/'returns'/args.experiment_dir
+        self._model_dir = Path(args.output_dir)/'models'/args.experiment_dir
+
+        os.makedirs(self._return_dir, exist_ok=True)
+        os.makedirs(self._model_dir, exist_ok=True)
+
+        hyperparas_dict = vars(self.args)
+        hyperparas_dict["device"] = str(hyperparas_dict["device"])
+        json.dump(hyperparas_dict, open(self._return_dir/f"{self.run_id}_args.json", 'w'), indent=4)
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
@@ -60,7 +73,7 @@ class Experiment:
         env.name = self.args.env
         return env
 
-    def save_returns(self, rets, ep_lens, savepath):
+    def save_returns(self, rets, ep_lens):
         """ Save learning curve data as a numpy text file 
 
         Args:
@@ -71,11 +84,10 @@ class Experiment:
         data = np.zeros((2, len(rets)))
         data[0] = ep_lens
         data[1] = rets
-        np.savetxt(savepath, data)
+        np.savetxt(self._return_dir/f'{self.run_id}_returns.txt', data)
     
-    def save_args(self, fname):
-        with open(fname, "wb") as handle:
-            pickle.dump(vars(self.args), handle)
+    def save_model(self, step):
+        self.learner.save(self._model_dir, step)
 
     def set_seed(self):
         seed = self.args.seed
@@ -93,7 +105,7 @@ class Experiment:
         
         # torch.use_deterministic_algorithms(True)
 
-    def learning_curve(self, rets, ep_lens, save_fig=""):
+    def show_learning_curve(self, rets, ep_lens, save_fig=True):
         plot_rets, plot_x = smoothed_curve(
                 np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)
         if len(plot_rets):
@@ -101,19 +113,12 @@ class Experiment:
             plt.plot(plot_x, plot_rets)
             plt.pause(0.001)
             if save_fig:
-                plt.savefig(save_fig)
+                plt.savefig(self._return_dir/f"{self.run_id}_learning_curve.png")
     
     def run(self):
         """ This needs to be algorithm specific """
         raise NotImplemented
 
-    @staticmethod
-    def make_dir(dir_path):
-        try:
-            os.makedirs(dir_path, exist_ok=True)
-        except OSError as e:
-            print(e)
-        return dir_path
 
 
 class MySQLExperiment(Experiment):

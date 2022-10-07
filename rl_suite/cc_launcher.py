@@ -57,8 +57,12 @@ def run_exp():
         description = exp['description']
         output_filename = exp["output_filename"]
 
+        requested_time = '00:45:00' if algo == "sac" else '05:00:00'
+        requested_mem = '4G' if algo == "sac" else '12G'
         params = [  
             'sbatch',
+            '--time='+requested_time,
+            '--mem='+requested_mem,
             "--output="+output_filename,
             'cc_job.sh', 
             env,

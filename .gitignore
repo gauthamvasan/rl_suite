@@ -135,8 +135,7 @@ dmypy.json
 .vscode/
 
 # results
-results/
-rl_suite/results/
+*outputs
 *backup
 
 # local output
