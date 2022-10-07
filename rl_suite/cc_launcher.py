@@ -3,23 +3,25 @@ import time
 from tqdm import tqdm
 
 visual_steps = {
-        "ball_in_cup": 350000,
-        "dm_reacher_hard": 700000,
-        "dm_reacher_easy": 300000,
+        "ball_in_cup": 200000,
+        "dm_reacher_hard": 200000,
+        "dm_reacher_easy": 200000,
         }
 
 non_visual_steps = {
         "ball_in_cup": 200000,
-        "dm_reacher_hard": 400000,
-        "dm_reacher_easy": 300000,
+        "dm_reacher_hard": 200000,
+        "dm_reacher_easy": 200000,
         }
 
 def generate_exps():
     exps = []
     
     algos = ["sac", "sac_rad"]
+    algos = ["sac"]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    timeouts = [1000]
+    envs = ["dm_reacher_easy"]
+    timeouts = [50, 100, 500, 1000]
     seeds = range(30)
     for algo in algos:
         description = "2nd_paper_with_image" if algo == "sac_rad" else "2nd_paper_no_image"
@@ -34,7 +36,7 @@ def generate_exps():
                         "N": str(N),
                         "timeout": str(timeout),
                         "algo": algo,
-                        "replay_buffer_capacity": "1000000",
+                        "replay_buffer_capacity": "100000",
                         "init_steps": str(init_steps),
                         "description": description,
                         "output_filename": f'{algo}_{env}_timeout={timeout}_seed={seed}_{description}_%j.out',
