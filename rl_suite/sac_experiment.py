@@ -207,8 +207,7 @@ class SACExperiment(Experiment):
                     i_episode, step, ret, t))
                 ret = 0
                 step = 0
-                if done:
-                    input('reached')
+                
                 if 'dm_reacher' in self.args.env:
                     obs = self.env.reset(randomize_target=done)
                 else:
