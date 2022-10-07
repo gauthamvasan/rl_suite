@@ -1,11 +1,15 @@
 import cv2
 import torch
 import gym
+import dm_env
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from rl_suite.envs.env_utils import Observation
+from dm_control.suite.utils import randomizers
+from dm_control.suite.reacher import Reacher
+from dm_control.rl.control import flatten_observation
 from dm_control import suite
 from gym.spaces import Box
 from collections import deque
@@ -199,7 +203,6 @@ class BallInCupWrapper:
     def action_space(self):
         return Box(shape=(self._action_dim,), high=1, low=-1)
 
-
 class ReacherWrapper(gym.Wrapper):
     def __init__(self, seed, timeout, penalty=-1, mode="easy", use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
@@ -235,11 +238,38 @@ class ReacherWrapper(gym.Wrapper):
         img = np.transpose(img, [2, 0, 1])  # c, h, w
         return img
 
-    def reset(self):
+    def _initialize_episode_random_agent_only(self):
+        """Sets the state of the environment at the start of each episode."""
+        self.env.physics.named.model.geom_size['target', 0] = self.env.task._target_size
+        randomizers.randomize_limited_and_rotational_joints(self.env.physics, self.env.task.random)
+
+        super(Reacher, self.env.task).initialize_episode(self.env.physics)
+
+    def _reset_agent_only(self):
+        """Starts a new episode and returns the first `TimeStep`."""
+        self.env._reset_next_step = False
+        self.env._step_count = 0
+        with self.env.physics.reset_context():
+            self._initialize_episode_random_agent_only()
+
+        observation = self.env.task.get_observation(self.env.physics)
+        if self.env._flat_observation:
+            observation = flatten_observation(observation)
+
+        return dm_env.TimeStep(
+            step_type=dm_env.StepType.FIRST,
+            reward=None,
+            discount=None,
+            observation=observation)
+
+    def reset(self, randomize_target=True):
         self.steps = 0
         if self._use_image:
             obs = Observation()
-            obs.proprioception = self.make_obs(self.env.reset())
+            if randomize_target:
+                obs.proprioception = self.make_obs(self.env.reset())
+            else:
+                obs.proprioception = self.make_obs(self._reset_agent_only())
 
             new_img = self._get_new_img()
             for _ in range(self._image_buffer.maxlen):
@@ -247,7 +277,10 @@ class ReacherWrapper(gym.Wrapper):
 
             obs.images = np.concatenate(self._image_buffer, axis=0)
         else:
-            obs = self.make_obs(self.env.reset())
+            if randomize_target:
+                obs = self.make_obs(self.env.reset())
+            else:
+                obs = self.make_obs(self._reset_agent_only())
 
         return obs
 
@@ -556,22 +589,24 @@ if __name__ == '__main__':
 
     # r = ReacherWrapper(seed=1)
     # random_policy_stats()
-    ranndom_policy_done_2_done_length()
+    # ranndom_policy_done_2_done_length()
     # env = BallInCupWrapper(1, 1000, use_image=True)
-    # obs = env.reset()
-    # img = obs.images
+    env = ReacherWrapper(seed=1, timeout=50, use_image=True)
+    obs = env.reset()
+    img = obs.images
 
-    # print(img.shape)
-    # img_to_show = np.transpose(img, [1, 2, 0])
-    # img_to_show = img_to_show[:,:,-3:]
-    # cv2.imshow('', img_to_show)
-    # cv2.waitKey(0)
+    print(img.shape)
+    img_to_show = np.transpose(img, [1, 2, 0])
+    img_to_show = img_to_show[:,:,-3:]
+    cv2.imshow('', img_to_show)
+    cv2.waitKey(0)
 
-    # for _ in range(1000):
-    #     action = env.action_space.sample()
-    #     next_obs, _, _, _ = env.step(action)
-    #     next_img = next_obs.images
-    #     img_to_show = np.transpose(next_img, [1, 2, 0])
-    #     img_to_show = img_to_show[:,:,-3:]
-    #     cv2.imshow('', img_to_show)
-    #     cv2.waitKey(50)
+    for t in range(1000):
+        randomize_target = t % 100 == 0
+            
+        next_obs = env.reset(randomize_target=randomize_target)
+        next_img = next_obs.images
+        img_to_show = np.transpose(next_img, [1, 2, 0])
+        img_to_show = img_to_show[:,:,-3:]
+        cv2.imshow('', img_to_show)
+        cv2.waitKey(50)

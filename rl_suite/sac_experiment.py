@@ -177,7 +177,11 @@ class SACExperiment(Experiment):
                     action = learner.sample_action(obs)                
                 else:
                     action = learner.sample_action(img, prop)
-                        
+            
+            # img_to_show = np.transpose(obs.images, [1, 2, 0])
+            # img_to_show = img_to_show[:,:,-3:]
+            # cv2.imshow("", img_to_show)
+            # cv2.waitKey(50)
             # Observe
             next_obs, r, done, infos = self.env.step(action)
 
@@ -203,7 +207,12 @@ class SACExperiment(Experiment):
                     i_episode, step, ret, t))
                 ret = 0
                 step = 0
-                obs = self.env.reset()
+                if done:
+                    input('reached')
+                if 'dm_reacher' in self.args.env:
+                    obs = self.env.reset(randomize_target=done)
+                else:
+                    obs = self.env.reset()
 
             if (t+1) % self.args.checkpoint == 0:
                 if rets:
