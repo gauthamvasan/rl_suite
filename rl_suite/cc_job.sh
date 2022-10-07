@@ -13,7 +13,8 @@ TIME_OUT=$4
 ALGO=$5
 BUFFER_SIZE=$6
 INIT_STEPS=$7
-DESCRIPTION=$8
+EXPERIMENT_DIR=$8
+DESCRIPTION=$9
 
 python -u sac_experiment.py \
             --env $ENV \
@@ -23,4 +24,5 @@ python -u sac_experiment.py \
             --algo $ALGO \
             --replay_buffer_capacity $BUFFER_SIZE \
             --init_steps $INIT_STEPS \
+            --experiment_dir $EXPERIMENT_DIR \
             --description $DESCRIPTION

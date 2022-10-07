@@ -30,6 +30,7 @@ def generate_exps():
                 N = visual_steps[env] if algo == "sac_rad" else non_visual_steps[env]
                 init_steps = N//100
                 for seed in seeds:
+                    exp_dir = env+'/visual' if algo == "sac_rad" else "/non visual"+f"/timeout={timeout}/seed={seed}/"
                     exp = {
                         "env": env,
                         "seed": str(seed),
@@ -38,8 +39,9 @@ def generate_exps():
                         "algo": algo,
                         "replay_buffer_capacity": "100000",
                         "init_steps": str(init_steps),
+                        "experiment_dir": exp_dir,
                         "description": description,
-                        "output_filename": f'{algo}_{env}_timeout={timeout}_seed={seed}_{description}_%j.out',
+                        "output_filename": 'outputs/'+exp_dir+'%j_console_output.out',
                     }
                     exps.append(exp)
 
