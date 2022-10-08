@@ -33,7 +33,7 @@ if platform == "darwin":
 
 class Experiment:
     def __init__(self, args):
-        self.run_id = datetime.now().strftime("%Y%m%d-%H%M")
+        self.run_id = datetime.now().strftime("%Y-%m-%d %H:%M")
         self.args = args
 
         assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
