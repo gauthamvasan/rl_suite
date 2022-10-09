@@ -70,7 +70,7 @@ def run_exp():
             '--time='+requested_time,
             '--mem='+requested_mem,
             "--output="+output_filename,
-            str(Path(__file__).parent.absolute())+'/cc_job.sh', 
+            './cc_job.sh', 
             env,
             seed, 
             N,
@@ -87,4 +87,6 @@ def run_exp():
         time.sleep(1)
         
 if __name__ == '__main__':
+    work_dir = Path(__file__).parent
+    os.chdir(work_dir)
     run_exp()

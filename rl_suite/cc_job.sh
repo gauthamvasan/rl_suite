@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --gres=gpu:1       # Request GPU "generic resources"
-#SBATCH --cpus-per-task=1  # Sequential code.
+#SBATCH --cpus-per-task=2  # Sequential code.
 #SBATCH --account=rrg-ashique
 
 module load cuda/11.2.2
