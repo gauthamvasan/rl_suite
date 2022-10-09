@@ -20,7 +20,7 @@ longest_env = None
 longest_job_id = None
 for out_file in folder.iterdir():
     if out_file.name.endswith(".out"):
-        pattern = f".*_({'|'.join(envs)}).*_" + r"(\d+).out"
+        pattern = f"({'|'.join(envs)}).*_" + r"(\d+).out"
         match = re.match(pattern, out_file.name)
         env = match.group(1)
         run_id = match.group(2)
@@ -39,13 +39,14 @@ for out_file in folder.iterdir():
                 longest_job_id = run_id
 
         else:
-            print(f"env: {env}, job id: {run_id}, {res[3]}")
+            print(f"{out_file.name}: {res[3]}")
 
 print()
 for (env, total_seconds) in times.items():
-    avg_seconds = total_seconds / counts[env]
-    avg_time_string = str(datetime.timedelta(seconds=avg_seconds))
-    print(f"{env}: {avg_time_string}, counts={counts[env]}")
+    if counts[env] != 0:
+        avg_seconds = total_seconds / counts[env]
+        avg_time_string = str(datetime.timedelta(seconds=avg_seconds))
+        print(f"{env}: {avg_time_string}, counts={counts[env]}")
 
 longest_time_string = str(datetime.timedelta(seconds=largest_seconds))
 print(f"longest env: {env}, longest time: {longest_time_string}, job_id: {longest_job_id}")

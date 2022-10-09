@@ -206,7 +206,6 @@ class SACExperiment(Experiment):
                 if rets:
                     self.show_learning_curve(rets, ep_lens, save_fig=True)
                     self.save_returns(rets, ep_lens)
-                    self.save_model(t)
 
         duration = datetime.now() - start_time
         self.save_returns(rets, ep_lens)

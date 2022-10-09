@@ -1,6 +1,7 @@
 import os
 import time
 from tqdm import tqdm
+from pathlib import Path
 
 visual_steps = {
         "ball_in_cup": 200000,
@@ -18,9 +19,9 @@ def generate_exps():
     exps = []
     
     algos = ["sac", "sac_rad"]
-    algos = ["sac"]
+    algos = ["sac_rad"]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["dm_reacher_easy"]
+    envs = ["dm_reacher_easy", "dm_reacher_hard"]
     timeouts = [50, 100, 500, 1000]
     seeds = range(30)
     for algo in algos:
@@ -30,7 +31,7 @@ def generate_exps():
                 N = visual_steps[env] if algo == "sac_rad" else non_visual_steps[env]
                 init_steps = N//100
                 for seed in seeds:
-                    exp_dir = env+'/visual' if algo == "sac_rad" else "/non visual"+f"/timeout={timeout}/seed={seed}/"
+                    exp_dir = env+('/visual' if algo == "sac_rad" else "/non_visual")+f"/timeout={timeout}/seed={seed}/"
                     exp = {
                         "env": env,
                         "seed": str(seed),
@@ -41,7 +42,7 @@ def generate_exps():
                         "init_steps": str(init_steps),
                         "experiment_dir": exp_dir,
                         "description": description,
-                        "output_filename": 'outputs/'+exp_dir+'%j_console_output.out',
+                        "output_filename": f'{env}_timeout={timeout}_seed={seed}_{description}_%j.out',
                     }
                     exps.append(exp)
 
@@ -58,17 +59,18 @@ def run_exp():
         algo = exp["algo"]
         replay_buffer_capacity = exp["replay_buffer_capacity"]
         init_steps = exp["init_steps"]
+        experiment_dir = exp["experiment_dir"]
         description = exp['description']
         output_filename = exp["output_filename"]
 
-        requested_time = '00:45:00' if algo == "sac" else '05:00:00'
-        requested_mem = '4G' if algo == "sac" else '12G'
+        requested_time = '00:20:00' if algo == "sac" else '03:00:00'
+        requested_mem = '3G' if algo == "sac" else '12G'
         params = [  
             'sbatch',
             '--time='+requested_time,
             '--mem='+requested_mem,
             "--output="+output_filename,
-            'cc_job.sh', 
+            str(Path(__file__).parent.absolute())+'/cc_job.sh', 
             env,
             seed, 
             N,
@@ -76,8 +78,10 @@ def run_exp():
             algo,
             replay_buffer_capacity,
             init_steps,
+            experiment_dir,
             description,
         ]
+
         command = " ".join(params)
         os.system(command)
         time.sleep(1)
