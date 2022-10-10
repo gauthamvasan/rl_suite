@@ -16,7 +16,7 @@ INIT_STEPS=$7
 EXPERIMENT_DIR=$8
 DESCRIPTION=$9
 
-python -u sac_experiment.py \
+python3 -u sac_experiment.py \
             --env $ENV \
             --seed $SEED \
             --N $N \
