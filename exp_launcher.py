@@ -115,7 +115,7 @@ def workstation_exp(exp):
 
 def parse_args():
         parser = argparse.ArgumentParser()
-        parser.add_argument('--target', required=True, type=str)
+        parser.add_argument('--target', '-t', required=True, type=str)
         args = parser.parse_args()
         
         return args
