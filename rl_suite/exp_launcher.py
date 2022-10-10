@@ -1,7 +1,10 @@
+import argparse
 import os
 import time
+import subprocess
 from tqdm import tqdm
 from pathlib import Path
+from multiprocessing import Pool
 
 visual_steps = {
         "ball_in_cup": 200000,
@@ -42,15 +45,13 @@ def generate_exps():
                         "init_steps": str(init_steps),
                         "experiment_dir": exp_dir,
                         "description": description,
-                        "output_filename": f'{env}_timeout={timeout}_seed={seed}_{description}_%j.out',
+                        "output_filename": f'{env}_timeout={timeout}_seed={seed}_{description}',
                     }
                     exps.append(exp)
 
     return exps
 
-def run_exp():
-    exps = generate_exps()
-
+def cc_exp(exps):
     for exp in tqdm(exps):
         env = exp["env"]
         seed = exp["seed"]
@@ -69,7 +70,7 @@ def run_exp():
             'sbatch',
             '--time='+requested_time,
             '--mem='+requested_mem,
-            "--output="+output_filename,
+            "--output="+output_filename+'_%j.out',
             './cc_job.sh', 
             env,
             seed, 
@@ -85,7 +86,53 @@ def run_exp():
         command = " ".join(params)
         os.system(command)
         time.sleep(1)
+
+def workstation_exp(exp):
+    env = exp["env"]
+    seed = exp["seed"]
+    N = exp["N"]
+    timeout = exp["timeout"]
+    algo = exp["algo"]
+    replay_buffer_capacity = exp["replay_buffer_capacity"]
+    init_steps = exp["init_steps"]
+    experiment_dir = exp["experiment_dir"]
+    description = exp['description']
+    output_filename = exp["output_filename"]
+
+    with open(output_filename+'.out', 'w') as out_file:
+        param = ['python3', '-u', 'sac_experiment.py', 
+                                    '--env', env,
+                                    '--seed', seed, 
+                                    '--N', N,
+                                    '--timeout', timeout,
+                                    '--algo', algo,
+                                    '--replay_buffer_capacity', replay_buffer_capacity,
+                                    '--init_steps', init_steps,
+                                    '--experiment_dir', experiment_dir,
+                                    '--description', description
+                ]
+        subprocess.run(param, stdout=out_file, stderr=out_file)
+
+def parse_args():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--target', required=True, type=str)
+        args = parser.parse_args()
         
+        return args
+
+def run_exp():
+    exps = generate_exps()
+    args = parse_args()
+    
+    if args.target == 'cc':
+        cc_exp(exps)
+    elif args.target == 'workstation':
+        workers = 5
+        with Pool(processes=workers) as p:
+            p.map(workstation_exp, exps)
+    else:
+        raise NotImplementedError()
+
 if __name__ == '__main__':
     work_dir = Path(__file__).parent
     os.chdir(work_dir)
