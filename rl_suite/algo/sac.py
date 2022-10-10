@@ -206,5 +206,6 @@ class SACAgent(SAC):
                 # tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
                 # print(time.time() - tic)
-                self.steps += 1    
+        
+        self.steps += 1    
         return stat

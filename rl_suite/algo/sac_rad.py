@@ -220,14 +220,13 @@ class SACRADAgent(SAC_RAD):
     def push_and_update(self, image, propri, action, reward, done):
         self._replay_buffer.add(image, propri, action, reward, done)
 
-        stat = {}        
+        stat = {}   
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
             for _ in range(self.cfg.update_epochs):
                 # tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
                 # print(time.time() - tic)
-            self.steps += 1
-
+        self.steps += 1
         return stat
                 
 
@@ -363,6 +362,7 @@ class AsyncSACAgent(SAC_RAD):
             # Ask for data, make learning updates           
             tic = time.time()
             images, propris, actions, rewards, next_images, next_propris, dones = buffer.sample()
+            tic = time.time()
             self.update(images.clone(), propris.clone(), actions.clone(), 
                 rewards.clone(), next_images.clone(), next_propris.clone(), dones.clone())
             with self.n_updates.get_lock():
