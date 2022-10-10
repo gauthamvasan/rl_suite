@@ -63,7 +63,7 @@ def run_exp():
         description = exp['description']
         output_filename = exp["output_filename"]
 
-        requested_time = '00:20:00' if algo == "sac" else '03:00:00'
+        requested_time = '00:20:00' if algo == "sac" else '04:00:00'
         requested_mem = '3G' if algo == "sac" else '12G'
         params = [  
             'sbatch',

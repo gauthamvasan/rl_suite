@@ -28,7 +28,12 @@ for out_file in folder.iterdir():
 
         if res[3] == 'State: COMPLETED (exit code 0)': # only counts finished jobs
             duration = (res[7].split())[3]
-            x = time.strptime(duration,'%H:%M:%S')
+            try:
+                x = time.strptime(duration,'%H:%M:%S')
+            except:
+                duration = (res[8].split())[3]
+                x = time.strptime(duration,'%H:%M:%S')
+                
             total_seconds = datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
             times[env] += total_seconds
             counts[env] += 1
