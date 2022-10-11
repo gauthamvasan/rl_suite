@@ -14,6 +14,7 @@ from dm_control import suite
 from gym.spaces import Box
 from collections import deque
 from statistics import mean
+from tqdm import tqdm
 
 class BallInCupWrapperFixReset:
     def __init__(self, seed, timeout, penalty=-1, use_image=False, img_history=3):
@@ -376,201 +377,193 @@ class ManipulatorWrapper:
         return Box(shape=(2,), high=1, low=-1)
 
 
-def visualize_behavior(domain_name, task_name, seed=1):
-    # Load one task
-    # env = suite.load(domain_name="dog", task_name="fetch")
-    env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
+# def visualize_behavior(domain_name, task_name, seed=1):
+#     # Load one task
+#     # env = suite.load(domain_name="dog", task_name="fetch")
+#     env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
 
-    # N.B: See suite.ALL_TASKS for a list of tasks
-    # Iterate over a task set:
-    # for domain_name, task_name in suite.BENCHMARKING: # suite.ALL_TASKS
-    #   env = suite.load(domain_name, task_name)
+#     # N.B: See suite.ALL_TASKS for a list of tasks
+#     # Iterate over a task set:
+#     # for domain_name, task_name in suite.BENCHMARKING: # suite.ALL_TASKS
+#     #   env = suite.load(domain_name, task_name)
 
-    # Step through an episode and print out reward, discount and observation.
-    action_spec = env.action_spec()
-    time_step = env.reset()
+#     # Step through an episode and print out reward, discount and observation.
+#     action_spec = env.action_spec()
+#     time_step = env.reset()
 
-    # create two subplots
-    img = env.physics.render()
-    ax1 = plt.subplot(1, 1, 1)
-    im1 = ax1.imshow(img)
-    while not time_step.last():
-        action = np.random.uniform(action_spec.minimum,
-                                   action_spec.maximum,
-                                   size=action_spec.shape)
-        time_step = env.step(action)
-        img = env.physics.render()
-        im1.set_data(img)
-        plt.pause(0.02)
-        # print(time_step.reward, time_step.discount, time_step.observation)
+#     # create two subplots
+#     img = env.physics.render()
+#     ax1 = plt.subplot(1, 1, 1)
+#     im1 = ax1.imshow(img)
+#     while not time_step.last():
+#         action = np.random.uniform(action_spec.minimum,
+#                                    action_spec.maximum,
+#                                    size=action_spec.shape)
+#         time_step = env.step(action)
+#         img = env.physics.render()
+#         im1.set_data(img)
+#         plt.pause(0.02)
+#         # print(time_step.reward, time_step.discount, time_step.observation)
 
-def ranndom_policy_done_2_done_length():
+def ranndom_policy_hits_vs_timeout():
     seed = 1
     torch.manual_seed(seed)
     np.random.seed(seed)
-    total_dones = 50
-    for timeout in [1, 2, 5, 10, 25, 50, 100, 500, 1000]:
-        # Env
-        task = 'ball in cup 20'
-        env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-        # env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
+    total_steps = 200000
+    # Env
+    task = 'dm reacher hard'
+    
+    for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000]):
+        # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+        env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
         if not hasattr(env, "_action_dim"):
             env._action_dim = env.action_spec().shape[0]
-
+        
         # Experiment
-        done_2_done_lens = []
+        hits = 0
         steps = 0
-        while len(done_2_done_lens) < total_dones:
-            env.reset()
-            epi_steps = 0
-            done = 0
-            done_2_done_steps = 0
-            resets = 0
-            while not done: 
-                A = env.action_space.sample()
-
-                # Receive reward and next state            
-                _, _, done, _ = env.step(A)
-                
-                # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
-
-                # Log
-                steps += 1
-                epi_steps += 1
-                done_2_done_steps += 1
-
-                # Termination
-                if epi_steps == timeout:
-                    resets += 1
-                    env.reset()
-                    epi_steps = 0
-
-            done_2_done_lens.append(done_2_done_steps + resets*20)
-            print('-' * 50)
-            print("Episode: {}, done_2_done steps: {}, resets: {}, Total Steps: {}".format(len(done_2_done_lens), done_2_done_steps, resets, steps))
-            print('-' * 50)
-    
-        with open(task + '_timeout='+str(timeout)+'_random_stat.txt', 'w') as out_file:
-            for length in done_2_done_lens:
-                out_file.write(str(length)+'\n')
-            
-            out_file.write(f"\nMean: {mean(done_2_done_lens)}")
-        
-def random_policy_stats():
-    # Problem
-    seed = 0
-    timeout = 2
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    # Env
-    task = 'ball in cup'
-    env = BallInCupWrapper(seed, timeout=timeout, penalty=-1, use_image=True)
-    for _ in range(10000):
-        obs = env.reset()
-        img_to_show = np.transpose(obs.images, [1,2,0])[:,:,-3:]
-        cv2.imshow("", img_to_show)
-        cv2.waitKey(0)
-        
-    # env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
-    # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
-    # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
-    if not hasattr(env, "_action_dim"):
-        env._action_dim = env.action_spec().shape[0]
-
-    # Experiment
-    total_dones = 50
-    rets = []
-    ep_lens = []
-    steps = 0
-    dones = 0
-    while dones < total_dones:
-        obs = env.reset()
-        ret = 0
         epi_steps = 0
-        while True:
-            A = env.action_space.sample()
-            
+        env.reset()
+        while steps < total_steps:
+            action = env.action_space.sample()
+
             # Receive reward and next state            
-            next_obs, reward, done, _ = env.step(A)
+            _, _, done, _ = env.step(action)
             
+            # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
+
             # Log
-            ret += reward
             steps += 1
             epi_steps += 1
 
             # Termination
             if done or epi_steps == timeout:
-                rets.append(ret)
-                ep_lens.append(epi_steps)
-                print('-' * 50)
-                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(dones, epi_steps, ret, steps))
-                print('-' * 50)
+                env.reset()
+                epi_steps = 0
 
                 if done:
-                    dones += 1
+                    hits += 1
+                else:
+                    steps += 20
 
-                break
-
-            obs = next_obs
-
-    # Random policy stats
-    rets = np.array(rets)
-    ep_lens = np.array(ep_lens)
-
-    prev_steps = 0
-    new_ep_lens = []
-    for steps in ep_lens:
-        if steps == timeout:
-            prev_steps += steps
-        else:
-            new_ep_lens.append(steps + prev_steps)
-            prev_steps = 0
-    
-    with open(task + '_timeout='+str(timeout)+'_random_stat.txt', 'w') as out_file:
-        for ep_len in new_ep_lens:
-            out_file.write(str(ep_len)+'\n')
-
-        out_file.write("\nMean: {:.2f}".format(np.mean(new_ep_lens)))
+        with open(f"{task}_random_stat.txt", 'a') as out_file:
+            out_file.write(f"timeout={timeout}: {hits}\n")
         
-def interaction(domain_name, task_name, seed=1):
-    # Load one task:
-    # env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
-    env = ReacherWrapper(tol=0.009, timeout=5000, seed=0)
+# def random_policy_stats():
+#     # Problem
+#     seed = 0
+#     timeout = 2
+#     torch.manual_seed(seed)
+#     np.random.seed(seed)
 
-    # Step through an episode and print out reward, discount and observation.
-    action_spec = env.action_spec()
-    EP = 50
-    rets = []
-    ep_lens = []
-    for i in range(EP):
-        time_step = env.reset()
-        steps = 0
-        ret = 0
-        while not time_step.last():
-            action = np.random.uniform(action_spec.minimum,
-                                       action_spec.maximum,
-                                       size=action_spec.shape)
-            time_step = env.step(action)
-            print(steps, time_step.reward, time_step.discount)
-            steps += 1
-            ret += time_step.reward
-        rets.append(ret)
-        ep_lens.append(steps)
-        print('-' * 100)
-        print("Episode: {} ended in {} steps with return: {}".format(i+1, steps, ret))
-        print('-' * 100)
+#     # Env
+#     task = 'ball in cup'
+#     env = BallInCupWrapper(seed, timeout=timeout, penalty=-1, use_image=True)
+#     for _ in range(10000):
+#         obs = env.reset()
+#         img_to_show = np.transpose(obs.images, [1,2,0])[:,:,-3:]
+#         cv2.imshow("", img_to_show)
+#         cv2.waitKey(0)
+        
+#     # env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
+#     # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
+#     # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
+#     if not hasattr(env, "_action_dim"):
+#         env._action_dim = env.action_spec().shape[0]
 
-    # Random policy stats
-    rets = np.array(rets)
-    ep_lens = np.array(ep_lens)
-    print("Mean: {:.2f}".format(np.mean(ep_lens)))
-    print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
-    print("Median: {:.2f}".format(np.median(ep_lens)))
-    inds = np.where(ep_lens == env._timeout)
-    print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
-    print("Max length:", max(ep_lens))
-    print("Min length:", min(ep_lens))
+#     # Experiment
+#     total_dones = 50
+#     rets = []
+#     ep_lens = []
+#     steps = 0
+#     dones = 0
+#     while dones < total_dones:
+#         obs = env.reset()
+#         ret = 0
+#         epi_steps = 0
+#         while True:
+#             A = env.action_space.sample()
+            
+#             # Receive reward and next state            
+#             next_obs, reward, done, _ = env.step(A)
+            
+#             # Log
+#             ret += reward
+#             steps += 1
+#             epi_steps += 1
+
+#             # Termination
+#             if done or epi_steps == timeout:
+#                 rets.append(ret)
+#                 ep_lens.append(epi_steps)
+#                 print('-' * 50)
+#                 print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(dones, epi_steps, ret, steps))
+#                 print('-' * 50)
+
+#                 if done:
+#                     dones += 1
+
+#                 break
+
+#             obs = next_obs
+
+#     # Random policy stats
+#     rets = np.array(rets)
+#     ep_lens = np.array(ep_lens)
+
+#     prev_steps = 0
+#     new_ep_lens = []
+#     for steps in ep_lens:
+#         if steps == timeout:
+#             prev_steps += steps
+#         else:
+#             new_ep_lens.append(steps + prev_steps)
+#             prev_steps = 0
+    
+#     with open(task + '_timeout='+str(timeout)+'_random_stat.txt', 'w') as out_file:
+#         for ep_len in new_ep_lens:
+#             out_file.write(str(ep_len)+'\n')
+
+#         out_file.write("\nMean: {:.2f}".format(np.mean(new_ep_lens)))
+        
+# def interaction(domain_name, task_name, seed=1):
+#     # Load one task:
+#     # env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
+#     env = ReacherWrapper(tol=0.009, timeout=5000, seed=0)
+
+#     # Step through an episode and print out reward, discount and observation.
+#     action_spec = env.action_spec()
+#     EP = 50
+#     rets = []
+#     ep_lens = []
+#     for i in range(EP):
+#         time_step = env.reset()
+#         steps = 0
+#         ret = 0
+#         while not time_step.last():
+#             action = np.random.uniform(action_spec.minimum,
+#                                        action_spec.maximum,
+#                                        size=action_spec.shape)
+#             time_step = env.step(action)
+#             print(steps, time_step.reward, time_step.discount)
+#             steps += 1
+#             ret += time_step.reward
+#         rets.append(ret)
+#         ep_lens.append(steps)
+#         print('-' * 100)
+#         print("Episode: {} ended in {} steps with return: {}".format(i+1, steps, ret))
+#         print('-' * 100)
+
+#     # Random policy stats
+#     rets = np.array(rets)
+#     ep_lens = np.array(ep_lens)
+#     print("Mean: {:.2f}".format(np.mean(ep_lens)))
+#     print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
+#     print("Median: {:.2f}".format(np.median(ep_lens)))
+#     inds = np.where(ep_lens == env._timeout)
+#     print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
+#     print("Max length:", max(ep_lens))
+#     print("Min length:", min(ep_lens))
 
 if __name__ == '__main__':
     # for domain_name, task_name in suite.ALL_TASKS: # suite.BENCHMARKING
@@ -589,24 +582,24 @@ if __name__ == '__main__':
 
     # r = ReacherWrapper(seed=1)
     # random_policy_stats()
-    # ranndom_policy_done_2_done_length()
+    ranndom_policy_hits_vs_timeout()
     # env = BallInCupWrapper(1, 1000, use_image=True)
-    env = ReacherWrapper(seed=1, timeout=50, use_image=True)
-    obs = env.reset()
-    img = obs.images
+    # env = ReacherWrapper(seed=1, timeout=50, use_image=True)
+    # obs = env.reset()
+    # img = obs.images
 
-    print(img.shape)
-    img_to_show = np.transpose(img, [1, 2, 0])
-    img_to_show = img_to_show[:,:,-3:]
-    cv2.imshow('', img_to_show)
-    cv2.waitKey(0)
+    # print(img.shape)
+    # img_to_show = np.transpose(img, [1, 2, 0])
+    # img_to_show = img_to_show[:,:,-3:]
+    # cv2.imshow('', img_to_show)
+    # cv2.waitKey(0)
 
-    for t in range(1000):
-        randomize_target = t % 100 == 0
+    # for t in range(1000):
+    #     randomize_target = t % 100 == 0
             
-        next_obs = env.reset(randomize_target=randomize_target)
-        next_img = next_obs.images
-        img_to_show = np.transpose(next_img, [1, 2, 0])
-        img_to_show = img_to_show[:,:,-3:]
-        cv2.imshow('', img_to_show)
-        cv2.waitKey(50)
+    #     next_obs = env.reset(randomize_target=randomize_target)
+    #     next_img = next_obs.images
+    #     img_to_show = np.transpose(next_img, [1, 2, 0])
+    #     img_to_show = img_to_show[:,:,-3:]
+    #     cv2.imshow('', img_to_show)
+    #     cv2.waitKey(50)

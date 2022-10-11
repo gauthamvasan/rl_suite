@@ -1,0 +1,9 @@
+timeout=1: 83
+timeout=2: 93
+timeout=5: 98
+timeout=10: 99
+timeout=25: 100
+timeout=50: 99
+timeout=100: 75
+timeout=500: 77
+timeout=1000: 66
