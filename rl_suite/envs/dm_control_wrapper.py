@@ -411,11 +411,11 @@ def ranndom_policy_hits_vs_timeout():
     np.random.seed(seed)
     total_steps = 20000
     # Env
-    task = 'ball in cup'
+    task = 'dm reacher hard'
     
     for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000]):
-        env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-        # env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
+        # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+        env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
         if not hasattr(env, "_action_dim"):
             env._action_dim = env.action_spec().shape[0]
         
@@ -423,7 +423,7 @@ def ranndom_policy_hits_vs_timeout():
         hits = 0
         steps = 0
         epi_steps = 0
-        env.reset()
+        env.reset(randomize_target=True)
         while steps < total_steps:
             action = env.action_space.sample()
 
@@ -438,7 +438,7 @@ def ranndom_policy_hits_vs_timeout():
 
             # Termination
             if done or epi_steps == timeout:
-                env.reset()
+                env.reset(randomize_target=done)
                 epi_steps = 0
 
                 if done:
