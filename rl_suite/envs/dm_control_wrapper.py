@@ -409,13 +409,13 @@ def ranndom_policy_hits_vs_timeout():
     seed = 1
     torch.manual_seed(seed)
     np.random.seed(seed)
-    total_steps = 200000
+    total_steps = 20000
     # Env
-    task = 'dm reacher hard'
+    task = 'ball in cup'
     
     for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000]):
-        # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-        env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
+        env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+        # env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
         if not hasattr(env, "_action_dim"):
             env._action_dim = env.action_spec().shape[0]
         
