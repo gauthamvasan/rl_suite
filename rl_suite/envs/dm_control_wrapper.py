@@ -427,7 +427,9 @@ def ranndom_policy_hits_vs_timeout():
 
                 if not hasattr(env, "_action_dim"):
                     env._action_dim = env.action_spec().shape[0]
-        
+
+                with open(f"{env_s}_{timeout}_steps.txt", 'a') as step_file:
+                    step_file.write(f"seed={seed}: ")
                 # Experiment
                 hits = 0
                 steps = 0
@@ -458,7 +460,14 @@ def ranndom_policy_hits_vs_timeout():
                             hits += 1
                         else:
                             steps += 20
+                            
+                        print("steps:", steps)
+                        with open(f"{env_s}_{timeout}_steps.txt", 'a') as step_file:
+                            step_file.write(str(steps)+', ')
 
+                with open(f"{env_s}_{timeout}_steps.txt", 'a') as step_file:
+                    step_file.write('\n')
+                    
                 with open(f"{env_s}_random_stat.txt", 'a') as out_file:
                     out_file.write(f"timeout={timeout}, seed={seed}: {hits}\n")
         
