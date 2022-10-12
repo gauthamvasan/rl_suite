@@ -406,48 +406,61 @@ class ManipulatorWrapper:
 #         # print(time_step.reward, time_step.discount, time_step.observation)
 
 def ranndom_policy_hits_vs_timeout():
-    seed = 1
-    torch.manual_seed(seed)
-    np.random.seed(seed)
     total_steps = 20000
     # Env
-    task = 'dm reacher hard'
+    envs = ['dm reacher easy', 'dm reacher hard', 'ball in cup']
     
-    for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000]):
-        # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-        env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
-        if not hasattr(env, "_action_dim"):
-            env._action_dim = env.action_spec().shape[0]
-        
-        # Experiment
-        hits = 0
-        steps = 0
-        epi_steps = 0
-        env.reset(randomize_target=True)
-        while steps < total_steps:
-            action = env.action_space.sample()
+    for env_s in envs:
+        for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000]):
+            for seed in range(30):
+                torch.manual_seed(seed)
+                np.random.seed(seed)
 
-            # Receive reward and next state            
-            _, _, done, _ = env.step(action)
-            
-            # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
-
-            # Log
-            steps += 1
-            epi_steps += 1
-
-            # Termination
-            if done or epi_steps == timeout:
-                env.reset(randomize_target=done)
-                epi_steps = 0
-
-                if done:
-                    hits += 1
+                if env_s == 'ball in cup':
+                    env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+                elif env_s == 'dm reacher hard':
+                    env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
+                elif env_s == 'dm reacher easy':
+                    env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
                 else:
-                    steps += 20
+                    raise NotImplementedError()
 
-        with open(f"{task}_random_stat.txt", 'a') as out_file:
-            out_file.write(f"timeout={timeout}: {hits}\n")
+                if not hasattr(env, "_action_dim"):
+                    env._action_dim = env.action_spec().shape[0]
+        
+                # Experiment
+                hits = 0
+                steps = 0
+                epi_steps = 0
+                env.reset()
+                while steps < total_steps:
+                    action = env.action_space.sample()
+
+                    # Receive reward and next state            
+                    _, _, done, _ = env.step(action)
+                    
+                    # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
+
+                    # Log
+                    steps += 1
+                    epi_steps += 1
+
+                    # Termination
+                    if done or epi_steps == timeout:
+                        if 'dm reacher' in env_s:
+                            env.reset(randomize_target=done)
+                        else:
+                            env.reset()
+                            
+                        epi_steps = 0
+
+                        if done:
+                            hits += 1
+                        else:
+                            steps += 20
+
+                with open(f"{env_s}_random_stat.txt", 'a') as out_file:
+                    out_file.write(f"timeout={timeout}, seed={seed}: {hits}\n")
         
 # def random_policy_stats():
 #     # Problem
