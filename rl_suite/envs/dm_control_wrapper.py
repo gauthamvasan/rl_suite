@@ -413,7 +413,7 @@ def ranndom_policy_hits_vs_timeout():
     for env_s in envs:
         steps_record = open(f"{env_s}_steps_record.txt", 'w')
         hits_record = open(f"{env_s}_random_stat.txt", 'w')
-        for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000, 2000]):
+        for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]):
             for seed in range(30):
                 torch.manual_seed(seed)
                 np.random.seed(seed)
