@@ -19,7 +19,7 @@ from datetime import datetime
 # from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
-from rl_suite.envs.visual_reacher import VisualMujocoReacher2D
+from rl_suite.envs.visual_reacher import MJReacherWrapper
 from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
@@ -50,11 +50,11 @@ class Experiment:
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
-            env = BallInCupWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, use_image=self.args.algo=="sac_rad")
+            env = BallInCupWrapper(seed=self.args.seed, penalty=self.args.penalty, use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dm_reacher_easy":
-            env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="easy", use_image=self.args.algo=="sac_rad")
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.penalty, mode="easy", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dm_reacher_hard":
-            env = ReacherWrapper(seed=self.args.seed, timeout=self.args.timeout, penalty=self.args.penalty, mode="hard", use_image=self.args.algo=="sac_rad")
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.penalty, mode="hard", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dot_reacher":
             if self.args.algo=="sac":
                 env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
@@ -66,7 +66,7 @@ class Experiment:
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
         elif self.args.env == "visual_mj_reacher":
-            env = VisualMujocoReacher2D(tol=self.args.tol, penalty=self.args.penalty)            
+            env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.penalty, use_image=self.args.algo=="sac_rad")            
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
