@@ -404,7 +404,7 @@ def ranndom_policy_hits_vs_timeout():
                 np.random.seed(seed)
 
                 if env_s == 'ball in cup':
-                    env = BallInCupWrapper(seed, penalty=-1)
+                    env = BallInCupWrapper(seed)
                 elif env_s == 'dm reacher hard':
                     env = ReacherWrapper(seed=seed, mode="hard")
                 elif env_s == 'dm reacher easy':
