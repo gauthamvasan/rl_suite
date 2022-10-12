@@ -13,7 +13,6 @@ from dm_control.rl.control import flatten_observation
 from dm_control import suite
 from gym.spaces import Box
 from collections import deque
-from statistics import mean
 from tqdm import tqdm
 
 # class BallInCupWrapperFixReset:
@@ -111,7 +110,7 @@ from tqdm import tqdm
 class BallInCupWrapper:
     def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
-        self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
+        self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed, 'time_limit': float('inf')})
         self.reward = penalty
         self._obs_dim = 8 if not use_image else 4
         self._action_dim = 2
@@ -202,7 +201,7 @@ class ReacherWrapper:
     def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         assert mode in ["easy", "hard"]
-        self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed})
+        self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed, 'time_limit': float('inf')})
 
         self._obs_dim = 4 if use_image else 6
         self._action_dim = 2
@@ -405,11 +404,11 @@ def ranndom_policy_hits_vs_timeout():
                 np.random.seed(seed)
 
                 if env_s == 'ball in cup':
-                    env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
+                    env = BallInCupWrapper(seed, penalty=-1)
                 elif env_s == 'dm reacher hard':
-                    env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
+                    env = ReacherWrapper(seed=seed, mode="hard")
                 elif env_s == 'dm reacher easy':
-                    env = ReacherWrapper(seed=seed, mode="easy", timeout=timeout)
+                    env = ReacherWrapper(seed=seed, mode="easy")
                 else:
                     raise NotImplementedError()
 
