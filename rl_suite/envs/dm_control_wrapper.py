@@ -411,7 +411,9 @@ def ranndom_policy_hits_vs_timeout():
     envs = ['dm reacher easy', 'dm reacher hard', 'ball in cup']
     
     for env_s in envs:
-        for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000]):
+        steps_record = open(f"{env_s}_steps_record.txt", 'w')
+        hits_record = open(f"{env_s}_random_stat.txt", 'w')
+        for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000, 2000]):
             for seed in range(30):
                 torch.manual_seed(seed)
                 np.random.seed(seed)
@@ -428,8 +430,7 @@ def ranndom_policy_hits_vs_timeout():
                 if not hasattr(env, "_action_dim"):
                     env._action_dim = env.action_spec().shape[0]
 
-                with open(f"{env_s}_{timeout}_steps.txt", 'a') as step_file:
-                    step_file.write(f"seed={seed}: ")
+                steps_record.write(f"timeout={timeout}, seed={seed}: ")
                 # Experiment
                 hits = 0
                 steps = 0
@@ -461,16 +462,14 @@ def ranndom_policy_hits_vs_timeout():
                         else:
                             steps += 20
                             
-                        print("steps:", steps)
-                        with open(f"{env_s}_{timeout}_steps.txt", 'a') as step_file:
-                            step_file.write(str(steps)+', ')
+                        steps_record.write(str(steps)+', ')
 
-                with open(f"{env_s}_{timeout}_steps.txt", 'a') as step_file:
-                    step_file.write('\n')
-                    
-                with open(f"{env_s}_random_stat.txt", 'a') as out_file:
-                    out_file.write(f"timeout={timeout}, seed={seed}: {hits}\n")
+                steps_record.write('\n')
+                hits_record.write(f"timeout={timeout}, seed={seed}: {hits}\n")
         
+        steps_record.close()
+        hits_record.close()
+
 # def random_policy_stats():
 #     # Problem
 #     seed = 0
