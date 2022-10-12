@@ -1,127 +1,129 @@
+import numpy as np
 import cv2
 import gym
-
-import numpy as np
-
-from collections import deque
 from gym.spaces import Box
+from mujoco_py import GlfwContext
+# GlfwContext(offscreen=True)
+from collections import deque
 from rl_suite.envs.env_utils import Observation
 
-
-class VisualMujocoReacher2D(gym.Wrapper):
-    def __init__(self, tol, penalty, img_history=3, image_period=1, control_mode='accel'):
-        """
-
-        Args:
-            tol (float): Smaller the value, smaller the target size (e.g., 0.009, 0.018, 0.036, 0.072, etc.)
-            img_history (int): Number of images used in obs
-            image_period (int): Update image obs only every 'image_period' steps
-        """
+class MJReacherWrapper(gym.Wrapper):
+    def __init__(self, tol, penalty=-1, use_image=False, img_history=3):
         super().__init__(gym.make('Reacher-v2').unwrapped)
         self._tol = tol
-        self._image_period = image_period
-        low = list(self.env.observation_space.low[0:4]) + list(self.env.observation_space.low[6:8])
-        high = list(self.env.observation_space.high[0:4]) + list(self.env.observation_space.high[6:8])
-        self.proprioception_space = Box(np.array(low), np.array(high))
+        self.reward = penalty
+        self._use_image = use_image
+        if use_image:
+            self._image_buffer = deque([], maxlen=img_history)
+            print(f'Visual mujoco reacher tol={tol}')
+        else:
+            print(f'Non visual mujoco reacher tol={tol}')
 
-        self._image_buffer = deque([], maxlen=img_history)
-        self._use_image = True
-        self.image_shape = (3 * img_history, 125, 200)
-
-        self.image_space = Box(low=0, high=255, shape=self.image_shape)
-
-        # remember to reset
-        self._latest_image = None
+        # remember to reset 
         self._reset = False
-        self._step = 0
-        self.penalty = penalty
+        
+    def step(self, a):
+        assert self._reset
 
-    def reset(self):
-        prop = self.env.reset()
-        prop = self._get_ob(prop)
+        x, _, done, info = self.env.step(a)
+        dist_to_target = np.linalg.norm(x[-3:])
+
+        reward = self.reward
+        if dist_to_target <= self._tol:
+            done = 1
+        else:
+            done = 0
 
         if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self._make_obs(x)
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            next_obs = self._make_obs(x)
+
+        if done:
+            self._reset = False
+        info['dist_to_target'] = dist_to_target
+        return next_obs, reward, done, info
+
+    def reset(self):
+        if self._use_image:
+            obs = Observation()
+            obs.proprioception = self._make_ob(self.env.reset())
             new_img = self._get_new_img()
             for _ in range(self._image_buffer.maxlen):
                 self._image_buffer.append(new_img)
 
-            self._latest_image = np.concatenate(self._image_buffer, axis=0)
-
-        self._reset = True
-        self._step = 0
-
-        obs = Observation()
-        obs.images = self._latest_image
-        obs.proprioception = prop
-        obs.metadata = [self._step]
-        return obs
-
-    def step(self, a):
-        assert self._reset
-
-        prop, _, done, info = self.env.step(a)
-        dist_to_target = np.linalg.norm(prop[-3:])
-
-        prop = self._get_ob(prop)
-        self._step += 1
-
-        reward = self.penalty
-        if dist_to_target <= self._tol:
-            done = True
+            obs.images = np.concatenate(self._image_buffer, axis=0)
         else:
-            done = False
-
-        if self._use_image and (self._step % self._image_period) == 0:
-            new_img = self._get_new_img()
-            self._image_buffer.append(new_img)
-            self._latest_image = np.concatenate(self._image_buffer, axis=0)
-
-        if done:
-            self._reset = False
-
-        obs = Observation()
-        obs.images = self._latest_image
-        obs.proprioception = prop
-        obs.metadata = [self._step]
-        info['dist_to_target'] = dist_to_target
-        return obs, reward, done, info
+            obs = self._make_obs(self.env.reset())
+            
+        self._reset = True
+        return obs
 
     def _get_new_img(self):
         img = self.env.render(mode='rgb_array')
         img = img[150:400, 50:450, :]
         img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5)
-        img = np.transpose(img, [2, 0, 1])  # c, h, w
+        img = np.transpose(img, [2, 0, 1]) # c, h, w
+
         return img
+    
+    def _make_obs(self, ob):
+        if not self._use_image:
+            return ob
 
-    def _get_ob(self, ob):
-        return np.array(list(ob[0:4]) + list(ob[6:8]))
+        return np.array(list(ob[0:4])+list(ob[6:8]))
 
+    @property
+    def image_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+
+        image_shape = (3 * self._image_buffer.maxlen, 125, 200)
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+        
+        low = list(self.env.observation_space.low[0:4]) + list(self.env.observation_space.low[6:8])
+        high = list(self.env.observation_space.high[0:4]) + list(self.env.observation_space.high[6:8])
+        
+        return Box(np.array(low), np.array(high))
+   
     def close(self):
         super().close()
+        
         del self
-
 
 if __name__ == '__main__':
     import torch
-    import matplotlib.pyplot as plt
-
     print(torch.__version__)
-    env = VisualMujocoReacher2D(0.072, img_history=3, image_period=3, penalty=1)
-    obs = env.reset()
-    img = np.transpose(obs.images, [1, 2, 0])
-    # create two subplots
-    plt.ion()
-    ax1 = plt.subplot(1, 1, 1)
-    im1 = ax1.imshow(img[:, :, 6:9])
+    env = ReacherWrapper(0.009, (9, 125, 200), image_period = 3)
+    img, ob = env.reset()
 
-    waitKey = 1
+    img = np.transpose(img, [1, 2, 0])
+    cv2.imshow('', img[:,:,6:9])
+    cv2.waitKey(0)
+    episode_step = 0
     while True:
-        im1.set_data(img[:, :, 6:9])
-        plt.pause(0.05)
         a = env.action_space.sample()
-        obs, reward, done, info = env.step(a)
-        print(obs.proprioception)
-        img = np.transpose(obs.images, [1, 2, 0])
-        if done:
-            env.reset()
-    plt.show()
+        img, ob, reward, done, info = env.step(a)
+
+        episode_step += 1
+
+        img = np.transpose(img, [1, 2, 0])
+        cv2.imshow('', img[:,:,6:9])
+        cv2.waitKey(30)
+
+        if done or episode_step == 50:
+            
+            episode_step = 0
+            img, ob = env.reset()
+            img = np.transpose(img, [1, 2, 0])
+            cv2.imshow('', img[:,:,6:9])
+            cv2.waitKey(0)
