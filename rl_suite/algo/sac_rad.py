@@ -87,7 +87,9 @@ class SAC_RAD:
             if prop is not None:
                 prop = torch.FloatTensor(prop).to(self.device)
                 prop = prop.unsqueeze(0)
-            mu, action, _, _ = self.actor(img, prop)
+            mu, action, _, log_std = self.actor(img, prop)
+            # print('mu:', mu.cpu().data.numpy().flatten())
+            # print('std:', log_std.exp().cpu().data.numpy().flatten())
             if deterministic:
                 return mu.cpu().data.numpy().flatten()
             else:

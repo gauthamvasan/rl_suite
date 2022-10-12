@@ -157,15 +157,20 @@ class SACExperiment(Experiment):
                     obs = rms.zscore(obs)
 
             # Select an action
-            if t < self.args.init_steps:
-                # TODO: Fix bug with lack of reproducibility in using env.action_space.sample()
-                # action = self.env.action_space.sample()       
-                action = self.env.action_space.sample()
+            if self.args.algo == "sac":
+                action = self.learner.sample_action(obs)                
             else:
-                if self.args.algo == "sac":
-                    action = self.learner.sample_action(obs)                
-                else:
-                    action = self.learner.sample_action(img, prop)
+                action = self.learner.sample_action(img, prop)
+                
+            # if t < self.args.init_steps:
+            #     # TODO: Fix bug with lack of reproducibility in using env.action_space.sample()
+            #     # action = self.env.action_space.sample()       
+            #     action = self.env.action_space.sample()
+            # else:
+            #     if self.args.algo == "sac":
+            #         action = self.learner.sample_action(obs)                
+            #     else:
+            #         action = self.learner.sample_action(img, prop)
             
             # img_to_show = np.transpose(obs.images, [1, 2, 0])
             # img_to_show = img_to_show[:,:,-3:]

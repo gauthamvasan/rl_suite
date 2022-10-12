@@ -73,7 +73,9 @@ class SAC:
             if not isinstance(x, torch.FloatTensor):
                 x = torch.FloatTensor(x).to(self.device)
                 x = x.unsqueeze(0)
-            mu, action, _, _ = self.actor(x)
+            mu, action, _, log_std = self.actor(x)
+            # print('mu:', mu.cpu().data.numpy().flatten())
+            # print('std:', log_std.exp().cpu().data.numpy().flatten())
             if deterministic:
                 return mu.cpu().data.numpy().flatten()
             else:

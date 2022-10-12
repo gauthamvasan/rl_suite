@@ -190,6 +190,8 @@ class ActorModel(nn.Module):
 
         self.outputs = dict()
         self.apply(weight_init)
+        self.trunk[-1].weight.data.fill_(0.0)
+        self.trunk[-1].bias.data.fill_(0.0)
 
     def forward(self, images, proprioceptions, random_rad=True, detach_encoder=False):
         latents = self.encoder(images, proprioceptions, random_rad, detach=detach_encoder)

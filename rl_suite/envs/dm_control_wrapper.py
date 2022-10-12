@@ -434,7 +434,7 @@ def ranndom_policy_hits_vs_timeout():
                 epi_steps = 0
                 env.reset()
                 while steps < total_steps:
-                    action = env.action_space.sample()
+                    action = np.random.normal(size=env.action_space.shape)
 
                     # Receive reward and next state            
                     _, _, done, _ = env.step(action)
