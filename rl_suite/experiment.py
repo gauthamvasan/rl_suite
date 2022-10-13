@@ -105,13 +105,13 @@ class Experiment:
         
         # torch.use_deterministic_algorithms(True)
 
-    def show_learning_curve(self, rets, ep_lens, title, xlimit=None, ylimit=None, save_fig=True):
-        plt.title(title)
-        if xlimit:
-            plt.xlim(xlimit)
+    def show_learning_curve(self, rets, ep_lens, save_fig=True):
+        plt.title(self.args.title)
+        if self.args.xlimit is not None:
+            plt.xlim(self.args.xlimit)
         
-        if ylimit:
-            plt.ylim(ylimit)
+        if self.args.ylimit is not None:
+            plt.ylim(self.args.ylimit)
 
         plot_rets, plot_x = smoothed_curve(
                 np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)

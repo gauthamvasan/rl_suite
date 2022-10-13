@@ -86,6 +86,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--output_dir', default='./outputs', type=str, help="Save outputs to this dir")
         parser.add_argument('--experiment_dir', required=True, type=str, help="Save experiment outputs, relative to output_dir")
         parser.add_argument('--title', required=True, type=str, help="Plot title")
+        parser.add_argument('--xlimit', default=None, type=str)
+        parser.add_argument('--ylimit', default=None, type=str)
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         parser.add_argument('--description', required=True, type=str)
@@ -94,6 +96,12 @@ class SACExperiment(Experiment):
         assert args.algo in ["sac", "sac_rad"]
         assert args.reward < 0 and args.reset_penalty < 0
 
+        if args.xlimit is not None:
+            args.xlimit = tuple(args.xlimit)
+
+        if args.ylimit is not None:
+            args.ylimit = tuple(args.ylimit)
+            
         if args.algo == "sac":
             args.actor_nn_params = {
                 'mlp': {

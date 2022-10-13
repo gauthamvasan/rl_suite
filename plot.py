@@ -3,7 +3,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 from pathlib import Path
-import re
 from statistics import mean
 
 if __name__ == "__main__":
@@ -28,27 +27,21 @@ if __name__ == "__main__":
                         steps = [int(float(step)) for step in data_file.readline().split()]
                         returns = [int(float(ret)) for ret in data_file.readline().split()]
             
-                    step = 0
+                    steps = 0
                     rets = []
                     end_step = plot_interval
-                    acc_ret = 0
                     for (i, epi_s) in enumerate(steps):
-                        step += epi_s
+                        steps += epi_s
                         ret = returns[i]
-                        if step > end_step:
+                        if steps > end_step:
                             if len(rets) > 0:
                                 df = df.append({'step':end_step, 'avg_ret':mean(rets), 'seed':seed, 'timeout': timeout}, ignore_index=True) 
 
                                 rets = []
-                            while end_step < step:
+                            while end_step < steps:
                                 end_step += plot_interval
                         
-                        acc_ret += ret
-                        if epi_s < timeout:
-                            rets.append(acc_ret)
-                            acc_ret = 0
-                        else:
-                            acc_ret -= 20
+                        rets.append(ret)
                 
             plt.ylim(-1000, 0)
             
@@ -57,5 +50,3 @@ if __name__ == "__main__":
             plt.title(title)
             plt.savefig(title+'.png')
             plt.close()
-
-            # print(f'Final return of {task} {env}: {final_ret}')
