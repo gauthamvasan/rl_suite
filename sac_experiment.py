@@ -44,7 +44,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--timeout', required=True, type=int, help="Timeout for the env")
         # Minimum-time tasks
         parser.add_argument('--reward', default=-1, type=float, help="Reward penalty for min-time specification")
-        parser.add_argument('--reset_penalty', default=-20, type=float, help="Reset penalty for min-time specification")
+        parser.add_argument('--reset_penalty_steps', default=20, type=float, help="Reset penalty steps for min-time specification")
         ## Mujoco sparse reacher
         parser.add_argument('--tol', default=0.009, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
@@ -94,7 +94,7 @@ class SACExperiment(Experiment):
         args = parser.parse_args()
 
         assert args.algo in ["sac", "sac_rad"]
-        assert args.reward < 0 and args.reset_penalty < 0
+        assert args.reward < 0 and args.reset_penalty_steps >= 0
 
         if args.xlimit is not None:
             args.xlimit = tuple(args.xlimit)
@@ -193,7 +193,7 @@ class SACExperiment(Experiment):
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
                     # total_steps += abs(self.args.reset_penalty)
-                    ret += self.args.reset_penalty
+                    ret += self.args.reset_penalty_steps * self.args.reward
 
                     if 'dm_reacher' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
