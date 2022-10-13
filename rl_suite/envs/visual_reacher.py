@@ -131,7 +131,7 @@ class MJReacherWrapper(gym.Wrapper):
 def ranndom_policy_hits_vs_timeout():
     total_steps = 20000
     
-    tol = 0.0045
+    tol = 0.009
     env = MJReacherWrapper(tol=tol)
     steps_record = open(f"mj reacher tol={tol}_steps_record.txt", 'w')
     hits_record = open(f"mj reacher tol={tol}_random_stat.txt", 'w')
@@ -179,25 +179,25 @@ def ranndom_policy_hits_vs_timeout():
     hits_record.close()
 
 if __name__ == '__main__':
-    # ranndom_policy_hits_vs_timeout()
+    ranndom_policy_hits_vs_timeout()
 
-    env = MJReacherWrapper(tol=0.036, use_image=True)
-    obs = env.reset()
-    img = obs.images
+    # env = MJReacherWrapper(tol=0.036, use_image=True)
+    # obs = env.reset()
+    # img = obs.images
 
-    print(img.shape)
-    img_to_show = np.transpose(img, [1, 2, 0])
-    img_to_show = img_to_show[:,:,-3:]
-    cv2.imshow('', img_to_show)
-    cv2.waitKey(0)
+    # print(img.shape)
+    # img_to_show = np.transpose(img, [1, 2, 0])
+    # img_to_show = img_to_show[:,:,-3:]
+    # cv2.imshow('', img_to_show)
+    # cv2.waitKey(0)
 
-    for t in range(1000):
-        randomize_target = t % 100 == 0
+    # for t in range(1000):
+    #     randomize_target = t % 100 == 0
             
-        next_obs = env.reset(randomize_target=randomize_target)
-        next_img = next_obs.images
-        img_to_show = np.transpose(next_img, [1, 2, 0])
-        img_to_show = img_to_show[:,:,-3:]
-        cv2.imshow('', img_to_show)
-        cv2.waitKey(0 if randomize_target else 50)
+    #     next_obs = env.reset(randomize_target=randomize_target)
+    #     next_img = next_obs.images
+    #     img_to_show = np.transpose(next_img, [1, 2, 0])
+    #     img_to_show = img_to_show[:,:,-3:]
+    #     cv2.imshow('', img_to_show)
+    #     cv2.waitKey(0 if randomize_target else 50)
         
