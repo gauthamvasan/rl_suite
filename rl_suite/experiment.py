@@ -50,23 +50,23 @@ class Experiment:
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
-            env = BallInCupWrapper(seed=self.args.seed, penalty=self.args.penalty, use_image=self.args.algo=="sac_rad")
+            env = BallInCupWrapper(seed=self.args.seed, penalty=self.args.reward, use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dm_reacher_easy":
-            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.penalty, mode="easy", use_image=self.args.algo=="sac_rad")
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dm_reacher_hard":
-            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.penalty, mode="hard", use_image=self.args.algo=="sac_rad")
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dot_reacher":
             if self.args.algo=="sac":
-                env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
+                env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
             else:
-                env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.penalty,
+                env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
         elif self.args.env == "mj_reacher":
-            env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.penalty, use_image=self.args.algo=="sac_rad")            
+            env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.algo=="sac_rad")            
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
@@ -105,7 +105,14 @@ class Experiment:
         
         # torch.use_deterministic_algorithms(True)
 
-    def show_learning_curve(self, rets, ep_lens, save_fig=True):
+    def show_learning_curve(self, rets, ep_lens, title, xlimit=None, ylimit=None, save_fig=True):
+        plt.title(title)
+        if xlimit:
+            plt.xlim(xlimit)
+        
+        if ylimit:
+            plt.ylim(ylimit)
+
         plot_rets, plot_x = smoothed_curve(
                 np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)
         if len(plot_rets):

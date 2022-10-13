@@ -43,7 +43,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--N', required=True, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', required=True, type=int, help="Timeout for the env")
         # Minimum-time tasks
-        parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
+        parser.add_argument('--reward', default=-1, type=float, help="Reward penalty for min-time specification")
+        parser.add_argument('--reset_penalty', default=-20, type=float, help="Reset penalty for min-time specification")
         ## Mujoco sparse reacher
         parser.add_argument('--tol', default=0.009, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
@@ -84,12 +85,15 @@ class SACExperiment(Experiment):
         # Misc
         parser.add_argument('--output_dir', default='./outputs', type=str, help="Save outputs to this dir")
         parser.add_argument('--experiment_dir', required=True, type=str, help="Save experiment outputs, relative to output_dir")
+        parser.add_argument('--title', required=True, type=str, help="Plot title")
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
 
-        assert args.algo in ["sac", "sac_rad"]        
+        assert args.algo in ["sac", "sac_rad"]
+        assert args.reward < 0 and args.reset_penalty < 0
+
         if args.algo == "sac":
             args.actor_nn_params = {
                 'mlp': {
@@ -130,93 +134,78 @@ class SACExperiment(Experiment):
             args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         return args
 
-
     def run(self):
         # Normalize wrapper
         rms = RunningStats()
 
         # Experiment block starts
-        ret = 0
-        epi_steps = 0
-        rets = []
-        ep_lens = []
-        obs = self.env.reset()
-        # img_to_show = np.transpose(obs.images, [1, 2, 0])
-        # img_to_show = img_to_show[:,:,-3:]
-        # cv2.imshow("", img_to_show)
-        # cv2.waitKey(0)
-        i_episode = 0
+        experiment_done = False
+        total_steps = 0
+        returns = []
+        epi_lens = []
         start_time = datetime.now()
-        for t in range(self.args.N):                      
-            if self.args.algo == "sac_rad":
-                img = obs.images
-                prop = obs.proprioception
-            else:
-                if self.args.normalize:
-                    rms.push(obs)
-                    obs = rms.zscore(obs)
-
-            # Select an action
-            if self.args.algo == "sac":
-                action = self.learner.sample_action(obs)                
-            else:
-                action = self.learner.sample_action(img, prop)
-                
-            # if t < self.args.init_steps:
-            #     # TODO: Fix bug with lack of reproducibility in using env.action_space.sample()
-            #     # action = self.env.action_space.sample()       
-            #     action = self.env.action_space.sample()
-            # else:
-            #     if self.args.algo == "sac":
-            #         action = self.learner.sample_action(obs)                
-            #     else:
-            #         action = self.learner.sample_action(img, prop)
-            
-            # img_to_show = np.transpose(obs.images, [1, 2, 0])
-            # img_to_show = img_to_show[:,:,-3:]
-            # cv2.imshow("", img_to_show)
-            # cv2.waitKey(50)
-            # Observe
-            next_obs, r, done, infos = self.env.step(action)
-
-            # Learn
-            if self.args.algo == "sac":
-                self.learner.push_and_update(obs, action, r, done)
-            else:
-                self.learner.push_and_update(img, prop, action, r, done)
-                    
-            # if t % 100 == 0:
-                # print("Step: {}, Obs: {}, Action: {}, Reward: {:.2f}, Done: {}".format(
-                    # t, obs[:2], action, r, done))
-            obs = next_obs
-
-            # Log
-            ret += r
-            epi_steps += 1
-            if done or epi_steps == self.args.timeout:    # Bootstrap on timeout
-                i_episode += 1
-                rets.append(ret)
-                ep_lens.append(epi_steps)
-                print("Episode {} ended after {} steps with return {:.2f}. Total steps: {}".format(
-                    i_episode, epi_steps, ret, t))
-                ret = 0
-                epi_steps = 0
-                
-                if 'dm_reacher' in self.args.env:
-                    obs = self.env.reset(randomize_target=done)
+        while not experiment_done: # start a new episode
+            obs = self.env.reset()
+            ret = 0
+            epi_steps = 0
+            sub_steps = 0
+            epi_done = 0
+            while not experiment_done and not epi_done:
+                if self.args.algo == "sac_rad":
+                    img = obs.images
+                    prop = obs.proprioception
                 else:
-                    obs = self.env.reset()
+                    if self.args.normalize:
+                        rms.push(obs)
+                        obs = rms.zscore(obs)
 
-            if (t+1) % self.args.checkpoint == 0:
-                if rets:
-                    self.show_learning_curve(rets, ep_lens, save_fig=True)
-                    self.save_returns(rets, ep_lens)
+                # Select an action
+                if self.args.algo == "sac":
+                    action = self.learner.sample_action(obs)                
+                else:
+                    action = self.learner.sample_action(img, prop)
+                
+                # Observe
+                next_obs, r, epi_done, _ = self.env.step(action)
+                
+                # Learn
+                if self.args.algo == "sac":
+                    self.learner.push_and_update(obs, action, r, epi_done)
+                else:
+                    self.learner.push_and_update(img, prop, action, r, epi_done)
+
+                obs = next_obs
+
+                # Log
+                total_steps += 1
+                ret += r
+                epi_steps += 1
+                sub_steps += 1
+                
+                if not epi_done and sub_steps >= self.args.timeout: # set timeout here
+                    sub_steps = 0
+                    # total_steps += abs(self.args.reset_penalty)
+                    ret += self.args.reset_penalty
+
+                    if 'dm_reacher' in self.args.env:
+                        obs = self.env.reset(randomize_target=epi_done)
+                    else:
+                        obs = self.env.reset()
+
+                experiment_done = total_steps >= self.args.N
+
+            # episode done, save result
+            returns.append(ret)
+            epi_lens.append(epi_steps)
+            self.save_returns(returns, epi_lens)
+            self.show_learning_curve(returns, epi_lens, save_fig=True)
+            print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
-        self.save_returns(rets, ep_lens)
-        self.save_model(t)
-        print(f"Finished in {duration}")
+        self.save_returns(returns, epi_lens)
+        self.save_model(self.args.N)
 
+        print(f"Finished in {duration}")
 def main():
     runner = SACExperiment()
     runner.run()
