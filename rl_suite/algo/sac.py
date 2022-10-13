@@ -171,10 +171,6 @@ class SAC:
         self.soft_update_params(
             self.critic.Q2, self.critic_target.Q2, self.critic_tau
         )
-        # self.soft_update_params(
-        #     self.critic.encoder, self.critic_target.encoder,
-        #     self.encoder_tau
-        # )
 
     def save(self, model_dir, step):
         torch.save(
@@ -193,7 +189,6 @@ class SAC:
         )
 
 
-
 class SACAgent(SAC):
     def __init__(self, cfg, buffer, device=torch.device('cpu')):
         super().__init__(cfg, device)
@@ -203,17 +198,12 @@ class SACAgent(SAC):
     def push_and_update(self, obs, action, reward, done):
         self._replay_buffer.add(obs, action, reward, done)
         self.steps += 1
+
+        stat = {}
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
             for _ in range(self.cfg.update_epochs):
                 # tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
                 # print(time.time() - tic)
-            return stat
-        
-
-
-class ResetSACAgent(SACAgent):
-    def __init__(self, cfg, buffer, device=torch.device('cpu')):
-        reset_cfg = deepcopy(cfg)
-        reset_cfg.action_dim += 1
-        super().__init__(reset_cfg, buffer, device)
+                   
+        return stat

@@ -222,13 +222,15 @@ class SACRADAgent(SAC_RAD):
     def push_and_update(self, image, propri, action, reward, done):
         self._replay_buffer.add(image, propri, action, reward, done)
         self.steps += 1
+
+        stat = {}
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
             for _ in range(self.cfg.update_epochs):
                 # tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
                 # print(time.time() - tic)
-            return stat
-
+        
+        return stat
 
 
 class AsyncSACAgent(SAC_RAD):
@@ -360,16 +362,16 @@ class AsyncSACAgent(SAC_RAD):
                 time.sleep(0.25)
                 continue
 
-            # Ask for data, make learning updates            
-            for i in range(self.cfg.update_epochs):
-                tic = time.time()
-                images, propris, actions, rewards, next_images, next_propris, dones = buffer.sample()
-                self.update(images.clone(), propris.clone(), actions.clone(), 
-                    rewards.clone(), next_images.clone(), next_propris.clone(), dones.clone())
-                with self.n_updates.get_lock():
-                    self.n_updates.value += 1
-                    if self.n_updates.value % 100 == 0:
-                        print("***** SAC learning update {} took {} *****".format(self.n_updates.value, time.time() - tic))
+            # Ask for data, make learning updates           
+            tic = time.time()
+            images, propris, actions, rewards, next_images, next_propris, dones = buffer.sample()
+            tic = time.time()
+            self.update(images.clone(), propris.clone(), actions.clone(), 
+                rewards.clone(), next_images.clone(), next_propris.clone(), dones.clone())
+            with self.n_updates.get_lock():
+                self.n_updates.value += 1
+                if self.n_updates.value % 100 == 0:
+                    print("***** SAC learning update {} took {} *****".format(self.n_updates.value, time.time() - tic))
             state_dict = {
                 'actor': self.actor.state_dict(), 
                 'critic': self.critic.state_dict(),
@@ -389,10 +391,3 @@ class AsyncSACAgent(SAC_RAD):
         with self.pause.get_lock():
             self.pause.value = val
             print("Learning paused!" if val else "Resuming async learning ...")
-
-
-class ResetSACRADAgent(SACRADAgent):
-    def __init__(self, cfg, buffer, device=torch.device('cpu')):
-        reset_cfg = deepcopy(cfg)
-        reset_cfg.action_dim += 1
-        super(ResetSACRADAgent, self).__init__(reset_cfg, buffer, device)
