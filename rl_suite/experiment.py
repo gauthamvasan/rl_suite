@@ -65,7 +65,7 @@ class Experiment:
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
-        elif self.args.env == "visual_mj_reacher":
+        elif self.args.env == "mj_reacher":
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.penalty, use_image=self.args.algo=="sac_rad")            
         else:
             env = gym.make(self.args.env)

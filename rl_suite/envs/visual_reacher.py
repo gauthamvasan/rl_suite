@@ -1,11 +1,14 @@
 import numpy as np
 import cv2
 import gym
+import torch
 from gym.spaces import Box
 from mujoco_py import GlfwContext
 # GlfwContext(offscreen=True)
 from collections import deque
 from rl_suite.envs.env_utils import Observation
+from tqdm import tqdm
+from math import pi
 
 class MJReacherWrapper(gym.Wrapper):
     def __init__(self, tol, penalty=-1, use_image=False, img_history=3):
@@ -21,6 +24,24 @@ class MJReacherWrapper(gym.Wrapper):
 
         # remember to reset 
         self._reset = False
+    
+    def _reset_model_agent_only(self):
+        qpos = (
+            self.env.np_random.uniform(low=-pi, high=pi, size=self.env.model.nq)
+        )
+        
+        qpos[-2:] = self.env.goal
+        qvel = self.env.init_qvel + self.env.np_random.uniform(
+            low=-0.005, high=0.005, size=self.env.model.nv
+        )
+        qvel[-2:] = 0
+        self.env.set_state(qpos, qvel)
+        return self.env._get_obs()
+
+    def _reset_agent_only(self):
+        self.env.sim.reset()
+        ob = self._reset_model_agent_only()
+        return ob
         
     def step(self, a):
         assert self._reset
@@ -48,17 +69,24 @@ class MJReacherWrapper(gym.Wrapper):
         info['dist_to_target'] = dist_to_target
         return next_obs, reward, done, info
 
-    def reset(self):
+    def reset(self, randomize_target=True):
         if self._use_image:
             obs = Observation()
-            obs.proprioception = self._make_ob(self.env.reset())
+            if randomize_target:
+                obs.proprioception = self._make_obs(self.env.reset())
+            else:
+                obs.proprioception = self._make_obs(self._reset_agent_only())
+
             new_img = self._get_new_img()
             for _ in range(self._image_buffer.maxlen):
                 self._image_buffer.append(new_img)
 
             obs.images = np.concatenate(self._image_buffer, axis=0)
         else:
-            obs = self._make_obs(self.env.reset())
+            if randomize_target:
+                obs = self._make_obs(self.env.reset())
+            else:
+                obs = self._make_obs(self._reset_agent_only())
             
         self._reset = True
         return obs
@@ -100,30 +128,76 @@ class MJReacherWrapper(gym.Wrapper):
         
         del self
 
+def ranndom_policy_hits_vs_timeout():
+    total_steps = 20000
+    
+    tol = 0.0045
+    env = MJReacherWrapper(tol=tol)
+    steps_record = open(f"mj reacher tol={tol}_steps_record.txt", 'w')
+    hits_record = open(f"mj reacher tol={tol}_random_stat.txt", 'w')
+
+    for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]):
+        for seed in range(30):
+            torch.manual_seed(seed)
+            np.random.seed(seed)
+
+            steps_record.write(f"timeout={timeout}, seed={seed}: ")
+            # Experiment
+            hits = 0
+            steps = 0
+            epi_steps = 0
+            env.reset()
+            while steps < total_steps:
+                action = np.random.normal(size=env.action_space.shape)
+
+                # Receive reward and next state            
+                _, _, done, _ = env.step(action)
+                
+                # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
+
+                # Log
+                steps += 1
+                epi_steps += 1
+
+                # Termination
+                if done or epi_steps == timeout:
+                    env.reset()
+                        
+                    epi_steps = 0
+
+                    if done:
+                        hits += 1
+                    else:
+                        steps += 20
+                        
+                    steps_record.write(str(steps)+', ')
+
+            steps_record.write('\n')
+            hits_record.write(f"timeout={timeout}, seed={seed}: {hits}\n")
+    
+    steps_record.close()
+    hits_record.close()
+
 if __name__ == '__main__':
-    import torch
-    print(torch.__version__)
-    env = ReacherWrapper(0.009, (9, 125, 200), image_period = 3)
-    img, ob = env.reset()
+    # ranndom_policy_hits_vs_timeout()
 
-    img = np.transpose(img, [1, 2, 0])
-    cv2.imshow('', img[:,:,6:9])
+    env = MJReacherWrapper(tol=0.036, use_image=True)
+    obs = env.reset()
+    img = obs.images
+
+    print(img.shape)
+    img_to_show = np.transpose(img, [1, 2, 0])
+    img_to_show = img_to_show[:,:,-3:]
+    cv2.imshow('', img_to_show)
     cv2.waitKey(0)
-    episode_step = 0
-    while True:
-        a = env.action_space.sample()
-        img, ob, reward, done, info = env.step(a)
 
-        episode_step += 1
-
-        img = np.transpose(img, [1, 2, 0])
-        cv2.imshow('', img[:,:,6:9])
-        cv2.waitKey(30)
-
-        if done or episode_step == 50:
+    for t in range(1000):
+        randomize_target = t % 100 == 0
             
-            episode_step = 0
-            img, ob = env.reset()
-            img = np.transpose(img, [1, 2, 0])
-            cv2.imshow('', img[:,:,6:9])
-            cv2.waitKey(0)
+        next_obs = env.reset(randomize_target=randomize_target)
+        next_img = next_obs.images
+        img_to_show = np.transpose(next_img, [1, 2, 0])
+        img_to_show = img_to_show[:,:,-3:]
+        cv2.imshow('', img_to_show)
+        cv2.waitKey(0 if randomize_target else 50)
+        

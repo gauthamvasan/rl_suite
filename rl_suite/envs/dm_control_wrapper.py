@@ -398,22 +398,22 @@ def ranndom_policy_hits_vs_timeout():
     for env_s in envs:
         steps_record = open(f"{env_s}_steps_record.txt", 'w')
         hits_record = open(f"{env_s}_random_stat.txt", 'w')
+        if env_s == 'ball in cup':
+            env = BallInCupWrapper(seed)
+        elif env_s == 'dm reacher hard':
+            env = ReacherWrapper(seed=seed, mode="hard")
+        elif env_s == 'dm reacher easy':
+            env = ReacherWrapper(seed=seed, mode="easy")
+        else:
+            raise NotImplementedError()
+
+        if not hasattr(env, "_action_dim"):
+            env._action_dim = env.action_spec().shape[0]
+
         for timeout in tqdm([1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]):
             for seed in range(30):
                 torch.manual_seed(seed)
                 np.random.seed(seed)
-
-                if env_s == 'ball in cup':
-                    env = BallInCupWrapper(seed)
-                elif env_s == 'dm reacher hard':
-                    env = ReacherWrapper(seed=seed, mode="hard")
-                elif env_s == 'dm reacher easy':
-                    env = ReacherWrapper(seed=seed, mode="easy")
-                else:
-                    raise NotImplementedError()
-
-                if not hasattr(env, "_action_dim"):
-                    env._action_dim = env.action_spec().shape[0]
 
                 steps_record.write(f"timeout={timeout}, seed={seed}: ")
                 # Experiment
