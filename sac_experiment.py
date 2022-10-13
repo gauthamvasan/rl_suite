@@ -101,7 +101,7 @@ class SACExperiment(Experiment):
 
         if args.ylimit is not None:
             args.ylimit = tuple(args.ylimit)
-            
+
         if args.algo == "sac":
             args.actor_nn_params = {
                 'mlp': {
@@ -152,8 +152,8 @@ class SACExperiment(Experiment):
         returns = []
         epi_lens = []
         start_time = datetime.now()
-        while not experiment_done: # start a new episode
-            obs = self.env.reset()
+        while not experiment_done: 
+            obs = self.env.reset() # start a new episode
             ret = 0
             epi_steps = 0
             sub_steps = 0
@@ -207,7 +207,7 @@ class SACExperiment(Experiment):
             epi_lens.append(epi_steps)
             self.save_returns(returns, epi_lens)
             self.show_learning_curve(returns, epi_lens, save_fig=True)
-            print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret}. Total steps: {total_steps}")
+            print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
         self.save_returns(returns, epi_lens)
