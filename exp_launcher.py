@@ -24,19 +24,18 @@ def generate_exps():
     exps = []
     
     algos = ["sac", "sac_rad"]
-    algos = ["sac",]
+    algos = ["sac_rad",]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["visual_mj_reacher"]
+    envs = ["dm_reacher_hard", "dm_reacher_easy"]
     timeouts = [10, 25, 50, 100, 500, 1000, 5000]
     timeouts = [5000]
     seeds = range(30)
-    seeds = range(1)
     for algo in algos:
         description = "2nd_paper_with_image" if algo == "sac_rad" else "2nd_paper_no_image"
         for timeout in timeouts:
             for env in envs:
                 N = visual_steps[env] if algo == "sac_rad" else non_visual_steps[env]
-                init_steps = N//10
+                init_steps = N//100
                 for seed in seeds:
                     exp_dir = env+('/visual' if algo == "sac_rad" else "/non_visual")+f"/timeout={timeout}/seed={seed}/"
                     exp = {
