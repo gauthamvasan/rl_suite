@@ -45,7 +45,7 @@ class SACExperiment(Experiment):
         # Minimum-time tasks
         parser.add_argument('--penalty', default=-1, type=float, help="Reward penalty for min-time specification")
         ## Mujoco sparse reacher
-        parser.add_argument('--tol', default=0.036, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
+        parser.add_argument('--tol', default=0.009, type=float, help="Target size in [0.09, 0.018, 0.036, 0.072]")
         ## DotReacher
         parser.add_argument('--pos_tol', default=0.1, type=float, help="Position tolerance in [0.05, ..., 0.25]")
         parser.add_argument('--vel_tol', default=0.05, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
