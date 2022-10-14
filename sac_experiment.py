@@ -9,6 +9,7 @@ from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 from rl_suite.running_stats import RunningStats
 from datetime import datetime
+from tqdm import tqdm
 
 class SACExperiment(Experiment):
     def __init__(self):
@@ -149,9 +150,11 @@ class SACExperiment(Experiment):
         # Experiment block starts
         experiment_done = False
         total_steps = 0
+        sub_epi = 0
         returns = []
         epi_lens = []
         start_time = datetime.now()
+        print(f'Experiment starts at: {start_time}')
         while not experiment_done: 
             obs = self.env.reset() # start a new episode
             ret = 0
@@ -192,9 +195,10 @@ class SACExperiment(Experiment):
                 
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
+                    sub_epi += 1
                     # total_steps += abs(self.args.reset_penalty)
                     ret += self.args.reset_penalty_steps * self.args.reward
-
+                    # print(f'Sub episode {sub_epi} done.')
                     if 'dm_reacher' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
                     else:
@@ -211,9 +215,11 @@ class SACExperiment(Experiment):
 
         duration = datetime.now() - start_time
         self.save_returns(returns, epi_lens)
+        self.show_learning_curve(returns, epi_lens, save_fig=True)
         self.save_model(self.args.N)
 
         print(f"Finished in {duration}")
+
 def main():
     runner = SACExperiment()
     runner.run()

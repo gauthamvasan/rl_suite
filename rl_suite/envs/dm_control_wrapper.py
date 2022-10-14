@@ -115,7 +115,7 @@ class ReacherWrapper:
 
         if mode == "torture":
             physics = Physics.from_xml_string(*ReacherWrapper.get_modified_model_and_assets())
-            task = Reacher(target_size=.005, random=seed)
+            task = Reacher(target_size=.001, random=seed)
             self.env = control.Environment(physics, task, time_limit=float('inf'), **{})
         else:
             self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed, 'time_limit': float('inf')})
@@ -246,10 +246,10 @@ class ReacherWrapper:
 def ranndom_policy_hits_vs_timeout():
     total_steps = 20000
     timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
-    timeouts = [5000]
+
     # Env
     envs = ['dm reacher easy', 'dm reacher hard', 'dm reacher torture', 'ball in cup']
-    envs = ['dm reacher torture']
+    envs = ['dm reacher hard']
     for env_s in envs:
         steps_record = open(f"{env_s}_steps_record.txt", 'w')
         hits_record = open(f"{env_s}_random_stat.txt", 'w')
@@ -312,122 +312,6 @@ def ranndom_policy_hits_vs_timeout():
         
         steps_record.close()
         hits_record.close()
-
-# def random_policy_stats():
-#     # Problem
-#     seed = 0
-#     timeout = 2
-#     torch.manual_seed(seed)
-#     np.random.seed(seed)
-
-#     # Env
-#     task = 'ball in cup'
-#     env = BallInCupWrapper(seed, timeout=timeout, penalty=-1, use_image=True)
-#     for _ in range(10000):
-#         obs = env.reset()
-#         img_to_show = np.transpose(obs.images, [1,2,0])[:,:,-3:]
-#         cv2.imshow("", img_to_show)
-#         cv2.waitKey(0)
-        
-#     # env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
-#     # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
-#     # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
-#     if not hasattr(env, "_action_dim"):
-#         env._action_dim = env.action_spec().shape[0]
-
-#     # Experiment
-#     total_dones = 50
-#     rets = []
-#     ep_lens = []
-#     steps = 0
-#     dones = 0
-#     while dones < total_dones:
-#         obs = env.reset()
-#         ret = 0
-#         epi_steps = 0
-#         while True:
-#             A = env.action_space.sample()
-            
-#             # Receive reward and next state            
-#             next_obs, reward, done, _ = env.step(A)
-            
-#             # Log
-#             ret += reward
-#             steps += 1
-#             epi_steps += 1
-
-#             # Termination
-#             if done or epi_steps == timeout:
-#                 rets.append(ret)
-#                 ep_lens.append(epi_steps)
-#                 print('-' * 50)
-#                 print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(dones, epi_steps, ret, steps))
-#                 print('-' * 50)
-
-#                 if done:
-#                     dones += 1
-
-#                 break
-
-#             obs = next_obs
-
-#     # Random policy stats
-#     rets = np.array(rets)
-#     ep_lens = np.array(ep_lens)
-
-#     prev_steps = 0
-#     new_ep_lens = []
-#     for steps in ep_lens:
-#         if steps == timeout:
-#             prev_steps += steps
-#         else:
-#             new_ep_lens.append(steps + prev_steps)
-#             prev_steps = 0
-    
-#     with open(task + '_timeout='+str(timeout)+'_random_stat.txt', 'w') as out_file:
-#         for ep_len in new_ep_lens:
-#             out_file.write(str(ep_len)+'\n')
-
-#         out_file.write("\nMean: {:.2f}".format(np.mean(new_ep_lens)))
-        
-# def interaction(domain_name, task_name, seed=1):
-#     # Load one task:
-#     # env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
-#     env = ReacherWrapper(tol=0.009, timeout=5000, seed=0)
-
-#     # Step through an episode and print out reward, discount and observation.
-#     action_spec = env.action_spec()
-#     EP = 50
-#     rets = []
-#     ep_lens = []
-#     for i in range(EP):
-#         time_step = env.reset()
-#         steps = 0
-#         ret = 0
-#         while not time_step.last():
-#             action = np.random.uniform(action_spec.minimum,
-#                                        action_spec.maximum,
-#                                        size=action_spec.shape)
-#             time_step = env.step(action)
-#             print(steps, time_step.reward, time_step.discount)
-#             steps += 1
-#             ret += time_step.reward
-#         rets.append(ret)
-#         ep_lens.append(steps)
-#         print('-' * 100)
-#         print("Episode: {} ended in {} steps with return: {}".format(i+1, steps, ret))
-#         print('-' * 100)
-
-#     # Random policy stats
-#     rets = np.array(rets)
-#     ep_lens = np.array(ep_lens)
-#     print("Mean: {:.2f}".format(np.mean(ep_lens)))
-#     print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
-#     print("Median: {:.2f}".format(np.median(ep_lens)))
-#     inds = np.where(ep_lens == env._timeout)
-#     print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
-#     print("Max length:", max(ep_lens))
-#     print("Min length:", min(ep_lens))
 
 if __name__ == '__main__':
     # for domain_name, task_name in suite.ALL_TASKS: # suite.BENCHMARKING

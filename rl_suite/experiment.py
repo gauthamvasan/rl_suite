@@ -33,7 +33,7 @@ if platform == "darwin":
 
 class Experiment:
     def __init__(self, args):
-        self.run_id = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.run_id = datetime.now().strftime("%Y-%m-%d %H_%M")
         self.args = args
 
         assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
@@ -55,6 +55,8 @@ class Experiment:
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dm_reacher_hard":
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.algo=="sac_rad")
+        elif self.args.env == "dm_reacher_torture":
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.algo=="sac_rad")
         elif self.args.env == "dot_reacher":
             if self.args.algo=="sac":
                 env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
