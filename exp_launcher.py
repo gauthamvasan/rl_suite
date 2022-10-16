@@ -38,7 +38,7 @@ def generate_exps():
                 for seed in range(1):
                     res_dir = 'results/'
                     exp_dir = env+('/visual' if algo == "sac_rad" else "/non_visual")+f"/timeout={timeout}/seed={seed}/"
-                    output_folder = res_dir+'outputs/'+exp_dir
+                    output_folder = res_dir+exp_dir+'outputs/'
                     os.makedirs(output_folder, exist_ok=True)
                     exp = {
                         "env": env,

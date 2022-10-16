@@ -38,8 +38,8 @@ class Experiment:
 
         assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
 
-        self._return_dir = Path(args.results_dir)/'returns'/args.experiment_dir
-        self._model_dir = Path(args.results_dir)/'models'/args.experiment_dir
+        self._return_dir = Path(args.results_dir)/args.experiment_dir/'returns'
+        self._model_dir = Path(args.results_dir)/args.experiment_dir/'models'
 
         os.makedirs(self._return_dir, exist_ok=True)
         os.makedirs(self._model_dir, exist_ok=True)
