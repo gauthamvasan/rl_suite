@@ -27,7 +27,7 @@ def generate_exps():
     algos = ["sac", "sac_rad"]
     algos = ["sac",]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["dm_reacher_hard", "dm_reacher_easy"]
+    envs = ["dm_reacher_hard"]
     timeouts = [10, 25, 50, 100, 500, 1000, 5000]
     seeds = range(30)
     factor = 10
@@ -54,7 +54,7 @@ def generate_exps():
                         "results_dir": res_dir,
                         "experiment_dir": exp_dir,
                         "description": description,
-                        "output_filename": output_folder+"output.txt",
+                        "output_filename": output_folder+"output",
                     }
                     exps.append(exp)
 
@@ -72,7 +72,7 @@ def cc_exp(exps):
         results_dir = exp["results_dir"]
         experiment_dir = exp["experiment_dir"]
         description = exp['description']
-        output_filename = exp["output_filename"]
+        output_filename = exp["output_filename"]+'_%j.txt'
 
         requested_time = '01:00:00' if algo == "sac" else '06:00:00'
         requested_mem = '3G' if algo == "sac" else '24G'
@@ -80,7 +80,7 @@ def cc_exp(exps):
             'sbatch',
             '--time='+requested_time,
             '--mem='+requested_mem,
-            "--output="+output_filename+'_%j.out',
+            "--output="+output_filename,
             './cc_job.sh', 
             env,
             seed, 
@@ -109,7 +109,7 @@ def workstation_exp(exp):
     results_dir = exp["results_dir"]
     experiment_dir = exp["experiment_dir"]
     description = exp['description']
-    output_filename = exp["output_filename"]
+    output_filename = exp["output_filename"]+'.txt'
 
     with open(output_filename+'.out', 'w') as out_file:
         param = ['python3', '-u', 'sac_experiment.py', 

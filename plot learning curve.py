@@ -1,35 +1,34 @@
-from math import inf
 import seaborn as sns
 import matplotlib.pyplot as plt
+import os
 import pandas as pd
 from pathlib import Path
 from statistics import mean
 
 if __name__ == "__main__":
-    envs = ["ball_in_cup", "dm_reacher_easy", "dm_reacher_hard"]
-    timeouts = [10, 25, 50, 100, 500, 1000]
-    timeouts = [50]
+    res_dir = Path(__file__).parent/'results'
+    envs = next(os.walk(res_dir))[1]
     plot_interval = 2000
-    tasks = ["non_visual", "visual"]
-    tasks = ["non_visual", ]
-    steps = []
 
-    for task in tasks:
-        for env in envs:
+    for env in envs:
+        tasks = next(os.walk(res_dir/env))[1]
+        for task in tasks:
             df = pd.DataFrame(columns=["step", "avg_ret", "seed", "timeout"])
+            timeouts = next(os.walk(res_dir/env/task))[1]
             for timeout in timeouts:
-                for seed in range(1):
-                    data_folder = Path(__file__).parent/"results/returns"/env/task/f"timeout={timeout}"/f"seed={seed}"
-                    filename = next(data_folder.glob("*.txt"))
+                seeds = next(os.walk(res_dir/env/task/timeout))[1]
+                for seed in seeds:
+                    return_folder = res_dir/env/task/timeout/seed/'returns'
+                    filename = next(return_folder.glob("*.txt"))
 
-                    with open(filename, 'r') as data_file:
-                        steps = [int(float(step)) for step in data_file.readline().split()]
-                        returns = [int(float(ret)) for ret in data_file.readline().split()]
+                    with open(filename, 'r') as return_file:
+                        epi_steps = [int(float(step)) for step in return_file.readline().split()]
+                        returns = [int(float(ret)) for ret in return_file.readline().split()]
             
                     steps = 0
-                    rets = []
                     end_step = plot_interval
-                    for (i, epi_s) in enumerate(steps):
+                    rets = []
+                    for (i, epi_s) in enumerate(epi_steps):
                         steps += epi_s
                         ret = returns[i]
                         if steps > end_step:
