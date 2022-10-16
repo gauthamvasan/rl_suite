@@ -24,9 +24,10 @@ def generate_exps():
     exps = []
     
     algos = ["sac", "sac_rad"]
-    algos = ["sac_rad",]
+    algos = ["sac",]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
     timeouts = [10, 25, 50, 100, 500, 1000, 5000]
+    timeouts = [50]
     factor = 10
     for algo in algos:
         description = "2nd_paper_with_image" if algo == "sac_rad" else "2nd_paper_no_image"
@@ -35,7 +36,10 @@ def generate_exps():
                 N = visual_steps[env] if algo == "sac_rad" else non_visual_steps[env]
                 init_steps = N//factor
                 for seed in range(1):
+                    res_dir = 'results/'
                     exp_dir = env+('/visual' if algo == "sac_rad" else "/non_visual")+f"/timeout={timeout}/seed={seed}/"
+                    output_folder = res_dir+'outputs/'+exp_dir
+                    os.makedirs(output_folder, exist_ok=True)
                     exp = {
                         "env": env,
                         "seed": str(seed),
@@ -44,9 +48,10 @@ def generate_exps():
                         "algo": algo,
                         "replay_buffer_capacity": "100000",
                         "init_steps": str(init_steps),
+                        "results_dir": res_dir,
                         "experiment_dir": exp_dir,
                         "description": description,
-                        "output_filename": f'train_out/{env}_timeout={timeout}_seed={seed}_{description}',
+                        "output_filename": output_folder+"output.txt",
                     }
                     exps.append(exp)
 
@@ -61,6 +66,7 @@ def cc_exp(exps):
         algo = exp["algo"]
         replay_buffer_capacity = exp["replay_buffer_capacity"]
         init_steps = exp["init_steps"]
+        results_dir = exp["results_dir"]
         experiment_dir = exp["experiment_dir"]
         description = exp['description']
         output_filename = exp["output_filename"]
@@ -80,6 +86,7 @@ def cc_exp(exps):
             algo,
             replay_buffer_capacity,
             init_steps,
+            results_dir,
             experiment_dir,
             description,
         ]
@@ -96,6 +103,7 @@ def workstation_exp(exp):
     algo = exp["algo"]
     replay_buffer_capacity = exp["replay_buffer_capacity"]
     init_steps = exp["init_steps"]
+    results_dir = exp["results_dir"]
     experiment_dir = exp["experiment_dir"]
     description = exp['description']
     output_filename = exp["output_filename"]
@@ -109,6 +117,7 @@ def workstation_exp(exp):
                                     '--algo', algo,
                                     '--replay_buffer_capacity', replay_buffer_capacity,
                                     '--init_steps', init_steps,
+                                    '--results_dir', results_dir,
                                     '--experiment_dir', experiment_dir,
                                     '--description', description
                 ]

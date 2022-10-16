@@ -38,8 +38,8 @@ class Experiment:
 
         assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
 
-        self._return_dir = Path(args.output_dir)/'returns'/args.experiment_dir
-        self._model_dir = Path(args.output_dir)/'models'/args.experiment_dir
+        self._return_dir = Path(args.results_dir)/'returns'/args.experiment_dir
+        self._model_dir = Path(args.results_dir)/'models'/args.experiment_dir
 
         os.makedirs(self._return_dir, exist_ok=True)
         os.makedirs(self._model_dir, exist_ok=True)
@@ -114,7 +114,6 @@ class Experiment:
                 np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)
         if len(plot_rets):
             plt.clf()
-            plt.title(self.args.title)
             if self.args.xlimit is not None:
                 plt.xlim(self.args.xlimit)
         

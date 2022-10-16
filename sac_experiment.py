@@ -84,7 +84,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)
         # Misc
-        parser.add_argument('--result_dir', default='./results', type=str, help="Save results to this dir")
+        parser.add_argument('--results_dir', required=True, type=str, help="Save results to this dir")
         parser.add_argument('--experiment_dir', required=True, type=str, help="Save experiment outputs, relative to result_dir")
         parser.add_argument('--xlimit', default=None, type=str)
         parser.add_argument('--ylimit', default=None, type=str)
