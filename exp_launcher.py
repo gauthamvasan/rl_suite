@@ -27,9 +27,8 @@ def generate_exps():
     algos = ["sac", "sac_rad"]
     algos = ["sac_rad",]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["ball_in_cup"]
+    envs = ["dm_reacher_hard"]
     timeouts = [10, 25, 50, 100, 500, 1000, 5000]
-    timeouts = [10, 25, 100, 500, 1000, 5000]
     seeds = range(30)
     factor = 10
 
