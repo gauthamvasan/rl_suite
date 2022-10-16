@@ -86,7 +86,6 @@ class SACExperiment(Experiment):
         # Misc
         parser.add_argument('--output_dir', default='./outputs', type=str, help="Save outputs to this dir")
         parser.add_argument('--experiment_dir', required=True, type=str, help="Save experiment outputs, relative to output_dir")
-        parser.add_argument('--title', required=True, type=str, help="Plot title")
         parser.add_argument('--xlimit', default=None, type=str)
         parser.add_argument('--ylimit', default=None, type=str)
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
