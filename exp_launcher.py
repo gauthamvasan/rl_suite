@@ -25,11 +25,11 @@ def generate_exps():
     
     # exp settings
     algos = ["sac", "sac_rad"]
-    algos = ["sac",]
+    algos = ["sac_rad",]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["dm_reacher_hard"]
+    envs = ["dm_reacher_easy"]
     timeouts = [10, 25, 50, 100, 500, 1000, 5000]
-    seeds = range(30)
+    seeds = range(10)
     factor = 10
 
     for algo in algos:
@@ -42,7 +42,7 @@ def generate_exps():
                     res_dir = 'results/'
                     exp_dir = env+('/visual' if algo == "sac_rad" else "/non_visual")+f"/timeout={timeout}/seed={seed}/"
                     output_folder = res_dir+exp_dir+'outputs/'
-                    os.makedirs(output_folder, exist_ok=True)
+                    os.makedirs(output_folder, exist_ok=False)
                     exp = {
                         "env": env,
                         "seed": str(seed),
@@ -74,7 +74,7 @@ def cc_exp(exps):
         description = exp['description']
         output_filename = exp["output_filename"]+'_%j.txt'
 
-        requested_time = '01:00:00' if algo == "sac" else '06:00:00'
+        requested_time = '01:00:00' if algo == "sac" else '10:00:00'
         requested_mem = '3G' if algo == "sac" else '24G'
         params = [  
             'sbatch',

@@ -41,8 +41,8 @@ class Experiment:
         self._return_dir = Path(args.results_dir)/args.experiment_dir/'returns'
         self._model_dir = Path(args.results_dir)/args.experiment_dir/'models'
 
-        os.makedirs(self._return_dir, exist_ok=True)
-        os.makedirs(self._model_dir, exist_ok=True)
+        os.makedirs(self._return_dir, exist_ok=False)
+        os.makedirs(self._model_dir, exist_ok=False)
 
         hyperparas_dict = vars(self.args)
         hyperparas_dict["device"] = str(hyperparas_dict["device"])
