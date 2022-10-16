@@ -195,7 +195,6 @@ class SACExperiment(Experiment):
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
                     sub_epi += 1
-                    # total_steps += abs(self.args.reset_penalty)
                     ret += self.args.reset_penalty_steps * self.args.reward
                     # print(f'Sub episode {sub_epi} done.')
                     if 'dm_reacher' in self.args.env:
@@ -205,16 +204,14 @@ class SACExperiment(Experiment):
 
                 experiment_done = total_steps >= self.args.N
 
-            # episode done, save result
-            returns.append(ret)
-            epi_lens.append(epi_steps)
-            self.save_returns(returns, epi_lens)
-            self.show_learning_curve(returns, epi_lens, save_fig=True)
-            print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
+            if epi_done: # episode done, save result
+                returns.append(ret)
+                epi_lens.append(epi_steps)
+                self.save_returns(returns, epi_lens)
+                self.show_learning_curve(returns, epi_lens, save_fig=True)
+                print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
-        self.save_returns(returns, epi_lens)
-        self.show_learning_curve(returns, epi_lens, save_fig=True)
         self.save_model(self.args.N)
 
         print(f"Finished in {duration}")
