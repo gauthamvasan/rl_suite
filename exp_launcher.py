@@ -24,12 +24,9 @@ def generate_exps():
     exps = []
     
     algos = ["sac", "sac_rad"]
-    algos = ["sac",]
+    algos = ["sac_rad",]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ['mj_reacher']
     timeouts = [10, 25, 50, 100, 500, 1000, 5000]
-    timeouts = [5000]
-    seeds = range(1)
     factor = 10
     for algo in algos:
         description = "2nd_paper_with_image" if algo == "sac_rad" else "2nd_paper_no_image"
@@ -37,7 +34,7 @@ def generate_exps():
             for env in envs:
                 N = visual_steps[env] if algo == "sac_rad" else non_visual_steps[env]
                 init_steps = N//factor
-                for seed in seeds:
+                for seed in range(30):
                     exp_dir = env+('/visual' if algo == "sac_rad" else "/non_visual")+f"/timeout={timeout}/seed={seed}/"
                     exp = {
                         "env": env,
@@ -49,7 +46,7 @@ def generate_exps():
                         "init_steps": str(init_steps),
                         "experiment_dir": exp_dir,
                         "description": description,
-                        "output_filename": f'{env}_timeout={timeout}_seed={seed}_{description}',
+                        "output_filename": f'cc_out/{env}_timeout={timeout}_seed={seed}_{description}',
                     }
                     exps.append(exp)
 
