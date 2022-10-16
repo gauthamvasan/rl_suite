@@ -7,9 +7,8 @@ from statistics import mean
 
 if __name__ == "__main__":
     envs = ["ball_in_cup", "dm_reacher_easy", "dm_reacher_hard"]
-    envs = ["mj_reacher"]
     timeouts = [10, 25, 50, 100, 500, 1000]
-    timeouts = [5000]
+    timeouts = [50]
     plot_interval = 2000
     tasks = ["non_visual", "visual"]
     tasks = ["non_visual", ]
@@ -20,7 +19,7 @@ if __name__ == "__main__":
             df = pd.DataFrame(columns=["step", "avg_ret", "seed", "timeout"])
             for timeout in timeouts:
                 for seed in range(1):
-                    data_folder = Path(__file__).parent/"outputs/returns"/env/task/f"timeout={timeout}"/f"seed={seed}"
+                    data_folder = Path(__file__).parent/"results/returns"/env/task/f"timeout={timeout}"/f"seed={seed}"
                     filename = next(data_folder.glob("*.txt"))
 
                     with open(filename, 'r') as data_file:
