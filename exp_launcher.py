@@ -25,12 +25,11 @@ def generate_exps():
     
     # exp settings
     algos = ["sac", "sac_rad"]
-    algos = ["sac_rad",]
+    algos = ["sac",]
     envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["ball_in_cup"]
+    envs = ["dm_reacher_hard", "dm_reacher_easy"]
     timeouts = [10, 25, 50, 100, 500, 1000, 5000]
-    timeouts = [50]
-    seeds = range(1)
+    seeds = range(30)
     factor = 10
 
     for algo in algos:
@@ -75,8 +74,8 @@ def cc_exp(exps):
         description = exp['description']
         output_filename = exp["output_filename"]
 
-        requested_time = '00:35:00' if algo == "sac" else '06:00:00'
-        requested_mem = '3G' if algo == "sac" else '12G'
+        requested_time = '01:00:00' if algo == "sac" else '06:00:00'
+        requested_mem = '3G' if algo == "sac" else '24G'
         params = [  
             'sbatch',
             '--time='+requested_time,
