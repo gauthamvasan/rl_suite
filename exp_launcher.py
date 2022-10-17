@@ -74,7 +74,7 @@ def cc_exp(exps):
         description = exp['description']
         output_filename = exp["output_filename"]+'_%j.txt'
 
-        requested_time = '01:00:00' if algo == "sac" else '10:00:00'
+        requested_time = '01:00:00' if algo == "sac" else '06:00:00'
         requested_mem = '3G' if algo == "sac" else '24G'
         params = [  
             'sbatch',
