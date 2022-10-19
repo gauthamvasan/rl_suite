@@ -248,7 +248,7 @@ def ranndom_policy_hits_vs_timeout():
     timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
 
     # Env
-    envs = ['dm reacher easy', 'dm reacher hard', 'dm reacher torture', 'ball in cup']
+    envs = ['dm reacher easy', 'dm reacher hard', 'ball in cup']
     envs = ['dm reacher hard']
     for env_s in envs:
         steps_record = open(f"{env_s}_steps_record.txt", 'w')

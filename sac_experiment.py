@@ -84,6 +84,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)
         # Misc
+        parser.add_argument('--run_type', default='experiment', type=str, help="Which test to run")
         parser.add_argument('--results_dir', required=True, type=str, help="Save results to this dir")
         parser.add_argument('--experiment_dir', required=True, type=str, help="Save experiment outputs, relative to result_dir")
         parser.add_argument('--xlimit', default=None, type=str)
@@ -143,6 +144,14 @@ class SACExperiment(Experiment):
         return args
 
     def run(self):
+        if self.args.run_type == 'experiment':
+            self._run_experiment()
+        elif self.args.run_type == 'init_policy_test':
+            self._run_init_policy_test()
+        else:
+            raise NotImplementedError()
+
+    def _run_experiment(self):
         # Normalize wrapper
         rms = RunningStats()
 
@@ -196,6 +205,7 @@ class SACExperiment(Experiment):
                     sub_steps = 0
                     sub_epi += 1
                     ret += self.args.reset_penalty_steps * self.args.reward
+                    total_steps += self.args.reset_penalty_steps
                     # print(f'Sub episode {sub_epi} done.')
                     if 'dm_reacher' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
@@ -215,6 +225,57 @@ class SACExperiment(Experiment):
         self.save_model(self.args.N)
 
         print(f"Finished in {duration}")
+
+    def _run_init_policy_test(self):
+        timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
+
+        steps_record = open(f"{self.args.env}_steps_record.txt", 'w')
+        hits_record = open(f"{self.args.env}_random_stat.txt", 'w')
+
+        for timeout in tqdm(timeouts):
+            for seed in range(30):
+                self.args.seed = seed
+                self.set_seed()
+
+                steps_record.write(f"timeout={timeout}, seed={seed}: ")
+                # Experiment
+                hits = 0
+                steps = 0
+                epi_steps = 0
+                obs = self.env.reset()
+                while steps < self.args.N:
+                    action = self.learner.sample_action(obs)
+
+                    # Receive reward and next state            
+                    _, _, done, _ = self.env.step(action)
+                    
+                    # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
+
+                    # Log
+                    steps += 1
+                    epi_steps += 1
+
+                    # Termination
+                    if done or epi_steps == timeout:
+                        if 'dm_reacher' in self.args.env:
+                            self.env.reset(randomize_target=done)
+                        else:
+                            self.env.reset()
+                            
+                        epi_steps = 0
+
+                        if done:
+                            hits += 1
+                        else:
+                            steps += 20
+                            
+                        steps_record.write(str(steps)+', ')
+
+                steps_record.write('\n')
+                hits_record.write(f"timeout={timeout}, seed={seed}: {hits}\n")
+            
+        steps_record.close()
+        hits_record.close()
 
 def main():
     runner = SACExperiment()
