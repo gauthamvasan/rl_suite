@@ -1,15 +1,17 @@
 import argparse
 import torch
-import numpy as np
 import cv2
 
+import numpy as np
+
+from datetime import datetime
+from tqdm import tqdm
 from rl_suite.algo.sac import SACAgent
 from rl_suite.algo.sac_rad import SACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 from rl_suite.running_stats import RunningStats
-from datetime import datetime
-from tqdm import tqdm
+
 
 class SACExperiment(Experiment):
     def __init__(self):
@@ -228,6 +230,7 @@ class SACExperiment(Experiment):
         print(f"Finished in {duration}")
 
     def _run_init_policy_test(self):
+        """ N.B: Use only for minimum-time tasks """
         timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
         timeouts = [100, 500, 1000, 5000]
         total_steps = 20000
