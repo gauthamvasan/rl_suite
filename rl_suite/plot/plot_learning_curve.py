@@ -8,7 +8,8 @@ from statistics import mean
 if __name__ == "__main__":
     res_dir = Path(__file__).parent/'results'
     envs = next(os.walk(res_dir))[1]
-    plot_interval = 2000
+    total_steps = 200000
+    plot_interval = total_steps//100
 
     for env in envs:
         tasks = next(os.walk(res_dir/env))[1]
@@ -40,6 +41,8 @@ if __name__ == "__main__":
                                 end_step += plot_interval
                         
                         rets.append(ret)
+
+                    df = df.append({'step':total_steps, 'avg_ret':mean(rets), 'seed':seed, 'timeout': timeout}, ignore_index=True) 
                 
             plt.ylim(-1000, 0)
             

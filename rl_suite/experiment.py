@@ -69,8 +69,7 @@ class Experiment:
         elif self.args.env == "mj_reacher":
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.algo=="sac_rad")            
         else:
-            env = gym.make(self.args.env)
-            env.seed(self.args.seed)
+            raise NotImplementedError()
         env.name = self.args.env
         return env
 
