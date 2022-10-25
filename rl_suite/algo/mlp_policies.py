@@ -132,7 +132,12 @@ class SquashedGaussianMLPActor(nn.Module):
 
         # Orthogonal Weight Initialization
         self.apply(orthogonal_weight_init)
+        self.mu.weight.data.fill_(0.0)
+        self.mu.bias.data.fill_(0.0)
+        self.log_std.weight.data.fill_(0.0)
+        self.log_std.bias.data.fill_(0.0)
         self.to(device=device)
+        print('Using normal distribution initialization.')
 
     def _dist(self, x):
         phi = self.phi(x)

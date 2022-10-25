@@ -87,7 +87,9 @@ class SAC_RAD:
             if prop is not None:
                 prop = torch.FloatTensor(prop).to(self.device)
                 prop = prop.unsqueeze(0)
-            mu, action, _, _ = self.actor(img, prop)
+            mu, action, _, log_std = self.actor(img, prop)
+            # print('mu:', mu.cpu().data.numpy().flatten())
+            # print('std:', log_std.exp().cpu().data.numpy().flatten())
             if deterministic:
                 return mu.cpu().data.numpy().flatten()
             else:
@@ -151,14 +153,14 @@ class SAC_RAD:
         }
         return actor_stats
 
-    def update(self, img, prop, action, reward, next_img, next_prop, not_done):
+    def update(self, img, prop, action, reward, next_img, next_prop, done):
         # Move tensors to device
-        img, prop, action, reward, next_img, next_prop, not_done = img.to(self.device), prop.to(self.device), \
+        img, prop, action, reward, next_img, next_prop, done = img.to(self.device), prop.to(self.device), \
             action.to(self.device), reward.to(self.device), next_img.to(self.device), \
-                next_prop.to(self.device), not_done.to(self.device)
+                next_prop.to(self.device), done.to(self.device)
 
         # regular update of SAC_RAD, sequentially augment data and train
-        stats = self.update_critic(img, prop, action, reward, next_img, next_prop, not_done)
+        stats = self.update_critic(img, prop, action, reward, next_img, next_prop, done)
         if self.num_updates % self.actor_update_freq == 0:
             actor_stats = self.update_actor_and_alpha(img, prop)
             stats = {**stats, **actor_stats}
@@ -219,6 +221,7 @@ class SACRADAgent(SAC_RAD):
 
     def push_and_update(self, image, propri, action, reward, done):
         self._replay_buffer.add(image, propri, action, reward, done)
+        self.steps += 1
 
         stat = {}   
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
@@ -226,9 +229,8 @@ class SACRADAgent(SAC_RAD):
                 # tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
                 # print(time.time() - tic)
-        self.steps += 1
         return stat
-                
+
 
 class AsyncSACAgent(SAC_RAD):
     def __init__(self, cfg, device=torch.device('cpu')):

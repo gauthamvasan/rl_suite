@@ -1,92 +1,55 @@
 import cv2
 import torch
 import gym
-
+import dm_env
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tkinter import N
 from rl_suite.envs.env_utils import Observation
+from dm_control.suite.utils import randomizers
+from dm_control.suite.reacher import Reacher, Physics
+from dm_control.rl.control import flatten_observation
 from dm_control import suite
+from dm_control.rl import control
+from dm_control.suite import common
+from dm_control.utils import io as resources
 from gym.spaces import Box
 from collections import deque
-
+from tqdm import tqdm
 
 class BallInCupWrapper:
-    def __init__(self, seed, timeout, penalty=-0.1):
+    def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
-        self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed})
-        self._timeout = timeout
+        self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed, 'time_limit': float('inf')})
         self.reward = penalty
-        self._obs_dim = 8
+        self._obs_dim = 8 if not use_image else 4
         self._action_dim = 2
 
-    def make_obs(self, x):
-        obs = np.zeros(self._obs_dim, dtype=np.float32)
-        obs[:4] = x.observation['position'].astype(np.float32)
-        obs[4:8] = x.observation['velocity'].astype(np.float32)
-        return obs
-
-    def reset(self):
-        self.steps = 0
-        return self.make_obs(self.env.reset())
-
-    def step(self, action):
-        if isinstance(action, torch.Tensor):
-            action = action.cpu().numpy().flatten()
-        self.steps += 1
-
-        x = self.env.step(action)
-        next_obs = self.make_obs(x)
-        reward = self.reward
-        done = x.reward # or self.steps == self._timeout
-        info = {}
-
-        return next_obs, reward, done, info
-
-    @property
-    def observation_space(self):
-        return Box(shape=(self._obs_dim,), high=10, low=-10)
-
-    @property
-    def action_space(self):
-        return Box(shape=(self._action_dim,), high=1, low=-1)
-
-
-class ReacherWrapper(gym.Wrapper):
-    def __init__(self, seed, timeout, penalty=-1, mode="easy", use_image=False, img_history=3):
-        """ Outputs state transition data as torch arrays """
-        assert mode in ["easy", "hard"]
-        self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed})
-        self._timeout = timeout
-
-        self._obs_dim = 4 if use_image else 6
-        self._action_dim = 2
-        
-        self.reward = penalty
         self._use_image = use_image
         
         if use_image:
-            self._image_buffer = deque([], maxlen=img_history)            
+            self._image_buffer = deque([], maxlen=img_history)
+            print("Visual ball in cup")
+        else:
+            print('Non visual ball in cup')
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
-        obs[:2] = x.observation['position'].astype(np.float32)
-        obs[2:4] = x.observation['velocity'].astype(np.float32)
-
-        if not self._use_image: # this should be inferred from image
-            obs[4:6] = x.observation['to_target'].astype(np.float32)
-        
+        if not self._use_image:
+            obs[:4] = x.observation['position'].astype(np.float32)
+            obs[4:8] = x.observation['velocity'].astype(np.float32)
+        else:
+            obs[:4] = x.observation['velocity'].astype(np.float32)
         return obs
 
     def _get_new_img(self):
         img = self.env.physics.render()
-        img = img[85:155, 110:210, :]
+        img = img[20:120, 100:220, :]
         img = np.transpose(img, [2, 0, 1])  # c, h, w
         return img
 
     def reset(self):
-        self.steps = 0
         if self._use_image:
             obs = Observation()
             obs.proprioception = self.make_obs(self.env.reset())
@@ -104,12 +67,146 @@ class ReacherWrapper(gym.Wrapper):
     def step(self, action):
         if isinstance(action, torch.Tensor):
             action = action.cpu().numpy().flatten()
-        self.steps += 1
 
         x = self.env.step(action)
 
         reward = self.reward
-        done = x.reward # or self.steps == self._timeout
+        done = x.reward
+        info = {}
+
+        if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self.make_obs(x)
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            next_obs = self.make_obs(x)
+
+        return next_obs, reward, done, info
+
+    @property
+    def observation_space(self):
+        return Box(shape=(self._obs_dim,), high=10, low=-10)
+
+    @property
+    def image_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+
+        image_shape = (3 * self._image_buffer.maxlen, 100, 120)
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+        
+        return self.observation_space
+
+    @property
+    def action_space(self):
+        return Box(shape=(self._action_dim,), high=1, low=-1)
+
+class ReacherWrapper:
+    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
+        """ Outputs state transition data as torch arrays """
+        assert mode in ["easy", "hard", "torture"]
+
+        if mode == "torture":
+            physics = Physics.from_xml_string(*ReacherWrapper.get_modified_model_and_assets())
+            task = Reacher(target_size=.001, random=seed)
+            self.env = control.Environment(physics, task, time_limit=float('inf'), **{})
+        else:
+            self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed, 'time_limit': float('inf')})
+
+        self._obs_dim = 4 if use_image else 6
+        self._action_dim = 2
+        
+        self.reward = penalty
+        self._use_image = use_image
+        
+        if use_image:
+            self._image_buffer = deque([], maxlen=img_history)
+            print(f'Visual dm reacher {mode}')
+        else:
+            print(f'Non visual dm reacher {mode}')
+
+    def make_obs(self, x):
+        obs = np.zeros(self._obs_dim, dtype=np.float32)
+        obs[:2] = x.observation['position'].astype(np.float32)
+        obs[2:4] = x.observation['velocity'].astype(np.float32)
+
+        if not self._use_image: # this should be inferred from image
+            obs[4:6] = x.observation['to_target'].astype(np.float32)
+        
+        return obs
+
+    @staticmethod
+    def get_modified_model_and_assets():
+        """Returns a tuple containing the model XML string and a dict of assets."""
+        PARENT_DIR = os.path.dirname(os.path.dirname(__file__))
+        return resources.GetResource(os.path.join(PARENT_DIR, 'envs/reacher_small_finger.xml')), common.ASSETS
+
+    def _get_new_img(self):
+        img = self.env.physics.render()
+        img = img[85:155, 110:210, :]
+        img = np.transpose(img, [2, 0, 1])  # c, h, w
+        return img
+
+    def _initialize_episode_random_agent_only(self):
+        """Sets the state of the environment at the start of each episode."""
+        self.env.physics.named.model.geom_size['target', 0] = self.env.task._target_size
+        randomizers.randomize_limited_and_rotational_joints(self.env.physics, self.env.task.random)
+
+        super(Reacher, self.env.task).initialize_episode(self.env.physics)
+
+    def _reset_agent_only(self):
+        """Starts a new episode and returns the first `TimeStep`."""
+        self.env._reset_next_step = False
+        self.env._step_count = 0
+        with self.env.physics.reset_context():
+            self._initialize_episode_random_agent_only()
+
+        observation = self.env.task.get_observation(self.env.physics)
+        if self.env._flat_observation:
+            observation = flatten_observation(observation)
+
+        return dm_env.TimeStep(
+            step_type=dm_env.StepType.FIRST,
+            reward=None,
+            discount=None,
+            observation=observation)
+
+    def reset(self, randomize_target=True):
+        if self._use_image:
+            obs = Observation()
+            if randomize_target:
+                obs.proprioception = self.make_obs(self.env.reset())
+            else:
+                obs.proprioception = self.make_obs(self._reset_agent_only())
+
+            new_img = self._get_new_img()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+
+            obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            if randomize_target:
+                obs = self.make_obs(self.env.reset())
+            else:
+                obs = self.make_obs(self._reset_agent_only())
+
+        return obs
+
+    def step(self, action):
+        if isinstance(action, torch.Tensor):
+            action = action.cpu().numpy().flatten()
+
+        x = self.env.step(action)
+
+        reward = self.reward
+        done = x.reward
         info = {}
 
         if self._use_image:
@@ -146,195 +243,75 @@ class ReacherWrapper(gym.Wrapper):
     def action_space(self):
         return Box(shape=(self._action_dim,), high=1, low=-1)
 
-
-class ManipulatorWrapper:
-    def __init__(self, task_name, seed, timeout=10000):
-        """
-
-        Args:
-            task_name (str): ["bring_ball", "bring_peg", "insert_ball", "insert_peg"]
-            seed (int): Seed for random number generator
-            timeout (int): Max episode length
-        """
-        """ Outputs state transition data as torch arrays """
-        if task_name != "bring_ball":
-            raise NotImplemented(task_name)
-
-        self.env = suite.load(domain_name="manipulator", task_name=task_name, task_kwargs={'random': seed})
-        self._timeout = timeout
-
-    def make_obs(self, x):
-        obs = torch.zeros((1, 8), dtype=torch.float32)
-        obs[:, :4] = torch.as_tensor(x.observation['position'].astype(np.float32))
-        obs[:, 4:] = torch.as_tensor(x.observation['velocity'].astype(np.float32))
-        return obs
-
-    def reset(self):
-        self.steps = 0
-        return self.make_obs(self.env.reset())
-
-    def step(self, action):
-        self.steps += 1
-
-        x = self.env.step(action)
-        next_obs = self.make_obs(x)
-        reward = -0.01
-        done = x.reward or self.steps == self._timeout
-        info = {}
-
-        return next_obs, reward, done, info
-
-    @property
-    def observation_space(self):
-        return Box(shape=(8,), high=10, low=-10)
-
-    @property
-    def action_space(self):
-        return Box(shape=(2,), high=1, low=-1)
-
-
-def visualize_behavior(domain_name, task_name, seed=1):
-    # Load one task
-    # env = suite.load(domain_name="dog", task_name="fetch")
-    env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
-
-    # N.B: See suite.ALL_TASKS for a list of tasks
-    # Iterate over a task set:
-    # for domain_name, task_name in suite.BENCHMARKING: # suite.ALL_TASKS
-    #   env = suite.load(domain_name, task_name)
-
-    # Step through an episode and print out reward, discount and observation.
-    action_spec = env.action_spec()
-    time_step = env.reset()
-
-    # create two subplots
-    img = env.physics.render()
-    ax1 = plt.subplot(1, 1, 1)
-    im1 = ax1.imshow(img)
-    while not time_step.last():
-        action = np.random.uniform(action_spec.minimum,
-                                   action_spec.maximum,
-                                   size=action_spec.shape)
-        time_step = env.step(action)
-        img = env.physics.render()
-        im1.set_data(img)
-        plt.pause(0.02)
-        # print(time_step.reward, time_step.discount, time_step.observation)
-
-def random_policy_stats():
-    # Problem
-    seed = 1
-    timeout = 1000
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+def ranndom_policy_hits_vs_timeout():
+    total_steps = 20000
+    timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
 
     # Env
-    # env = BallInCupWrapper(seed, timeout=timeout, penalty=-1)
-    env = ReacherWrapper(seed=seed, mode="hard", timeout=timeout)
-    # env = suite.load(domain_name="quadruped", task_name="fetch", task_kwargs={'random': seed})
-    # env = suite.load(domain_name="reacher", task_name="easy", task_kwargs={'random': seed})
-    if not hasattr(env, "_action_dim"):
-        env._action_dim = env.action_spec().shape[0]
+    envs = ['dm reacher easy', 'dm reacher hard', 'ball in cup']
+    envs = ['dm reacher hard']
+    for env_s in envs:
+        steps_record = open(f"{env_s}_steps_record.txt", 'w')
+        hits_record = open(f"{env_s}_random_stat.txt", 'w')
 
-    # Experiment
-    EP = 40
-    rets = []
-    ep_lens = []
-    steps = 0
-    for ep in range(EP):
-        obs = env.reset()
-        ret = 0
-        epi_steps = 0
-        while True:
-            # Take action
-            A = torch.rand((1, env._action_dim))
-            # A = A * (env.action_space.high - env.action_space.low) + env.action_space.low
-            # print(A)
+        for timeout in tqdm(timeouts):
+            for seed in range(30):
+                torch.manual_seed(seed)
+                np.random.seed(seed)
 
-            # Receive reward and next state            
-            next_obs, reward, done, _ = env.step(A)
-            
-            # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
+                if env_s == 'ball in cup':
+                    env = BallInCupWrapper(seed)
+                elif env_s == 'dm reacher torture':
+                    env = ReacherWrapper(seed=seed, mode="torture")
+                elif env_s == 'dm reacher hard':
+                    env = ReacherWrapper(seed=seed, mode="hard")
+                elif env_s == 'dm reacher easy':
+                    env = ReacherWrapper(seed=seed, mode="easy")
+                else:
+                    raise NotImplementedError()
 
-            # Log
-            ret += reward
-            steps += 1
-            epi_steps += 1
+                if not hasattr(env, "_action_dim"):
+                    env._action_dim = env.action_spec().shape[0]
 
-            # Termination
-            if done or epi_steps == timeout:
-                rets.append(ret)
-                ep_lens.append(epi_steps)
-                print('-' * 50)
-                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(ep, epi_steps, ret, steps))
-                print('-' * 50)
-                break
+                steps_record.write(f"timeout={timeout}, seed={seed}: ")
+                # Experiment
+                hits = 0
+                steps = 0
+                epi_steps = 0
+                env.reset()
+                while steps < total_steps:
+                    action = np.random.normal(size=env.action_space.shape)
 
-            obs = next_obs
+                    # Receive reward and next state            
+                    _, _, done, _ = env.step(action)
+                    
+                    # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
 
-    # Random policy stats
-    rets = np.array(rets)
-    ep_lens = np.array(ep_lens)
+                    # Log
+                    steps += 1
+                    epi_steps += 1
 
-    prev_steps = 0
-    new_ep_lens = []
-    for steps in ep_lens:
-        if steps == timeout:
-            prev_steps += steps
-        else:
-            new_ep_lens.append(steps + prev_steps)
-            prev_steps = 0
-    
-    print(new_ep_lens)
-    print(np.mean(new_ep_lens), np.median(new_ep_lens), np.std(new_ep_lens) / np.sqrt(len(new_ep_lens) - 1))
+                    # Termination
+                    if done or epi_steps == timeout:
+                        if 'dm reacher' in env_s:
+                            env.reset(randomize_target=done)
+                        else:
+                            env.reset()
+                            
+                        epi_steps = 0
 
-    print("Mean: {:.2f}".format(np.mean(ep_lens)))
-    print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
-    print("Median: {:.2f}".format(np.median(ep_lens)))
-    inds = np.where(ep_lens == timeout)
-    print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
-    print("Max length:", max(ep_lens))
-    print("Min length:", min(ep_lens))
-    print(np.mean(ep_lens[np.where(ep_lens != env._timeout)]))
+                        if done:
+                            hits += 1
+                        else:
+                            steps += 20
+                            
+                        steps_record.write(str(steps)+', ')
 
-def interaction(domain_name, task_name, seed=1):
-    # Load one task:
-    # env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={'random': seed})
-    env = ReacherWrapper(tol=0.009, timeout=5000, seed=0)
-
-    # Step through an episode and print out reward, discount and observation.
-    action_spec = env.action_spec()
-    EP = 50
-    rets = []
-    ep_lens = []
-    for i in range(EP):
-        time_step = env.reset()
-        steps = 0
-        ret = 0
-        while not time_step.last():
-            action = np.random.uniform(action_spec.minimum,
-                                       action_spec.maximum,
-                                       size=action_spec.shape)
-            time_step = env.step(action)
-            print(steps, time_step.reward, time_step.discount)
-            steps += 1
-            ret += time_step.reward
-        rets.append(ret)
-        ep_lens.append(steps)
-        print('-' * 100)
-        print("Episode: {} ended in {} steps with return: {}".format(i+1, steps, ret))
-        print('-' * 100)
-
-    # Random policy stats
-    rets = np.array(rets)
-    ep_lens = np.array(ep_lens)
-    print("Mean: {:.2f}".format(np.mean(ep_lens)))
-    print("Standard Error: {:.2f}".format(np.std(ep_lens) / np.sqrt(len(ep_lens) - 1)))
-    print("Median: {:.2f}".format(np.median(ep_lens)))
-    inds = np.where(ep_lens == env._timeout)
-    print("Success Rate (%): {:.2f}".format((1 - len(inds[0]) / len(ep_lens)) * 100.))
-    print("Max length:", max(ep_lens))
-    print("Min length:", min(ep_lens))
+                steps_record.write('\n')
+                hits_record.write(f"timeout={timeout}, seed={seed}: {hits}\n")
+        
+        steps_record.close()
+        hits_record.close()
 
 if __name__ == '__main__':
     # for domain_name, task_name in suite.ALL_TASKS: # suite.BENCHMARKING
@@ -353,18 +330,24 @@ if __name__ == '__main__':
 
     # r = ReacherWrapper(seed=1)
     # random_policy_stats()
-    env = ReacherWrapper(0, 1000, use_image=True)
-    (img, obs) = env.reset()
-    print(img.shape)
-    img_to_show = np.transpose(img, [1, 2, 0])
-    img_to_show = img_to_show[:,:,-3:]
-    cv2.imshow('', img_to_show)
-    cv2.waitKey(0)
+    ranndom_policy_hits_vs_timeout()
+    # env = BallInCupWrapper(1, 1000, use_image=True)
+    # env = ReacherWrapper(seed=1, timeout=50, use_image=True)
+    # obs = env.reset()
+    # img = obs.images
 
-    for _ in range(1000):
-        action = env.action_space.sample()
-        (next_img, _), _, _, _ = env.step(action)
-        img_to_show = np.transpose(next_img, [1, 2, 0])
-        img_to_show = img_to_show[:,:,-3:]
-        cv2.imshow('', img_to_show)
-        cv2.waitKey(50)
+    # print(img.shape)
+    # img_to_show = np.transpose(img, [1, 2, 0])
+    # img_to_show = img_to_show[:,:,-3:]
+    # cv2.imshow('', img_to_show)
+    # cv2.waitKey(0)
+
+    # for t in range(1000):
+    #     randomize_target = t % 100 == 0
+            
+    #     next_obs = env.reset(randomize_target=randomize_target)
+    #     next_img = next_obs.images
+    #     img_to_show = np.transpose(next_img, [1, 2, 0])
+    #     img_to_show = img_to_show[:,:,-3:]
+    #     cv2.imshow('', img_to_show)
+    #     cv2.waitKey(50)
