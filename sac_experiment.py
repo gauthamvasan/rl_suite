@@ -228,7 +228,8 @@ class SACExperiment(Experiment):
 
     def _run_init_policy_test(self):
         timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
-
+        timeouts = [1, 2, 5, 10, 25]
+        total_steps = 20000
         steps_record = open(f"{self.args.env}_steps_record.txt", 'w')
         hits_record = open(f"{self.args.env}_random_stat.txt", 'w')
 
@@ -243,9 +244,9 @@ class SACExperiment(Experiment):
                 steps = 0
                 epi_steps = 0
                 obs = self.env.reset()
-                while steps < self.args.N:
-                    action = self.learner.sample_action(obs)
-
+                while steps < total_steps:
+                    # action = self.learner.sample_action(obs)
+                    action = np.random.normal(size=self.env.action_space.shape)
                     # Receive reward and next state            
                     _, _, done, _ = self.env.step(action)
                     
