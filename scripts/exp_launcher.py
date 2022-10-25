@@ -10,6 +10,7 @@ visual_steps = {
         "ball_in_cup": 200000,
         "dm_reacher_hard": 200000,
         "dm_reacher_easy": 200000,
+        "dm_reacher_torture": 200000,
         "mj_reacher": 200000
         }
 
@@ -17,6 +18,7 @@ non_visual_steps = {
         "ball_in_cup": 200000,
         "dm_reacher_hard": 200000,
         "dm_reacher_easy": 200000,
+        "dm_reacher_torture": 200000,
         "mj_reacher": 200000
         }
 
@@ -25,10 +27,10 @@ def generate_exps():
     
     # exp settings
     algos = ["sac", "sac_rad"]
-    algos = ["sac_rad",]
-    envs = ["ball_in_cup", "dm_reacher_hard", "dm_reacher_easy"]
-    envs = ["dm_reacher_hard"]
-    timeouts = [500, 1000, 5000]
+    algos = ["sac",]
+    envs = ["ball_in_cup", "dm_reacher_torture", "dm_reacher_hard", "dm_reacher_easy"]
+    envs = ["dm_reacher_torture"]
+    timeouts = [500]
     seeds = range(30)
     factor = 10
 
