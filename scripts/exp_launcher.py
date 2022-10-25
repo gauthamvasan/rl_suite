@@ -78,12 +78,14 @@ def cc_exp(exps):
 
         requested_time = '01:00:00' if algo == "sac" else '06:00:00'
         requested_mem = '3G' if algo == "sac" else '24G'
+        script_folder = project_dir/'script'
+        
         params = [  
             'sbatch',
             '--time='+requested_time,
             '--mem='+requested_mem,
             "--output="+output_filename,
-            './cc_job.sh', 
+            str(script_folder)+'/cc_job.sh', 
             env,
             seed, 
             N,
@@ -94,6 +96,7 @@ def cc_exp(exps):
             results_dir,
             experiment_dir,
             description,
+            str(sac_exp_filename)
         ]
 
         command = " ".join(params)
@@ -114,7 +117,7 @@ def workstation_exp(exp):
     output_filename = exp["output_filename"]+'.txt'
 
     with open(output_filename+'.out', 'w') as out_file:
-        param = ['python3', '-u', 'sac_experiment.py', 
+        param = ['python3', '-u', str(sac_exp_filename), 
                                     '--env', env,
                                     '--seed', seed, 
                                     '--N', N,
@@ -130,7 +133,7 @@ def workstation_exp(exp):
 
 def parse_args():
         parser = argparse.ArgumentParser()
-        parser.add_argument('--target', '-t', required=True, type=str)
+        parser.add_argument('--target', '-t', default='workstation', type=str)
         args = parser.parse_args()
         
         return args
@@ -149,6 +152,7 @@ def run_exp():
         raise NotImplementedError()
 
 if __name__ == '__main__':
-    work_dir = Path(__file__).parent
-    os.chdir(work_dir)
+    project_dir = Path(__file__).parent.parent
+    os.chdir(project_dir)
+    sac_exp_filename = project_dir/'rl_suite'/'sac_experiment.py'
     run_exp()
