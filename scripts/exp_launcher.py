@@ -30,7 +30,7 @@ def generate_exps():
     algos = ["sac",]
     envs = ["ball_in_cup", "dm_reacher_torture", "dm_reacher_hard", "dm_reacher_easy"]
     envs = ["dm_reacher_torture"]
-    timeouts = [500]
+    timeouts = [10, 25, 50, 100, 500, 1000]
     seeds = range(30)
     factor = 10
 
@@ -78,7 +78,7 @@ def cc_exp(exps):
 
         requested_time = '01:00:00' if algo == "sac" else '06:00:00'
         requested_mem = '3G' if algo == "sac" else '24G'
-        script_folder = project_dir/'script'
+        script_folder = project_dir/'scripts'
         
         params = [  
             'sbatch',
@@ -152,7 +152,7 @@ def run_exp():
         raise NotImplementedError()
 
 if __name__ == '__main__':
-    project_dir = Path(__file__).parent.parent
+    project_dir = Path(os.path.abspath(__file__)).parent.parent
     os.chdir(project_dir)
     sac_exp_filename = project_dir/'rl_suite'/'sac_experiment.py'
     run_exp()
