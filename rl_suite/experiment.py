@@ -107,22 +107,21 @@ class Experiment:
         # torch.use_deterministic_algorithms(True)
 
     def show_learning_curve(self, rets, ep_lens, save_fig=True):
-        
-
-        plot_rets, plot_x = smoothed_curve(
-                np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)
-        if len(plot_rets):
-            plt.clf()
-            if self.args.xlimit is not None:
-                plt.xlim(self.args.xlimit)
-        
-            if self.args.ylimit is not None:
-                plt.ylim(self.args.ylimit)
-                
-            plt.plot(plot_x, plot_rets)
-            plt.pause(0.001)
-            if save_fig:
-                plt.savefig(self._return_dir/f"{self.run_id}_learning_curve.png")
+        if len(rets) > 0:
+            plot_rets, plot_x = smoothed_curve(
+                    np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)
+            if len(plot_rets):
+                plt.clf()
+                if self.args.xlimit is not None:
+                    plt.xlim(self.args.xlimit)
+            
+                if self.args.ylimit is not None:
+                    plt.ylim(self.args.ylimit)
+                    
+                plt.plot(plot_x, plot_rets)
+                plt.pause(0.001)
+                if save_fig:
+                    plt.savefig(self._return_dir/f"{self.run_id}_learning_curve.png")
     
     def run(self):
         """ This needs to be algorithm specific """

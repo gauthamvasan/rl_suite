@@ -225,6 +225,7 @@ class SACExperiment(Experiment):
 
         duration = datetime.now() - start_time
         self.save_model(self.args.N)
+        self.save_returns(returns, epi_lens)
         self.show_learning_curve(returns, epi_lens, save_fig=True)
 
         print(f"Finished in {duration}")
