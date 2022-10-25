@@ -220,7 +220,7 @@ class SACExperiment(Experiment):
                 returns.append(ret)
                 epi_lens.append(epi_steps)
                 self.save_returns(returns, epi_lens)
-                self.show_learning_curve(returns, epi_lens, save_fig=True)
+                self.learning_curve(returns, epi_lens, save_fig=True)
                 print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
