@@ -3,7 +3,6 @@ General experiment template script
 - N.B: Use `export MUJOCO_GL=osmesa` for compute canada (https://github.com/deepmind/dm_control/issues/48)
 """
 
-
 import argparse
 import gym
 import torch
@@ -33,7 +32,7 @@ if platform == "darwin":
 
 class Experiment:
     def __init__(self, args):
-        self.run_id = datetime.now().strftime("%Y-%m-%d %H_%M")
+        self.run_id = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
         self.args = args
 
         assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
@@ -41,8 +40,8 @@ class Experiment:
         self._return_dir = Path(args.results_dir)/args.experiment_dir/'returns'
         self._model_dir = Path(args.results_dir)/args.experiment_dir/'models'
 
-        os.makedirs(self._return_dir, exist_ok=False)
-        os.makedirs(self._model_dir, exist_ok=False)
+        self.make_dir(self._return_dir)
+        self.make_dir(self._model_dir)
 
         hyperparas_dict = vars(self.args)
         hyperparas_dict["device"] = str(hyperparas_dict["device"])
@@ -106,7 +105,7 @@ class Experiment:
         
         # torch.use_deterministic_algorithms(True)
 
-    def show_learning_curve(self, rets, ep_lens, save_fig=True):
+    def learning_curve(self, rets, ep_lens, save_fig=True):
         if len(rets) > 0:
             plot_rets, plot_x = smoothed_curve(
                     np.array(rets), np.array(ep_lens), x_tick=self.args.checkpoint, window_len=self.args.checkpoint)
@@ -127,6 +126,13 @@ class Experiment:
         """ This needs to be algorithm specific """
         raise NotImplemented
 
+    @staticmethod
+    def make_dir(dir_path):
+        try:
+            os.makedirs(dir_path, exist_ok=True)
+        except OSError as e:
+            print(e)
+        return dir_path
 
 
 class MySQLExperiment(Experiment):
