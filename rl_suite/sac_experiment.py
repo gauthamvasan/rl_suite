@@ -225,6 +225,7 @@ class SACExperiment(Experiment):
 
         duration = datetime.now() - start_time
         self.save_model(self.args.N)
+        self.save_returns(returns, epi_lens)
         self.show_learning_curve(returns, epi_lens, save_fig=True)
 
         print(f"Finished in {duration}")
@@ -232,7 +233,6 @@ class SACExperiment(Experiment):
     def _run_init_policy_test(self):
         """ N.B: Use only for minimum-time tasks """
         timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
-        timeouts = [100, 500, 1000, 5000]
         total_steps = 20000
         steps_record = open(f"{self.args.env}_steps_record.txt", 'w')
         hits_record = open(f"{self.args.env}_random_stat.txt", 'w')
