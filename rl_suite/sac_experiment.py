@@ -93,7 +93,6 @@ class SACExperiment(Experiment):
         parser.add_argument('--ylimit', default=None, type=str)
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
-        parser.add_argument('--description', required=True, type=str)
         args = parser.parse_args()
 
         assert args.algo in ["sac", "sac_rad"]
@@ -226,7 +225,7 @@ class SACExperiment(Experiment):
         duration = datetime.now() - start_time
         self.save_model(self.args.N)
         self.save_returns(returns, epi_lens)
-        self.show_learning_curve(returns, epi_lens, save_fig=True)
+        self.learning_curve(returns, epi_lens, save_fig=True)
 
         print(f"Finished in {duration}")
 
@@ -285,6 +284,7 @@ class SACExperiment(Experiment):
 def main():
     runner = SACExperiment()
     runner.run()
+    # runner._run_init_policy_test()
 
 if __name__ == "__main__":
     main()
