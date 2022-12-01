@@ -30,6 +30,21 @@ if platform == "darwin":
     mpl.use("Qt5Agg")
 
 
+class NpEncoder(json.JSONEncoder):
+    """ 
+    JSON does not like Numpy elements. Convert to native python datatypes for json dump.  
+    Ref: https://bobbyhadz.com/blog/python-typeerror-object-of-type-int64-is-not-json-serializable
+    """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
 class Experiment:
     def __init__(self, args):
         self.run_id = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
@@ -43,31 +58,35 @@ class Experiment:
         self.make_dir(self._return_dir)
         self.make_dir(self._model_dir)
 
+        self.save_args()
+
+    def save_args(self):
+        """ Save hyper-parameters as a json file """
         hyperparas_dict = vars(self.args)
         hyperparas_dict["device"] = str(hyperparas_dict["device"])
-        json.dump(hyperparas_dict, open(self._return_dir/f"{self.run_id}_args.json", 'w'), indent=4)
+        json.dump(hyperparas_dict, open(self._return_dir/f"{self.run_id}_args.json", 'w'), indent=4, cls=NpEncoder)
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
-            env = BallInCupWrapper(seed=self.args.seed, penalty=self.args.reward, use_image=self.args.algo=="sac_rad")
+            env = BallInCupWrapper(seed=self.args.seed, penalty=self.args.reward, use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_easy":
-            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.algo=="sac_rad")
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_hard":
-            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.algo=="sac_rad")
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_torture":
-            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.algo=="sac_rad")
+            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.use_image)
         elif self.args.env == "dot_reacher":
-            if self.args.algo=="sac":
-                env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
-                    dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
-            else:
+            if self.args.use_image:
                 env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
+            else:
+                env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
+                    dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)                
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
         elif self.args.env == "mj_reacher":
-            env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.algo=="sac_rad")            
+            env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.use_image)            
         else:
             raise NotImplementedError()
         env.name = self.args.env

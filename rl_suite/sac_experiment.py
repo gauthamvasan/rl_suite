@@ -45,7 +45,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--seed', required=True, type=int, help="Seed for random number generator")       
         parser.add_argument('--N', required=True, type=int, help="# timesteps for the run")
         parser.add_argument('--timeout', required=True, type=int, help="Timeout for the env")
-        # Minimum-time tasks
+        parser.add_argument('--use_image', action='store_true')
+        ## Minimum-time tasks
         parser.add_argument('--reward', default=-1, type=float, help="Reward penalty for min-time specification")
         parser.add_argument('--reset_penalty_steps', default=20, type=float, help="Reset penalty steps for min-time specification")
         ## Mujoco sparse reacher
