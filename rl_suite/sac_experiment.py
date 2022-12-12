@@ -208,7 +208,7 @@ class SACExperiment(Experiment):
                     sub_epi += 1
                     ret += self.args.reset_penalty_steps * self.args.reward
                     total_steps += self.args.reset_penalty_steps
-                    # print(f'Sub episode {sub_epi} done.')
+                    print(f'Sub episode {sub_epi} done.')
                     if 'dm_reacher' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
                     else:
