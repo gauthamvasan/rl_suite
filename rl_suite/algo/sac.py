@@ -17,12 +17,13 @@ class SAC:
         self.gamma = cfg.gamma
         self.critic_tau = cfg.critic_tau
         self.encoder_tau = cfg.encoder_tau
-        self.actor_update_freq = cfg.actor_update_freq
-        self.critic_target_update_freq = cfg.critic_target_update_freq
+        self.update_actor_every = cfg.update_actor_every
+        self.update_critic_target_every = cfg.update_critic_target_every
 
         self.actor_lr = cfg.actor_lr
         self.critic_lr = cfg.critic_lr
         self.alpha_lr = cfg.alpha_lr
+        self.betas = cfg.betas
 
         self.actor = SquashedGaussianMLPActor(cfg.obs_dim, cfg.action_dim, cfg.actor_nn_params, device)
         self.critic = SACCritic(cfg.obs_dim, cfg.action_dim, cfg.critic_nn_params, device)
@@ -53,11 +54,11 @@ class SAC:
 
     def init_optimizers(self):
         self.actor_optimizer = torch.optim.Adam(
-            self.actor.parameters(), lr=self.actor_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
+            self.actor.parameters(), lr=self.actor_lr, betas=self.betas, weight_decay=self.cfg.l2_reg,
         )
 
         self.critic_optimizer = torch.optim.Adam(
-            self.critic.parameters(), lr=self.critic_lr, betas=(0.9, 0.999), weight_decay=self.cfg.l2_reg,
+            self.critic.parameters(), lr=self.critic_lr, betas=self.betas, weight_decay=self.cfg.l2_reg,
         )
 
         self.log_alpha_optimizer = torch.optim.Adam(
@@ -84,16 +85,17 @@ class SAC:
     def update_critic(self, obs, action, reward, next_obs, done):
         with torch.no_grad():
             _, policy_action, log_p, _ = self.actor(next_obs)
-            target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
+            target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)            
             target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_p
+            
             if self.cfg.bootstrap_terminal:
                 # enable infinite bootstrap
                 target_Q = reward + (self.cfg.gamma * target_V)
             else:
                 target_Q = reward + ((1.0 - done) * self.cfg.gamma * target_V)
-
+            
         # get current Q estimates
-        current_Q1, current_Q2 = self.critic(obs, action)
+        current_Q1, current_Q2 = self.critic(obs, action)        
         critic_loss = torch.mean(
             (current_Q1 - target_Q) ** 2 + (current_Q2 - target_Q) ** 2
         )
@@ -117,7 +119,7 @@ class SAC:
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_p - actor_Q).mean()
 
-        entropy = 0.5 * log_std.shape[1] * (1.0 + np.log(2 * np.pi)) + log_std.sum(dim=-1)
+        entropy = 0.5 * log_std.shape[1] * (1.0 + np.log(2 * np.pi)) + log_std.sum(dim=-1)        
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
@@ -147,10 +149,10 @@ class SAC:
         # print(obs.shape, action.shape, reward.shape, next_obs.shape, done.shape)
         # regular update of SAC_RAD, sequentially augment data and train
         stats = self.update_critic(obs, action, reward, next_obs, done)
-        if self.num_updates % self.actor_update_freq == 0:
+        if self.num_updates % self.update_actor_every == 0:
             actor_stats = self.update_actor_and_alpha(obs)
             stats = {**stats, **actor_stats}
-        if self.num_updates % self.critic_target_update_freq == 0:
+        if self.num_updates % self.update_critic_target_every == 0:
             self.soft_update_target()
         stats['train/batch_reward'] = reward.mean().item()
         stats['train/num_updates'] = self.num_updates
@@ -210,3 +212,4 @@ class SACAgent(SAC):
                 stat = self.update(*self._replay_buffer.sample())
                 # print(time.time() - tic)
         return stat
+  
