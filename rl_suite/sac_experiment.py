@@ -66,13 +66,14 @@ class SACExperiment(Experiment):
         parser.add_argument('--gamma', default=0.99, type=float, help="Discount factor")
         parser.add_argument('--bootstrap_terminal', default=0, type=int, help="Bootstrap on terminal state")
         parser.add_argument('--normalize', default=0, type=int, help="Normalize observation")
+        parser.add_argument('--betas', default="0.9 0.999", type=str)
         ## Actor
         parser.add_argument('--actor_lr', default=3e-4, type=float)
-        parser.add_argument('--actor_update_freq', default=1, type=int)
+        parser.add_argument('--update_actor_every', default=1, type=int)
         ## Critic
         parser.add_argument('--critic_lr', default=3e-4, type=float)
         parser.add_argument('--critic_tau', default=0.005, type=float)
-        parser.add_argument('--critic_target_update_freq', default=1, type=int)
+        parser.add_argument('--update_critic_target_every', default=1, type=int)
         ## Entropy
         parser.add_argument('--init_temperature', default=0.1, type=float)
         parser.add_argument('--alpha_lr', default=3e-4, type=float)
@@ -104,6 +105,8 @@ class SACExperiment(Experiment):
 
         if args.ylimit is not None:
             args.ylimit = tuple(args.ylimit)
+        
+        args.betas = list(map(float, args.betas.split()))
 
         if args.algo == "sac":
             args.actor_nn_params = {
@@ -194,6 +197,8 @@ class SACExperiment(Experiment):
                     self.learner.push_and_update(obs, action, r, epi_done)
                 else:
                     self.learner.push_and_update(img, prop, action, r, epi_done)
+                
+                # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(epi_steps, next_obs, r, epi_done))
 
                 obs = next_obs
 
@@ -233,6 +238,7 @@ class SACExperiment(Experiment):
     def _run_init_policy_test(self):
         """ N.B: Use only for minimum-time tasks """
         timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
+        timeouts = [50, 100, 500, 1000]
         total_steps = 20000
         steps_record = open(f"{self.args.env}_steps_record.txt", 'w')
         hits_record = open(f"{self.args.env}_random_stat.txt", 'w')
@@ -284,8 +290,8 @@ class SACExperiment(Experiment):
 
 def main():
     runner = SACExperiment()
-    runner.run()
-    # runner._run_init_policy_test()
+    # runner.run()
+    runner._run_init_policy_test()
 
 if __name__ == "__main__":
     main()
