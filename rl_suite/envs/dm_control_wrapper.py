@@ -18,7 +18,43 @@ from gym.spaces import Box
 from collections import deque
 from tqdm import tqdm
 
-class BallInCupWrapper:
+
+class DMControlBaseEnv:
+    def __init__(self):
+        pass
+    
+    def reset(self):
+        raise NotImplemented
+    
+    def step(self, action):
+        raise NotImplemented
+    
+    @property
+    def observation_space(self):
+        return Box(shape=(self._obs_dim,), high=10, low=-10)
+
+    @property
+    def image_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+
+        image_shape = (3 * self._image_buffer.maxlen, 100, 120)
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        if not self._use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+        
+        return self.observation_space
+
+    @property
+    def action_space(self):
+        return Box(shape=(self._action_dim,), high=1, low=-1)
+    
+
+class BallInCupWrapper(DMControlBaseEnv):
+    """ Minimum-time variant of Ball in a cup env """
     def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed, 'time_limit': float('inf')})
@@ -85,30 +121,9 @@ class BallInCupWrapper:
 
         return next_obs, reward, done, info
 
-    @property
-    def observation_space(self):
-        return Box(shape=(self._obs_dim,), high=10, low=-10)
 
-    @property
-    def image_space(self):
-        if not self._use_image:
-            raise AttributeError(f'use_image={self._use_image}')
-
-        image_shape = (3 * self._image_buffer.maxlen, 100, 120)
-        return Box(low=0, high=255, shape=image_shape)
-
-    @property
-    def proprioception_space(self):
-        if not self._use_image:
-            raise AttributeError(f'use_image={self._use_image}')
-        
-        return self.observation_space
-
-    @property
-    def action_space(self):
-        return Box(shape=(self._action_dim,), high=1, low=-1)
-
-class ReacherWrapper:
+class ReacherWrapper(DMControlBaseEnv):
+    """ Minimum-time variant of reacher env with 3 modes: Easy, Hard,  """
     def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         assert mode in ["easy", "hard", "torture"]
@@ -221,10 +236,6 @@ class ReacherWrapper:
         return next_obs, reward, done, info
 
     @property
-    def observation_space(self):
-        return Box(shape=(self._obs_dim,), high=10, low=-10)
-
-    @property
     def image_space(self):
         if not self._use_image:
             raise AttributeError(f'use_image={self._use_image}')
@@ -232,18 +243,73 @@ class ReacherWrapper:
         image_shape = (3 * self._image_buffer.maxlen, 70, 100)
         return Box(low=0, high=255, shape=image_shape)
 
-    @property
-    def proprioception_space(self):
-        if not self._use_image:
-            raise AttributeError(f'use_image={self._use_image}')
-        
-        return self.observation_space
-        
-    @property
-    def action_space(self):
-        return Box(shape=(self._action_dim,), high=1, low=-1)
 
-def ranndom_policy_hits_vs_timeout():
+class AcrobotWrapper(DMControlBaseEnv):
+    def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
+        """ Outputs state transition data as torch arrays """
+        self.env = suite.load(domain_name="acrobot", task_name="swingup_sparse", task_kwargs={'random': seed, 'time_limit': float('inf')})
+        self.reward = penalty
+        self._obs_dim = 6
+        self._action_dim = 1
+
+        self._use_image = use_image
+        
+        if use_image:
+            self._image_buffer = deque([], maxlen=img_history)
+            print("Visual ball in cup")
+        else:
+            print('Non visual ball in cup')
+
+    def make_obs(self, x):
+        obs = np.zeros(self._obs_dim, dtype=np.float32)
+        obs[:4] = x.observation['orientations'].astype(np.float32)
+        obs[4:6] = x.observation['velocity'].astype(np.float32)
+        return obs
+
+    def _get_new_img(self):
+        img = self.env.physics.render()
+        img = img[20:120, 100:220, :]
+        img = np.transpose(img, [2, 0, 1])  # c, h, w
+        return img
+
+    def reset(self):
+        if self._use_image:
+            obs = Observation()
+            obs.proprioception = self.make_obs(self.env.reset())
+
+            new_img = self._get_new_img()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+
+            obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            obs = self.make_obs(self.env.reset())
+
+        return obs
+
+    def step(self, action):
+        if isinstance(action, torch.Tensor):
+            action = action.cpu().numpy().flatten()
+
+        x = self.env.step(action)
+
+        reward = self.reward
+        done = x.reward
+        info = {}
+
+        if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self.make_obs(x)
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            next_obs = self.make_obs(x)
+
+        return next_obs, reward, done, info
+
+
+def random_policy_hits_vs_timeout():
     total_steps = 20000
     timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
 
@@ -330,7 +396,7 @@ if __name__ == '__main__':
 
     # r = ReacherWrapper(seed=1)
     # random_policy_stats()
-    ranndom_policy_hits_vs_timeout()
+    # ranndom_policy_hits_vs_timeout()
     # env = BallInCupWrapper(1, 1000, use_image=True)
     # env = ReacherWrapper(seed=1, timeout=50, use_image=True)
     # obs = env.reset()
@@ -351,3 +417,5 @@ if __name__ == '__main__':
     #     img_to_show = img_to_show[:,:,-3:]
     #     cv2.imshow('', img_to_show)
     #     cv2.waitKey(50)
+
+    env = ReacherWrapper(seed=3)
