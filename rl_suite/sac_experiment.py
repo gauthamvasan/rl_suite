@@ -151,8 +151,10 @@ class SACExperiment(Experiment):
     def run(self):
         if self.args.run_type == 'experiment':
             self._run_experiment()
+            print("{}-{} run with {} steps starts now ...".format(self.args.env, self.args.algo, self.args.N))
         elif self.args.run_type == 'init_policy_test':
             self._run_init_policy_test()
+            print("Initial policy test")
         else:
             raise NotImplementedError()
 
@@ -213,7 +215,7 @@ class SACExperiment(Experiment):
                     sub_epi += 1
                     ret += self.args.reset_penalty_steps * self.args.reward
                     total_steps += self.args.reset_penalty_steps
-                    print(f'Sub episode {sub_epi} done.')
+                    print(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
                     if 'dm_reacher' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
                     else:
@@ -238,7 +240,6 @@ class SACExperiment(Experiment):
     def _run_init_policy_test(self):
         """ N.B: Use only for minimum-time tasks """
         timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
-        timeouts = [50, 100, 500, 1000]
         total_steps = 20000
         steps_record = open(f"{self.args.env}_steps_record.txt", 'w')
         hits_record = open(f"{self.args.env}_random_stat.txt", 'w')
@@ -290,8 +291,7 @@ class SACExperiment(Experiment):
 
 def main():
     runner = SACExperiment()
-    # runner.run()
-    runner._run_init_policy_test()
+    runner.run()
 
 if __name__ == "__main__":
     main()
