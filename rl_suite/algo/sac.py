@@ -208,8 +208,9 @@ class SACAgent(SAC):
         stat = {}
         if self.steps > self.cfg.init_steps and (self.steps % self.cfg.update_every == 0):
             for _ in range(self.cfg.update_epochs):
-                # tic = time.time()
+                tic = time.time()
                 stat = self.update(*self._replay_buffer.sample())
-                # print(time.time() - tic)
+                # if self.num_updates %100 == 0:
+                    # print(f"Update {self.num_updates} took {time.time() - tic}s")
         return stat
   
