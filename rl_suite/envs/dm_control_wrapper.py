@@ -256,9 +256,9 @@ class AcrobotWrapper(DMControlBaseEnv):
         
         if use_image:
             self._image_buffer = deque([], maxlen=img_history)
-            print("Visual ball in cup")
+            raise NotImplemented
         else:
-            print('Non visual ball in cup')
+            print('Non-visual minimum-time Acrobot')
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
@@ -308,6 +308,71 @@ class AcrobotWrapper(DMControlBaseEnv):
 
         return next_obs, reward, done, info
 
+
+
+class PendulumWrapper(DMControlBaseEnv):
+    def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
+        """ Outputs state transition data as torch arrays """
+        self.env = suite.load(domain_name="pendulum", task_name="swingup", task_kwargs={'random': seed, 'time_limit': float('inf')})
+        self.reward = penalty
+        self._obs_dim = 3
+        self._action_dim = 1
+
+        self._use_image = use_image
+        
+        if use_image:
+            self._image_buffer = deque([], maxlen=img_history)
+            raise NotImplemented
+        else:
+            print('Non-visual minimum-time Pendulum')
+
+    def make_obs(self, x):
+        obs = np.zeros(self._obs_dim, dtype=np.float32)
+        obs[:2] = x.observation['orientation'].astype(np.float32)
+        obs[2] = x.observation['velocity'].astype(np.float32)
+        return obs
+
+    def _get_new_img(self):
+        img = self.env.physics.render()
+        img = img[20:120, 100:220, :]
+        img = np.transpose(img, [2, 0, 1])  # c, h, w
+        return img
+
+    def reset(self):
+        if self._use_image:
+            obs = Observation()
+            obs.proprioception = self.make_obs(self.env.reset())
+
+            new_img = self._get_new_img()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+
+            obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            obs = self.make_obs(self.env.reset())
+
+        return obs
+
+    def step(self, action):
+        if isinstance(action, torch.Tensor):
+            action = action.cpu().numpy().flatten()
+
+        x = self.env.step(action)
+
+        reward = self.reward
+        done = x.reward
+        info = {}
+
+        if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self.make_obs(x)
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            next_obs = self.make_obs(x)
+
+        return next_obs, reward, done, info
 
 def random_policy_hits_vs_timeout():
     total_steps = 20000

@@ -19,7 +19,7 @@ from datetime import datetime
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.visual_reacher import MJReacherWrapper
-from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper
+from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper, PendulumWrapper
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 from pathlib import Path
@@ -89,6 +89,8 @@ class Experiment:
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.use_image)            
         elif self.args.env == "acrobot":
             env = AcrobotWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
+        elif self.args.env == "pendulum":
+            env = PendulumWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
