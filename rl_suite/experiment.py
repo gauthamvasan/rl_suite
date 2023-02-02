@@ -75,7 +75,14 @@ class Experiment:
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_torture":
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.use_image)
-        elif self.args.env == "dot_reacher":
+        elif "dot_reacher" in self.args.env:
+            if self.args.env == "dot_reacher_easy":
+                self.args.pos_tol = 0.25
+                self.args.vel_tol = 0.1
+            elif self.args.env == "dot_reacher_hard":
+                self.args.pos_tol = 0.1
+                self.args.vel_tol = 0.05
+                
             if self.args.use_image:
                 env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
