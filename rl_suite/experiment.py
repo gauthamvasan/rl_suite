@@ -48,6 +48,7 @@ class NpEncoder(json.JSONEncoder):
 class Experiment:
     def __init__(self, args):
         self.run_id = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
+        self.run_id += f"_seed-{args.seed}"
         self.args = args
 
         assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
