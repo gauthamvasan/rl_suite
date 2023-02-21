@@ -1,8 +1,14 @@
+"""
+DeepMind control suite tasks implemented in minimum-time formulation
+- https://github.com/deepmind/dm_control/tree/main/dm_control
+"""
+
 import cv2
 import torch
 import gym
 import dm_env
 import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 
