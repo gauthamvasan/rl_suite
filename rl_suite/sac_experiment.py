@@ -32,7 +32,7 @@ class SACExperiment(Experiment):
         else:
             self.args.image_shape = self.env.image_space.shape
             print("image shape:", self.args.image_shape)
-            self.args.proprioception_shape = self.env.proprioception_space
+            self.args.proprioception_shape = self.env.proprioception_space.shape
             self.args.action_shape = self.env.action_space.shape
             buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
                 self.args.action_shape, self.args.replay_buffer_capacity, self.args.batch_size)
