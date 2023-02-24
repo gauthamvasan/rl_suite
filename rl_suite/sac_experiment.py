@@ -214,6 +214,7 @@ class SACExperiment(Experiment):
                     sub_steps = 0
                     sub_epi += 1
                     ret += self.args.reset_penalty_steps * self.args.reward
+                    epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps
                     print(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
                     if 'dm_reacher' in self.args.env:
