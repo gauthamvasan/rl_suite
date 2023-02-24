@@ -14,8 +14,9 @@ from rl_suite.envs.dm_control_wrapper import DMControlBaseEnv, Observation
 
 
 class DMReacher(DMControlBaseEnv):
-    def __init__(self, seed, mode="easy", use_image=False, img_history=3):
+    def __init__(self, seed, mode="easy", timeout=1000, use_image=False, img_history=3):
         assert mode in ["easy", "hard"]
+        self.timeout = timeout
 
         self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed})
 
@@ -28,6 +29,8 @@ class DMReacher(DMControlBaseEnv):
             print(f'Visual dm reacher {mode}')
         else:
             print(f'Non visual dm reacher {mode}')
+        
+        self.steps = 0
 
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
@@ -46,6 +49,7 @@ class DMReacher(DMControlBaseEnv):
         return img
 
     def reset(self):
+        self.steps = 0
         if self._use_image:
             obs = Observation()
             obs.proprioception = self.make_obs(self.env.reset())
@@ -65,8 +69,9 @@ class DMReacher(DMControlBaseEnv):
 
         x = self.env.step(action)
 
+        self.steps +=  1
         reward = x.reward
-        done = x.last()
+        done = self.step == self.timeout
         info = {}
 
         if self._use_image:
@@ -83,10 +88,10 @@ class DMReacher(DMControlBaseEnv):
 
 def interaction():
     seed = 42
-    timeout = 1000
+    timeout = 100
     total_steps = 20000
 
-    env = DMReacher(seed=seed)
+    env = DMReacher(seed=seed, timeout=timeout)
     env.reset()
 
     steps = 0
