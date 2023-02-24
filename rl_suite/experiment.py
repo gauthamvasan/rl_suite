@@ -100,10 +100,10 @@ class Experiment:
             env = AcrobotWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
         elif self.args.env == "pendulum":
             env = PendulumWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
-        elif self.args.env == "reacher_easy":
-            env = DMReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
-        elif self.args.env == "reacher_hard":
-            env = DMReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
+        elif self.args.env == "gr_reacher_easy":
+            env = DMReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image, timeout=self.args.timeout)
+        elif self.args.env == "gr_reacher_hard":
+            env = DMReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image, timeout=self.args.timeout)
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
