@@ -200,7 +200,8 @@ class SACExperiment(Experiment):
                 else:
                     self.learner.push_and_update(img, prop, action, r, epi_done)
                 
-                # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(epi_steps, next_obs, r, epi_done))
+                # if total_steps % 10 == 0: 
+                #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(epi_steps, next_obs, r, epi_done))
 
                 obs = next_obs
 
