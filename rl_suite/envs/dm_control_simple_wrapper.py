@@ -71,7 +71,7 @@ class DMReacher(DMControlBaseEnv):
 
         self.steps +=  1
         reward = x.reward
-        done = self.step == self.timeout
+        done = self.steps == self.timeout
         info = {}
 
         if self._use_image:
