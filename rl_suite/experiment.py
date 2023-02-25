@@ -19,7 +19,7 @@ from datetime import datetime
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.visual_reacher import MJReacherWrapper
-from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper, PendulumWrapper
+from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper, PendulumWrapper, EuclideanReacher
 from rl_suite.envs.dm_control_simple_wrapper import DMReacher
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
@@ -77,6 +77,10 @@ class Experiment:
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_torture":
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.use_image)
+        elif self.args.env == "eu_reacher_easy":
+            env = EuclideanReacher(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.use_image)
+        elif self.args.env == "eu_reacher_hard":
+            env = EuclideanReacher(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif "dot_reacher" in self.args.env:
             if self.args.env == "dot_reacher_easy":
                 self.args.pos_tol = 0.25

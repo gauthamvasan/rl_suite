@@ -250,6 +250,33 @@ class ReacherWrapper(DMControlBaseEnv):
         return Box(low=0, high=255, shape=image_shape)
 
 
+class EuclideanReacher(ReacherWrapper):
+    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
+        super().__init__(seed, penalty=-1, mode="easy", use_image=False, img_history=3)
+    
+    def step(self, action):
+        if isinstance(action, torch.Tensor):
+            action = action.cpu().numpy().flatten()
+
+        x = self.env.step(action)
+
+        reward = -self.env._physics.finger_to_target_dist()
+        done = x.reward
+        info = {}
+
+        if self._use_image:
+            next_obs = Observation()
+            next_obs.proprioception = self.make_obs(x)
+            new_img = self._get_new_img()
+            self._image_buffer.append(new_img)
+            next_obs.images = np.concatenate(self._image_buffer, axis=0)
+        else:
+            next_obs = self.make_obs(x)
+            
+        return next_obs, reward, done, info
+
+
+
 class AcrobotWrapper(DMControlBaseEnv):
     def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
