@@ -252,7 +252,7 @@ class ReacherWrapper(DMControlBaseEnv):
 
 class EuclideanReacher(ReacherWrapper):
     def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
-        super().__init__(seed, penalty=-1, mode="easy", use_image=False, img_history=3)
+        super().__init__(seed, penalty=penalty, mode=mode, use_image=use_image, img_history=img_history)
     
     def step(self, action):
         if isinstance(action, torch.Tensor):
