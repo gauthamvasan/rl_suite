@@ -7,7 +7,8 @@ import numpy as np
 from gym.core import Env
 from gym.spaces.box import Box
 from beautifultable import BeautifulTable
-from rl_suite.envs.env_utils import Observation
+from rl_suite.envs import Observation
+
 
 class DotReacherEnv(Env):
     def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=-0.1):

@@ -10,7 +10,8 @@ import numpy as np
 
 from dm_control import suite
 from collections import deque
-from rl_suite.envs.dm_control_wrapper import DMControlBaseEnv, Observation
+from rl_suite.envs.dm_control_wrapper import DMControlBaseEnv
+from rl_suite.envs import Observation
 
 
 class DMReacher(DMControlBaseEnv):

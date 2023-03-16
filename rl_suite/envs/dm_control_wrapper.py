@@ -12,7 +12,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from rl_suite.envs.env_utils import Observation
+from rl_suite.envs import Observation
 from dm_control.suite.utils import randomizers
 from dm_control.suite.reacher import Reacher, Physics
 from dm_control.rl.control import flatten_observation

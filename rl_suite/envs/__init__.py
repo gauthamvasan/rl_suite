@@ -3,3 +3,4 @@ class Observation:
         self.images = None
         self.metadata = None
         self.proprioception = None
+        
