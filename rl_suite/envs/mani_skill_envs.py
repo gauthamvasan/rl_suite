@@ -123,6 +123,64 @@ def visualize_pick_cube():
 
     env.close()
 
+def demonstration():
+    import h5py
+    from tqdm import tqdm
+    from mani_skill2.utils.io_utils import load_json
+
+    # Load the trajectory data from the .h5 file
+    env_id = "PickCube-v0"
+    traj_path = f"/home/gautham/src/ManiSkill2/demos/rigid_body/{env_id}/trajectory.h5"
+    # You can also replace the above path with the trajectory you just recorded (./tmp/trajectory.h5)
+    h5_file = h5py.File(traj_path, "r")
+
+    # Load associated json
+    json_path = traj_path.replace(".h5", ".json")
+    json_data = load_json(json_path)
+
+    episodes = json_data["episodes"]  # meta data of each episode
+    env_info = json_data["env_info"]
+    env_id = env_info["env_id"]
+    env_kwargs = env_info["env_kwargs"]
+
+    print("env_id:", env_id)
+    print("env_kwargs:", env_kwargs)
+    print("#episodes:", len(episodes))    
+
+    all_rets = []
+    all_ep_lens = []
+    for episode_idx in range(len(episodes)):
+        episodes = json_data["episodes"]
+        ep = episodes[episode_idx]
+        # episode_id should be the same as episode_idx, unless specified otherwise
+        episode_id = ep["episode_id"]
+        traj = h5_file[f"traj_{episode_id}"]
+
+        # Create the environment
+        env_kwargs = json_data["env_info"]["env_kwargs"]
+        env = gym.make(env_id, **env_kwargs)
+        # Reset the environment
+        reset_kwargs = ep["reset_kwargs"].copy()
+        reset_kwargs["seed"] = ep["episode_seed"]
+        env.reset(**reset_kwargs)
+
+        ret = 0
+        ep_len = len(traj["actions"])
+        for i in tqdm(range(ep_len)):
+            action = traj["actions"][i]
+            obs, reward, done, info = env.step(action)
+            # env.render()
+            ret += reward
+        
+        all_rets.append(ret)
+        all_ep_lens.append(ep_len)
+        print("Episode {} ended in {} steps with return {:.2f}".format(episode_idx, ep_len, ret))
+        env.close()
+        del env
+    
+    print("Baseline performance - Mean: {}, std_error: {}".format(np.mean(all_rets), np.std(all_rets)/(len(all_rets)-1)))
+
+
 def main():
     env = PickCube(seed=42, use_image=True)
 
@@ -146,4 +204,5 @@ def main():
     print(f"Episode ended in {steps}")
 
 if __name__ == "__main__":
-    main()
+    # main()
+    demonstration()
