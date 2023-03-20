@@ -57,6 +57,10 @@ class DMControlBaseEnv:
     @property
     def action_space(self):
         return Box(shape=(self._action_dim,), high=1, low=-1)
+
+    def render(self):
+        self.env.render()
+    
     
 
 class BallInCupWrapper(DMControlBaseEnv):
