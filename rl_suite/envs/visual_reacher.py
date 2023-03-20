@@ -1,14 +1,16 @@
-import numpy as np
 import cv2
 import gym
 import torch
+
+import numpy as np
 from gym.spaces import Box
 from mujoco_py import GlfwContext
 # GlfwContext(offscreen=True)
 from collections import deque
-from rl_suite.envs.env_utils import Observation
+from rl_suite.envs import Observation
 from tqdm import tqdm
 from math import pi
+
 
 class MJReacherWrapper(gym.Wrapper):
     def __init__(self, tol, penalty=-1, use_image=False, img_history=3):

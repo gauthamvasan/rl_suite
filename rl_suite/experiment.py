@@ -21,6 +21,7 @@ from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.visual_reacher import MJReacherWrapper
 from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper, PendulumWrapper, EuclideanReacher
 from rl_suite.envs.dm_control_simple_wrapper import DMReacher
+from rl_suite.envs.mani_skill_envs import PickCube
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 from pathlib import Path
@@ -108,6 +109,8 @@ class Experiment:
             env = DMReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image, timeout=self.args.timeout)
         elif self.args.env == "gr_reacher_hard":
             env = DMReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image, timeout=self.args.timeout)
+        elif self.args.env == "pick_cube":
+            env = PickCube(seed=self.args.seed, use_image=self.args.use_image)
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)

@@ -19,8 +19,8 @@ class SAC_RAD:
         self.gamma = cfg.gamma
         self.critic_tau = cfg.critic_tau
         self.encoder_tau = cfg.encoder_tau
-        self.actor_update_freq = cfg.actor_update_freq
-        self.critic_target_update_freq = cfg.critic_target_update_freq
+        self.update_actor_every = cfg.update_actor_every
+        self.update_critic_target_every = cfg.update_critic_target_every
         self.rad_offset = cfg.rad_offset
 
         self.actor_lr = cfg.actor_lr
@@ -161,10 +161,10 @@ class SAC_RAD:
 
         # regular update of SAC_RAD, sequentially augment data and train
         stats = self.update_critic(img, prop, action, reward, next_img, next_prop, done)
-        if self.num_updates % self.actor_update_freq == 0:
+        if self.num_updates % self.update_actor_every == 0:
             actor_stats = self.update_actor_and_alpha(img, prop)
             stats = {**stats, **actor_stats}
-        if self.num_updates % self.critic_target_update_freq == 0:
+        if self.num_updates % self.update_critic_target_every == 0:
             self.soft_update_target()
         stats['train/batch_reward'] = reward.mean().item()
         stats['train/num_updates'] = self.num_updates
