@@ -94,7 +94,7 @@ class PickCube(DMControlBaseEnv):
 
 def visualize_pick_cube():
     # env = gym.make("PickCube-v0", obs_mode="rgbd", control_mode="pd_joint_delta_pos")
-    env = gym.make("PickCube-v0", obs_mode="rgbd", control_mode="pd_joint_vel")
+    env = gym.make("PickCube-v0", obs_mode="rgbd", control_mode="pd_joint_vel", reward_mode="sparse")
     # print("Observation space", env.observation_space)
     # print("Action space", env.action_space)
 
@@ -107,12 +107,11 @@ def visualize_pick_cube():
         action = env.action_space.sample()
         next_obs, reward, done, info = env.step(action)
         steps += 1
-        # print(f"Step: {steps}, obs: {obs['agent']['qpos'][:2]}, reward: {reward}, done: {done}")
+        print(f"Step: {steps}, obs: {obs['agent']['qpos'][:2]}, reward: {reward}, done: {done}")
         # env.render()  # a display is required to render
         
         # Horizontal stack
         img = np.concatenate((obs["image"]["base_camera"]["rgb"], obs["image"]["hand_camera"]["rgb"]), axis=1)
-        print(obs['agent']['qpos'], len(action))
         cv2.imshow("", img)
         key = cv2.waitKey(1) & 0xFF
         # if the `q` key was pressed, break from the loop
@@ -205,4 +204,5 @@ def main():
 
 if __name__ == "__main__":
     # main()
-    demonstration()
+    # demonstration()
+    visualize_pick_cube()
