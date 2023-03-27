@@ -11,7 +11,7 @@ from rl_suite.envs import Observation
 
 
 class DotReacherEnv(Env):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=1, timeout=20000, clamp_action=False, penalty=-0.1):
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=0.2, timeout=20000, clamp_action=False, penalty=-0.1):
         """ Continuous Action Space; Acceleration Control
 
         Args:
@@ -237,7 +237,7 @@ def viz_dot_reacher():
     torch.manual_seed(3)
 
     # Env
-    env = VisualDotReacherEnv(pos_tol=0.25, vel_tol=0.1, timeout=20000, dt=0.2, clamp_action=True)
+    env = VisualDotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=20000, dt=0.2, clamp_action=True)
 
     # Experiment
     EP = 5
