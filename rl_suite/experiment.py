@@ -22,7 +22,7 @@ from rl_suite.envs.visual_reacher import MJReacherWrapper
 from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper, PendulumWrapper, EuclideanReacher
 from rl_suite.envs.dm_control_simple_wrapper import DMReacher
 from rl_suite.envs.mani_skill_envs import PickCube
-from rl_suite.envs.dot_tracker import DotTracker
+from rl_suite.envs.dot_tracker import DotTracker, DotBoxReacher
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 from pathlib import Path
@@ -100,11 +100,13 @@ class Experiment:
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
-        elif self.args.env == "mj_reacher":
+        elif self.args.env == "mj_reacher":            
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.use_image)            
         elif self.args.env == "acrobot":
+            raise NotImplementedError("Minimum-time env implementation still has many bugs! DO NOT USE!")
             env = AcrobotWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
         elif self.args.env == "pendulum":
+            raise NotImplementedError("Minimum-time env implementation still has many bugs! DO NOT USE!")
             env = PendulumWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
         elif self.args.env == "gr_reacher_easy":
             env = DMReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image, timeout=self.args.timeout)
@@ -115,6 +117,10 @@ class Experiment:
         elif self.args.env == "dot_tracker":
             env = DotTracker(pos_tol=self.args.pos_tol, penalty=self.args.reward, dt=self.args.dt, 
                              timeout=self.args.timeout, use_image=self.args.use_image)
+        elif self.args.env == "dot_box_reacher":
+            env = DotBoxReacher(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward, 
+                                dt=self.args.dt, timeout=self.args.timeout, use_image=self.args.use_image)
+        
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
