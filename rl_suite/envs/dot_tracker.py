@@ -180,11 +180,26 @@ class DotTracker(Env):
         return super().close()
 
 
+class DotBoxReacher(DotTracker):
+    def __init__(self, dt=0.2, timeout=10000, pos_tol=0.1, vel_tol=0.05,
+                 penalty=-1, seed=42, use_image=False, img_history=3) -> None:
+        super().__init__(dt, timeout, pos_tol, penalty, seed, use_image, img_history)
+        self.arp_dt = 0
+        self.vel_tol = vel_tol
+    
+    def step(self, action):
+        next_obs, reward, done, info = super().step(action)
+        done = np.allclose(self.pos, self.target_pos, atol=self.pos_tol) and \
+               np.allclose(self.vel, np.zeros(2), atol=self.vel_tol)
+        
+        return next_obs, reward, done, info
+
+
 if __name__ == "__main__":       
     n_episodes = 100
     timeout = 20000
     seed = 42
-    env = DotTracker(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=True) 
+    env = DotBoxReacher(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=True) 
 
     for i_episode in range(n_episodes):
         obs = env.reset() 
@@ -197,7 +212,6 @@ if __name__ == "__main__":
             time.sleep(0.05)
             action = env.action_space.sample()
             next_obs, reward, done, info = env.step(action)
-            print(obs.images.shape)
             # print(f"Step: {steps}, Obs: {obs[:2]}, reward: {reward}, done: {done}")
             obs = next_obs
             steps += 1
