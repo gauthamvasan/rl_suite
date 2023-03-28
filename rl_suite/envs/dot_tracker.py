@@ -28,7 +28,7 @@ class DotTracker(Env):
         self.use_image = use_image
         
         # Screen dimensions
-        self.width = self.height = 1000
+        self.width = self.height = 160
         self.screen_size = [self.width, self.height]
         self.bg_color = pygame.Color("darkslategrey")        
 
@@ -67,6 +67,7 @@ class DotTracker(Env):
         if self.use_image:
             obs = Observation()
             img = pygame.surfarray.array3d(self.screen)
+            img = np.transpose(img, [2, 0, 1])
             for _ in range(self._image_buffer.maxlen):
                 self._image_buffer.append(img)
             obs.images = np.concatenate(self._image_buffer, axis=0)
@@ -120,8 +121,10 @@ class DotTracker(Env):
         # Observation
         if self.use_image:
             next_obs = Observation()
-            next_obs.proprioception = np.concatenate((self.pos, self.vel))            
-            self._image_buffer.append(pygame.surfarray.array3d(self.screen))
+            next_obs.proprioception = np.concatenate((self.pos, self.vel))
+            img = pygame.surfarray.array3d(self.screen)
+            img = np.transpose(img, [2, 0, 1])      
+            self._image_buffer.append(img)
             next_obs.images = np.concatenate(self._image_buffer, axis=0)
         else:
             next_obs = np.concatenate((self.pos, self.vel, self.target_pos))
@@ -152,7 +155,25 @@ class DotTracker(Env):
     @property
     def observation_space(self):
         # TODO: Verify that min/max velocity are always within these bounds
-        return Box(low=-10, high=10, shape=(4,))
+        if self.use_image:
+            return Box(low=-10, high=10, shape=(4,))
+        
+        return Box(low=-10, high=10, shape=(6,))
+
+    @property
+    def image_space(self):
+        if not self.use_image:
+            raise AttributeError(f'use_image={self.use_image}')
+
+        image_shape = (3 * self._image_buffer.maxlen, self.height, self.width)
+        return Box(low=0, high=255, shape=image_shape)
+
+    @property
+    def proprioception_space(self):
+        if not self.use_image:
+            raise AttributeError(f'use_image={self.use_image}')
+        
+        return self.observation_space
 
     def close(self) -> None:
         pygame.quit()
@@ -163,7 +184,7 @@ if __name__ == "__main__":
     n_episodes = 100
     timeout = 20000
     seed = 42
-    env = DotTracker(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=False) 
+    env = DotTracker(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=True) 
 
     for i_episode in range(n_episodes):
         obs = env.reset() 
@@ -176,6 +197,7 @@ if __name__ == "__main__":
             time.sleep(0.05)
             action = env.action_space.sample()
             next_obs, reward, done, info = env.step(action)
+            print(obs.images.shape)
             # print(f"Step: {steps}, Obs: {obs[:2]}, reward: {reward}, done: {done}")
             obs = next_obs
             steps += 1
