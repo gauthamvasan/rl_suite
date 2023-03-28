@@ -22,6 +22,7 @@ from rl_suite.envs.visual_reacher import MJReacherWrapper
 from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper, PendulumWrapper, EuclideanReacher
 from rl_suite.envs.dm_control_simple_wrapper import DMReacher
 from rl_suite.envs.mani_skill_envs import PickCube
+from rl_suite.envs.dot_tracker import DotTracker
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 from pathlib import Path
@@ -111,6 +112,9 @@ class Experiment:
             env = DMReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image, timeout=self.args.timeout)
         elif self.args.env == "pick_cube":
             env = PickCube(seed=self.args.seed, use_image=self.args.use_image)
+        elif self.args.env == "dot_tracker":
+            env = DotTracker(pos_tol=self.args.pos_tol, penalty=self.args.reward, dt=self.args.dt, 
+                             timeout=self.args.timeout, use_image=self.args.use_image)
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
