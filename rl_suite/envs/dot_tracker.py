@@ -26,6 +26,7 @@ class DotTracker(Env):
         self.timeout = timeout
         self.penalty = penalty
         self.use_image = use_image
+        self._seed = seed
         
         # Screen dimensions
         self.width = self.height = 160
@@ -42,7 +43,7 @@ class DotTracker(Env):
         self.arp_dt = 0.4 
 
         self.steps = 0
-        self.seed(seed)
+        self.rng = np.random.default_rng(seed=seed)
 
         # Initialize pygame
         pygame.init()
@@ -51,18 +52,15 @@ class DotTracker(Env):
 
         if use_image:
             self._image_buffer = deque([], maxlen=img_history)            
-
-    def seed(self, seed):
-        np.random.seed(seed)
-    
+   
     def reset(self):
         self.steps = 0
-        self.pos = np.random.uniform(-1, 1, 2)
+        self.pos = self.rng.uniform(-1, 1, 2)        
         self.vel = np.zeros(2)
 
-        self.ar = ARProcess(3, 0.8, 2)
+        self.ar = ARProcess(p=3, alpha=0.8, size=2, seed=self.rng.integers(0, 10**6, 1))
         self.prev_ar_pos = self.ar.step()[0]
-        self.target_pos = np.random.uniform(-1, 1, 2)
+        self.target_pos = self.rng.uniform(-1, 1, 2)
         
         if self.use_image:
             obs = Observation()
@@ -199,7 +197,9 @@ if __name__ == "__main__":
     n_episodes = 100
     timeout = 20000
     seed = 42
-    env = DotBoxReacher(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=True) 
+    # env = DotBoxReacher(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=True) 
+    env = DotTracker(dt=0.2, timeout=timeout, pos_tol=0.05, seed=seed)
+    np.random.seed(seed)
 
     for i_episode in range(n_episodes):
         obs = env.reset() 
@@ -210,7 +210,8 @@ if __name__ == "__main__":
         while not done and steps < timeout:
             env.render()
             time.sleep(0.05)
-            action = env.action_space.sample()
+            # action = env.action_space.sample()    # DO NOT USE IF YOU CARE ABOUT REPRODUCIBILITY
+            action = np.random.uniform(-1, 1, 2)
             next_obs, reward, done, info = env.step(action)
             # print(f"Step: {steps}, Obs: {obs[:2]}, reward: {reward}, done: {done}")
             obs = next_obs
