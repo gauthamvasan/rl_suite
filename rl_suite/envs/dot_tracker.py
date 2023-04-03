@@ -32,7 +32,8 @@ class DotTracker(Env):
         self.use_image = use_image
         self._seed = seed
         
-        # Screen dimensions
+        # Screen dimensions. This number can be changed without breaking the calculations.
+        # TODO: Make this a parser argument
         self.width = self.height = 160
         self.screen_size = [self.width, self.height]
         self.bg_color = pygame.Color("darkslategrey")        
