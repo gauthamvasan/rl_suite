@@ -16,6 +16,10 @@ from collections import deque
 #the screen, which it might ignore
 os.environ["SDL_VIDEO_CENTERED"] = "1"
 
+# Headless display. Needed for running remote experiments without a display
+if "DISPLAY" not in os.environ:
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+
 
 class DotTracker(Env):
     def __init__(self, dt=0.2, timeout=10000, pos_tol=0.05, penalty=-1, 
