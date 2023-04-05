@@ -10,6 +10,7 @@ import random
 import warnings
 import os
 import json
+import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,10 +19,6 @@ from datetime import datetime
 # from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
-from rl_suite.envs.visual_reacher import MJReacherWrapper
-from rl_suite.envs.dm_control_wrapper import ReacherWrapper, BallInCupWrapper, AcrobotWrapper, PendulumWrapper, EuclideanReacher
-from rl_suite.envs.dm_control_simple_wrapper import DMReacher
-from rl_suite.envs.mani_skill_envs import PickCube
 from rl_suite.envs.dot_tracker import DotTracker, DotBoxReacher
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
@@ -72,16 +69,22 @@ class Experiment:
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
+            from rl_suite.envs.dm_control_wrapper import BallInCupWrapper
             env = BallInCupWrapper(seed=self.args.seed, penalty=self.args.reward, use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_easy":
+            from rl_suite.envs.dm_control_wrapper import ReacherWrapper
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_hard":
+            from rl_suite.envs.dm_control_wrapper import ReacherWrapper
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "dm_reacher_torture":
+            from rl_suite.envs.dm_control_wrapper import ReacherWrapper
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.use_image)
         elif self.args.env == "eu_reacher_easy":
+            from rl_suite.envs.dm_control_wrapper import EuclideanReacher
             env = EuclideanReacher(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.use_image)
         elif self.args.env == "eu_reacher_hard":
+            from rl_suite.envs.dm_control_wrapper import EuclideanReacher
             env = EuclideanReacher(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif "dot_reacher" in self.args.env:
             if self.args.env == "dot_reacher_easy":
@@ -100,7 +103,8 @@ class Experiment:
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
             env.env.seed(self.args.seed)
-        elif self.args.env == "mj_reacher":            
+        elif self.args.env == "mj_reacher":
+            from rl_suite.envs.visual_reacher import MJReacherWrapper            
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.use_image)            
         elif self.args.env == "acrobot":
             raise NotImplementedError("Minimum-time env implementation still has many bugs! DO NOT USE!")
@@ -109,10 +113,12 @@ class Experiment:
             raise NotImplementedError("Minimum-time env implementation still has many bugs! DO NOT USE!")
             env = PendulumWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
         elif self.args.env == "gr_reacher_easy":
+            from rl_suite.envs.dm_control_simple_wrapper import DMReacher
             env = DMReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image, timeout=self.args.timeout)
         elif self.args.env == "gr_reacher_hard":
             env = DMReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image, timeout=self.args.timeout)
         elif self.args.env == "pick_cube":
+            from rl_suite.envs.mani_skill_envs import PickCube
             env = PickCube(seed=self.args.seed, use_image=self.args.use_image)
         elif self.args.env == "dot_tracker":
             env = DotTracker(pos_tol=self.args.pos_tol, penalty=self.args.reward, dt=self.args.dt, 
