@@ -19,7 +19,7 @@ from datetime import datetime
 # from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gym_wrapper import MountainCarContinuous
-from rl_suite.envs.dot_tracker import DotTracker, DotBoxReacher
+from rl_suite.envs.dot_seeker import DotSeeker, DotBoxReacher
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
 from pathlib import Path
@@ -121,7 +121,7 @@ class Experiment:
             from rl_suite.envs.mani_skill_envs import PickCube
             env = PickCube(seed=self.args.seed, use_image=self.args.use_image)
         elif self.args.env == "dot_tracker":
-            env = DotTracker(pos_tol=self.args.pos_tol, penalty=self.args.reward, dt=self.args.dt, 
+            env = DotSeeker(pos_tol=self.args.pos_tol, penalty=self.args.reward, dt=self.args.dt, 
                              timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "dot_box_reacher":
             env = DotBoxReacher(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward, 
