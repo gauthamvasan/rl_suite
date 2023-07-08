@@ -7,7 +7,6 @@ import time
 import gymnasium as gym
 import numpy as np
 
-from rl_suite.envs.dm_control_simple_wrapper import DMControlBaseEnv, Observation
 
 OPEN_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1, 1],
@@ -41,7 +40,7 @@ LARGE_MAZE_DIVERSE_GR = [
 ]
 
 
-class PointMaze(DMControlBaseEnv):
+class PointMaze():
     all_maps = {"small": OPEN_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR, "large": LARGE_MAZE_DIVERSE_GR}
     """
     PointMaze_UMazeDense=v3 uses np.exp(-np.linalg.norm(a-b)) as reward 
@@ -52,13 +51,18 @@ class PointMaze(DMControlBaseEnv):
         
         self.reward_type = reward_type
         self.use_image = use_image
-        self.seed = seed
         
         self.env = gym.make('PointMaze_UMaze-v3', maze_map=self.all_maps[map_type])
+        self.set_seeds(seed)
 
         self._obs_dim = 4 if use_image else 6
         self._action_dim = 2
     
+    def set_seeds(self, seed):
+        self.seed = seed        
+        self.env.reset(seed=seed) # This is just to set the seed
+        self.env.action_space.seed(seed)
+        
     def make_obs(self, x):
         obs = np.zeros(self._obs_dim, dtype=np.float32)
         if not self.use_image:
@@ -85,17 +89,23 @@ class PointMaze(DMControlBaseEnv):
 
         return next_obs, reward, done, info
 
+    @property
+    def action_space(self):
+        return self.env.action_space
+    
+    def close(self):
+        self.env.close()
 
 def main():    
     seed = 42
     np.random.seed(seed)
 
-    env = PointMaze(seed=42, reward_type="dense", map_type="small")
+    env = PointMaze(seed=42, reward_type="sparse", map_type="small")
     # env = gym.make('PointMaze_UMaze-v3', maze_map=LARGE_MAZE_DIVERSE_G, render_mode = "human")
     
 
     n_episodes = 10
-    timeout = 10000
+    timeout = 1000
 
     for i_ep in range(n_episodes):
         done = False
@@ -108,10 +118,12 @@ def main():
             ret += reward
             step += 1
             obs = next_obs
+            # print(f"Obs: {obs}, action: {action}, reward: {reward}")
             # env.render()
 
         print("Episode {} ended in {} steps with return {:.2f}. Done: {}".format(i_ep+1, step, ret, done))
-        time.sleep(10)
+    
+    env.close()
 
 if __name__ == "__main__":
     main()
