@@ -52,7 +52,7 @@ class PointMaze():
         self.reward_type = reward_type
         self.use_image = use_image
         
-        self.env = gym.make('PointMaze_UMaze-v3', maze_map=self.all_maps[map_type])
+        self.env = gym.make("PointMaze_UMaze-v3", maze_map=self.all_maps[map_type])
         self.set_seeds(seed)
 
         self._obs_dim = 4 if use_image else 6
