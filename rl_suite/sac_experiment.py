@@ -55,7 +55,10 @@ class SACExperiment(Experiment):
         parser.add_argument('--pos_tol', default=0.1, type=float, help="Position tolerance in [0.05, ..., 0.25]")
         parser.add_argument('--vel_tol', default=0.05, type=float, help="Velocity tolerance in [0.05, ..., 0.1]")
         parser.add_argument('--dt', default=0.2, type=float, help="Simulation action cycle time")
-        parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")        
+        parser.add_argument('--clamp_action', default=1, type=int, help="Clamp action space")    
+        ## Point Maze
+        parser.add_argument('--maze_type', default="small", type=str, help= "Maze type in ['small', 'medium', 'large']")
+        parser.add_argument('--reward_type', default="sparse", type=str, help= "Reward type in ['sparse', 'dense']")
         # Algorithm
         parser.add_argument('--algo', required=True, type=str, help="Choices: ['sac', 'sac_rad']")
         parser.add_argument('--replay_buffer_capacity', required=True, type=int)
@@ -88,9 +91,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)
         # Misc
-        parser.add_argument('--run_type', default='experiment', type=str, help="Which test to run")
+        parser.add_argument('--init_policy_test', action='store_true', type="bool", help="Initiate hits vs timeout test")
         parser.add_argument('--results_dir', required=True, type=str, help="Save results to this dir")
-        parser.add_argument('--experiment_dir', required=True, type=str, help="Save experiment outputs, relative to result_dir")
         parser.add_argument('--xlimit', default=None, type=str)
         parser.add_argument('--ylimit', default=None, type=str)
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
@@ -149,15 +151,13 @@ class SACExperiment(Experiment):
         return args
 
     def run(self):
-        if self.args.run_type == 'experiment':
-            self._run_experiment()
-            print("{}-{} run with {} steps starts now ...".format(self.args.env, self.args.algo, self.args.N))
-        elif self.args.run_type == 'init_policy_test':
-            self._run_init_policy_test()
+        if self.args.init_policy_test:
             print("Initial policy test")
+            self._run_init_policy_test()
         else:
-            raise NotImplementedError()
-
+            print("{}-{} run with {} steps starts now ...".format(self.args.env, self.args.algo, self.args.N))
+            self._run_experiment()
+            
     def _run_experiment(self):
         # Normalize wrapper
         rms = RunningStats()
