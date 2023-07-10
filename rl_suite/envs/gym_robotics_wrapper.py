@@ -57,7 +57,7 @@ class PointMaze():
         self.use_image = use_image
         if self.use_image and render_mode is None:
             render_mode = "rgb_array"
-            print(f"Visual point_maze_{map_type} with {reward_type} rewards")
+        print(f"point_maze_{map_type} with {reward_type} rewards. Visual task: {use_image}")
 
         self.render_mode = render_mode
         
