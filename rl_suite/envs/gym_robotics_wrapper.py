@@ -6,6 +6,7 @@ D4RL references:
 import time
 import gymnasium as gym
 import numpy as np
+from gym.spaces import Box
 
 
 OPEN_DIVERSE_GR = [
@@ -59,7 +60,6 @@ class PointMaze():
         self._action_dim = 2
     
     def set_seeds(self, seed):
-        self.seed = seed        
         self.env.reset(seed=seed) # This is just to set the seed
         self.env.action_space.seed(seed)
         
@@ -88,6 +88,17 @@ class PointMaze():
             reward = -np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'])
 
         return next_obs, reward, done, info
+
+    @property
+    def observation_space(self):
+        return Box(shape=(self._obs_dim,), high=10, low=-10)
+
+    @property
+    def proprioception_space(self):
+        if not self.use_image:
+            raise AttributeError(f'use_image={self._use_image}')
+        
+        return self.observation_space
 
     @property
     def action_space(self):
