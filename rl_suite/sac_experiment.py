@@ -91,7 +91,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)
         # Misc
-        parser.add_argument('--init_policy_test', action='store_true', type="bool", help="Initiate hits vs timeout test")
+        parser.add_argument('--init_policy_test', action='store_true', help="Initiate hits vs timeout test")
         parser.add_argument('--results_dir', required=True, type=str, help="Save results to this dir")
         parser.add_argument('--xlimit', default=None, type=str)
         parser.add_argument('--ylimit', default=None, type=str)
@@ -241,7 +241,7 @@ class SACExperiment(Experiment):
 
     def _run_init_policy_test(self):
         """ N.B: Use only for minimum-time tasks """
-        timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
+        timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000, 10000, 20000]
         total_steps = 20000
         steps_record = open(f"{self.args.env}_steps_record.txt", 'w')
         hits_record = open(f"{self.args.env}_random_stat.txt", 'w')
@@ -258,8 +258,9 @@ class SACExperiment(Experiment):
                 epi_steps = 0
                 obs = self.env.reset()
                 while steps < total_steps:
-                    # action = self.learner.sample_action(obs)
-                    action = np.random.normal(size=self.env.action_space.shape)
+                    action = self.learner.sample_action(obs)
+                    # action = np.random.normal(size=self.env.action_space.shape)
+                    
                     # Receive reward and next state            
                     _, _, done, _ = self.env.step(action)
                     
