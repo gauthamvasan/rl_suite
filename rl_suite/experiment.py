@@ -60,7 +60,7 @@ class Experiment:
         """ Save hyper-parameters as a json file """
         hyperparas_dict = vars(self.args)
         hyperparas_dict["device"] = str(hyperparas_dict["device"])
-        json.dump(hyperparas_dict, open(self._expt_dir/f"{self.run_id}_args.json", 'w'), indent=4, cls=NpEncoder)
+        json.dump(hyperparas_dict, open(os.path.join(self._expt_dir, "{}_args.json".format(self.run_id)), 'w'), indent=4, cls=NpEncoder)
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
