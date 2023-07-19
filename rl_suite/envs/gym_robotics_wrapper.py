@@ -7,50 +7,62 @@ import cv2
 import gymnasium as gym
 import numpy as np
 
-from collections import deque
 from gym.spaces import Box
 from rl_suite.envs import Observation
+from gymnasium_robotics.envs.maze.maps import R, G, C
 
 OPEN_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1, 1],
-    [1, 'c', 'c', 'c', 'c', 'c', 1],
-    [1, 'c', 'c', 'c', 'c', 'c', 1],
-    [1, 'c', 'c', 'c', 'c', 'c', 1],
+    [1, C, C, C, C, C, 1],
+    [1, C, C, C, C, C, 1],
+    [1, C, C, C, C, C, 1],
     [1, 1, 1, 1, 1, 1, 1]
 ]
 
 MEDIUM_MAZE_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 'c', 0, 1, 1, 0, 0, 1],
-    [1, 0, 0, 1, 0, 0, 'c', 1],
+    [1, C, 0, 1, 1, 0, 0, 1],
+    [1, 0, 0, 1, 0, 0, C, 1],
     [1, 1, 0, 0, 0, 1, 1, 1],
     [1, 0, 0, 1, 0, 0, 0, 1],
-    [1, 'c', 1, 0, 0, 1, 0, 1],
-    [1, 0, 0, 0, 1, 'c', 0, 1],
+    [1, C, 1, 0, 0, 1, 0, 1],
+    [1, 0, 0, 0, 1, C, 0, 1],
     [1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
 LARGE_MAZE_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 'c', 0, 0, 0, 1, 'c', 0, 0, 0, 0, 1],
+    [1, C, 0, 0, 0, 1, C, 0, 0, 0, 0, 1],
     [1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 0, 0, 0, 'c', 0, 1, 0, 0, 'c', 1],
+    [1, 0, 0, 0, 0, C, 0, 1, 0, 0, C, 1],
     [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
-    [1, 0, 'c', 1, 0, 1, 0, 0, 0, 0, 0, 1],
+    [1, 0, C, 1, 0, 1, 0, 0, 0, 0, 0, 1],
     [1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1],
-    [1, 0, 0, 1, 'c', 0, 'c', 1, 0, 'c', 0, 1],
+    [1, 0, 0, 1, C, 0, C, 1, 0, C, 0, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+]
+
+MIN_TIME_MAP = [
+    [1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 0, 0, R, 1, 1],
+    [1, 1, 0, 1, 0, 1, 1],
+    [1, G, 0, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, R, 1],
+    [1, 0, 1, 1, 1, 0, 1],
+    [1, R, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1],
 ]
 
 
 class PointMaze():
-    all_maps = {"small": OPEN_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR, "large": LARGE_MAZE_DIVERSE_GR}
+    all_maps = {"small": OPEN_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR, "large": LARGE_MAZE_DIVERSE_GR,
+                "min_time": MIN_TIME_MAP}
     """
     PointMaze_UMazeDense=v3 uses np.exp(-np.linalg.norm(a-b)) as reward 
     """
     def __init__(self, seed, map_type="small", reward_type="sparse", use_image=False, render_mode=None) -> None:
         assert reward_type in ["sparse", "dense"]
-        assert map_type in ["small", "medium", "large"]
+        assert map_type in ["small", "medium", "large", "min_time"]
         assert render_mode in ["human", "rgb_array", None]
         
         self.reward_type = reward_type
@@ -103,7 +115,7 @@ class PointMaze():
         if self.reward_type == "sparse":
             reward = -1.
         else:
-            reward = -np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'])
+            reward = np.exp(-np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal']))
 
         return next_obs, reward, done, info
     
@@ -141,8 +153,10 @@ def main():
     seed = 42
     np.random.seed(seed)
 
-    env = PointMaze(seed=42, reward_type="sparse", map_type="large", render_mode="rgb_array", use_image=False)
-    # env = gym.make('PointMaze_UMaze-v3', maze_map=LARGE_MAZE_DIVERSE_G, render_mode = "human")
+    map_type = "min_time"
+    reward_type = "sparse"
+    env = PointMaze(seed=42, reward_type=reward_type, map_type=map_type, render_mode="human", use_image=False)
+    # env = gym.make('PointMaze_UMaze-v3', maze_map=MIN_TIME_MAP, render_mode = "human")
     
     n_episodes = 10
     timeout = 1000
@@ -158,7 +172,7 @@ def main():
             ret += reward
             step += 1
             obs = next_obs
-            print(f"Obs: {obs.shape}, action: {action}, reward: {reward}")
+            # print(f"Obs: {obs.shape}, action: {action}, reward: {reward}")
             env.render()
 
         print("Episode {} ended in {} steps with return {:.2f}. Done: {}".format(i_ep+1, step, ret, done))
