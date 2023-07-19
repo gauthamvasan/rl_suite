@@ -10,7 +10,7 @@ guiding rewards and minimum-time formulation.
 
 ## How to use?
 ```bash
-python sac_experiment.py --env "dm_reacher_easy" --seed 42 --N 201000 --timeout 100 --algo "sac" --replay_buffer_capacity 100000 --results_dir "./results" --experiment_dir "./test" --init_steps 1000
+python sac_experiment.py --env "dm_reacher_easy" --seed 42 --N 201000 --timeout 100 --algo "sac" --replay_buffer_capacity 100000 --results_dir "./results" --init_steps 1000
 ```
 
 ## Compute Canada
@@ -30,5 +30,5 @@ source /home/vasan/src/rtrl/bin/activate
 timeout=50
 env="dm_reacher_easy"
 
-parallel -j 15 python sac_experiment.py --env $env --timeout $timeout --N 205000 --algo "sac" --replay_buffer_capacity 100000 --results_dir "/home/vasan/scratch/min_time_paper/$env" --experiment_dir "./timeout=$timeout" --init_steps 20000 ::: --seed ::: {1..15}
+parallel -j 15 python sac_experiment.py --env $env --timeout $timeout --N 201000 --algo "sac" --replay_buffer_capacity 100000 --results_dir "/home/vasan/scratch/min_time_paper/$env" --init_steps 20000 ::: --seed ::: {1..15}
 ```

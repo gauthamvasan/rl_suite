@@ -22,7 +22,6 @@ from rl_suite.envs.gym_wrapper import MountainCarContinuous
 from rl_suite.envs.dot_seeker import DotSeeker, DotBoxReacher
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
-from pathlib import Path
 
 # For MacOS
 if platform == "darwin":    
@@ -50,22 +49,15 @@ class Experiment:
         self.run_id = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
         self.run_id += f"_seed-{args.seed}"
         self.args = args
-
-        assert not args.experiment_dir.startswith('/'), 'experiment_dir must use relative path'
-
-        self._return_dir = Path(args.results_dir)/args.experiment_dir/'returns'
-        self._model_dir = Path(args.results_dir)/args.experiment_dir/'models'
-
-        self.make_dir(self._return_dir)
-        self.make_dir(self._model_dir)
-
+        self._expt_dir = os.path.join(args.results_dir, args.env)
+        self.make_dir(self._expt_dir)
         self.save_args()
 
     def save_args(self):
         """ Save hyper-parameters as a json file """
         hyperparas_dict = vars(self.args)
         hyperparas_dict["device"] = str(hyperparas_dict["device"])
-        json.dump(hyperparas_dict, open(self._return_dir/f"{self.run_id}_args.json", 'w'), indent=4, cls=NpEncoder)
+        json.dump(hyperparas_dict, open(os.path.join(self._expt_dir, "{}_args.json".format(self.run_id)), 'w'), indent=4, cls=NpEncoder)
 
     def make_env(self):
         if self.args.env == "ball_in_cup":
@@ -80,12 +72,6 @@ class Experiment:
         elif self.args.env == "dm_reacher_torture":
             from rl_suite.envs.dm_control_wrapper import ReacherWrapper
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.use_image)
-        elif self.args.env == "eu_reacher_easy":
-            from rl_suite.envs.dm_control_wrapper import EuclideanReacher
-            env = EuclideanReacher(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.use_image)
-        elif self.args.env == "eu_reacher_hard":
-            from rl_suite.envs.dm_control_wrapper import EuclideanReacher
-            env = EuclideanReacher(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif "dot_reacher" in self.args.env:
             if self.args.env == "dot_reacher_easy":
                 self.args.pos_tol = 0.25
@@ -106,27 +92,18 @@ class Experiment:
         elif self.args.env == "mj_reacher":
             from rl_suite.envs.visual_reacher import MJReacherWrapper            
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.use_image)            
-        elif self.args.env == "acrobot":
-            raise NotImplementedError("Minimum-time env implementation still has many bugs! DO NOT USE!")
-            env = AcrobotWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
-        elif self.args.env == "pendulum":
-            raise NotImplementedError("Minimum-time env implementation still has many bugs! DO NOT USE!")
-            env = PendulumWrapper(penalty=self.args.reward, use_image=self.args.use_image, seed=self.args.seed)
-        elif self.args.env == "gr_reacher_easy":
-            from rl_suite.envs.dm_control_simple_wrapper import DMReacher
-            env = DMReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image, timeout=self.args.timeout)
-        elif self.args.env == "gr_reacher_hard":
-            env = DMReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image, timeout=self.args.timeout)
         elif self.args.env == "pick_cube":
             from rl_suite.envs.mani_skill_envs import PickCube
             env = PickCube(seed=self.args.seed, use_image=self.args.use_image)
-        elif self.args.env == "dot_tracker":
+        elif self.args.env == "dot_seeker":
             env = DotSeeker(pos_tol=self.args.pos_tol, penalty=self.args.reward, dt=self.args.dt, 
                              timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "dot_box_reacher":
             env = DotBoxReacher(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward, 
                                 dt=self.args.dt, timeout=self.args.timeout, use_image=self.args.use_image)
-        
+        elif self.args.env == "point_maze":
+            from rl_suite.envs.gym_robotics_wrapper import PointMaze
+            env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, use_image=self.args.use_image)
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
@@ -144,10 +121,10 @@ class Experiment:
         data = np.zeros((2, len(rets)))
         data[0] = ep_lens
         data[1] = rets
-        np.savetxt(self._return_dir/f'{self.run_id}_returns.txt', data)
+        np.savetxt(f"{self._expt_dir}/{self.run_id}_returns.txt", data)
     
     def save_model(self, step):
-        self.learner.save(self._model_dir, step)
+        self.learner.save(self._expt_dir, step)
 
     def set_seed(self):
         seed = self.args.seed
@@ -180,7 +157,7 @@ class Experiment:
                 plt.plot(plot_x, plot_rets)
                 plt.pause(0.001)
                 if save_fig:
-                    plt.savefig(self._return_dir/f"{self.run_id}_learning_curve.png")
+                    plt.savefig(f"{self._expt_dir}/{self.run_id}_learning_curve.png")
     
     def run(self):
         """ This needs to be algorithm specific """
