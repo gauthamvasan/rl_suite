@@ -115,7 +115,7 @@ class PointMaze():
         if self.reward_type == "sparse":
             reward = -1.
         else:
-            reward = np.exp(-np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal']))
+            reward = -np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'])
 
         return next_obs, reward, done, info
     
