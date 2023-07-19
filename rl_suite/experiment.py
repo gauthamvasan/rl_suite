@@ -49,11 +49,8 @@ class Experiment:
         self.run_id = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
         self.run_id += f"_seed-{args.seed}"
         self.args = args
-
         self._expt_dir = os.path.join(args.results_dir, args.env)
-
         self.make_dir(self._expt_dir)
-
         self.save_args()
 
     def save_args(self):
@@ -124,7 +121,7 @@ class Experiment:
         data = np.zeros((2, len(rets)))
         data[0] = ep_lens
         data[1] = rets
-        np.savetxt(self._expt_dir/f'{self.run_id}_returns.txt', data)
+        np.savetxt(f"{self._expt_dir}/{self.run_id}_returns.txt", data)
     
     def save_model(self, step):
         self.learner.save(self._expt_dir, step)
@@ -160,7 +157,7 @@ class Experiment:
                 plt.plot(plot_x, plot_rets)
                 plt.pause(0.001)
                 if save_fig:
-                    plt.savefig(self._expt_dir/f"{self.run_id}_learning_curve.png")
+                    plt.savefig(f"{self._expt_dir}/{self.run_id}_learning_curve.png")
     
     def run(self):
         """ This needs to be algorithm specific """
