@@ -252,65 +252,7 @@ class ReacherWrapper(DMControlBaseEnv):
 
         image_shape = (3 * self._image_buffer.maxlen, 70, 100)
         return Box(low=0, high=255, shape=image_shape)
-
-
-class EuclideanReacher(ReacherWrapper):
-    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
-        super().__init__(seed, penalty=penalty, mode=mode, use_image=use_image, img_history=img_history)
-    
-    def step(self, action):
-        if isinstance(action, torch.Tensor):
-            action = action.cpu().numpy().flatten()
-
-        x = self.env.step(action)
-
-        """ 
-        Source: https://github.com/openai/gym/blob/dcd185843a62953e27c2d54dc8c2d647d604b635/gym/envs/mujoco/reacher.py#L28C23-L28C42
-        reward = reward_dist + reward_ctrl
-        """
-        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum()
-        done = x.reward
-        info = {}
-
-        if self._use_image:
-            next_obs = Observation()
-            next_obs.proprioception = self.make_obs(x)
-            new_img = self._get_new_img()
-            self._image_buffer.append(new_img)
-            next_obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            next_obs = self.make_obs(x)
-            
-        return next_obs, reward, done, info
-
-
-class DMReacher(ReacherWrapper):
-    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
-        super().__init__(seed, penalty, mode, use_image, img_history)
-        self.timeout = 1000
-
-    def step(self, action):
-        if isinstance(action, torch.Tensor):
-            action = action.cpu().numpy().flatten()
-
-        x = self.env.step(action)
-
-        self.steps +=  1
-        reward = x.reward
-        done = self.steps == self.timeout
-        info = {}
-
-        if self._use_image:
-            next_obs = Observation()
-            next_obs.proprioception = self.make_obs(x)
-            new_img = self._get_new_img()
-            self._image_buffer.append(new_img)
-            next_obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            next_obs = self.make_obs(x)
-            
-        return next_obs, reward, done, info
-    
+   
 
 def random_policy_hits_vs_timeout():
     total_steps = 20000
