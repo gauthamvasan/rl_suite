@@ -134,7 +134,7 @@ class BallInCupWrapper(DMControlBaseEnv):
 
 class ReacherWrapper(DMControlBaseEnv):
     """ Minimum-time variant of reacher env with 3 modes: Easy, Hard,  """
-    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
+    def __init__(self, seed, penalty=-1, mode="easy", vel_tol=None, use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         assert mode in ["easy", "hard", "torture"]
 
@@ -264,7 +264,11 @@ class EuclideanReacher(ReacherWrapper):
 
         x = self.env.step(action)
 
-        reward = -self.env._physics.finger_to_target_dist()
+        """ 
+        Source: https://github.com/openai/gym/blob/dcd185843a62953e27c2d54dc8c2d647d604b635/gym/envs/mujoco/reacher.py#L28C23-L28C42
+        reward = reward_dist + reward_ctrl
+        """
+        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum()
         done = x.reward
         info = {}
 
@@ -280,49 +284,10 @@ class EuclideanReacher(ReacherWrapper):
         return next_obs, reward, done, info
 
 
-
-class AcrobotWrapper(DMControlBaseEnv):
-    def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
-        """ Outputs state transition data as torch arrays """
-        self.env = suite.load(domain_name="acrobot", task_name="swingup_sparse", task_kwargs={'random': seed, 'time_limit': float('inf')})
-        self.reward = penalty
-        self._obs_dim = 6
-        self._action_dim = 1
-
-        self._use_image = use_image
-        
-        if use_image:
-            self._image_buffer = deque([], maxlen=img_history)
-            raise NotImplemented
-        else:
-            print('Non-visual minimum-time Acrobot')
-
-    def make_obs(self, x):
-        obs = np.zeros(self._obs_dim, dtype=np.float32)
-        obs[:4] = x.observation['orientations'].astype(np.float32)
-        obs[4:6] = x.observation['velocity'].astype(np.float32)
-        return obs
-
-    def _get_new_img(self):
-        img = self.env.physics.render()
-        img = img[20:120, 100:220, :]
-        img = np.transpose(img, [2, 0, 1])  # c, h, w
-        return img
-
-    def reset(self):
-        if self._use_image:
-            obs = Observation()
-            obs.proprioception = self.make_obs(self.env.reset())
-
-            new_img = self._get_new_img()
-            for _ in range(self._image_buffer.maxlen):
-                self._image_buffer.append(new_img)
-
-            obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            obs = self.make_obs(self.env.reset())
-
-        return obs
+class DMReacher(ReacherWrapper):
+    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
+        super().__init__(seed, penalty, mode, use_image, img_history)
+        self.timeout = 1000
 
     def step(self, action):
         if isinstance(action, torch.Tensor):
@@ -330,8 +295,9 @@ class AcrobotWrapper(DMControlBaseEnv):
 
         x = self.env.step(action)
 
-        reward = self.reward
-        done = x.reward
+        self.steps +=  1
+        reward = x.reward
+        done = self.steps == self.timeout
         info = {}
 
         if self._use_image:
@@ -342,74 +308,9 @@ class AcrobotWrapper(DMControlBaseEnv):
             next_obs.images = np.concatenate(self._image_buffer, axis=0)
         else:
             next_obs = self.make_obs(x)
-
+            
         return next_obs, reward, done, info
-
-
-
-class PendulumWrapper(DMControlBaseEnv):
-    def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
-        """ Outputs state transition data as torch arrays """
-        self.env = suite.load(domain_name="pendulum", task_name="swingup", task_kwargs={'random': seed, 'time_limit': float('inf')})
-        self.reward = penalty
-        self._obs_dim = 3
-        self._action_dim = 1
-
-        self._use_image = use_image
-        
-        if use_image:
-            self._image_buffer = deque([], maxlen=img_history)
-            raise NotImplemented
-        else:
-            print('Non-visual minimum-time Pendulum')
-
-    def make_obs(self, x):
-        obs = np.zeros(self._obs_dim, dtype=np.float32)
-        obs[:2] = x.observation['orientation'].astype(np.float32)
-        obs[2] = x.observation['velocity'].astype(np.float32)
-        return obs
-
-    def _get_new_img(self):
-        img = self.env.physics.render()
-        img = img[20:120, 100:220, :]
-        img = np.transpose(img, [2, 0, 1])  # c, h, w
-        return img
-
-    def reset(self):
-        if self._use_image:
-            obs = Observation()
-            obs.proprioception = self.make_obs(self.env.reset())
-
-            new_img = self._get_new_img()
-            for _ in range(self._image_buffer.maxlen):
-                self._image_buffer.append(new_img)
-
-            obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            obs = self.make_obs(self.env.reset())
-
-        return obs
-
-    def step(self, action):
-        if isinstance(action, torch.Tensor):
-            action = action.cpu().numpy().flatten()
-
-        x = self.env.step(action)
-
-        reward = self.reward
-        done = x.reward
-        info = {}
-
-        if self._use_image:
-            next_obs = Observation()
-            next_obs.proprioception = self.make_obs(x)
-            new_img = self._get_new_img()
-            self._image_buffer.append(new_img)
-            next_obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            next_obs = self.make_obs(x)
-
-        return next_obs, reward, done, info
+    
 
 def random_policy_hits_vs_timeout():
     total_steps = 20000
