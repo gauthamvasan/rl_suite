@@ -134,7 +134,7 @@ class BallInCupWrapper(DMControlBaseEnv):
 
 class ReacherWrapper(DMControlBaseEnv):
     """ Minimum-time variant of reacher env with 3 modes: Easy, Hard,  """
-    def __init__(self, seed, penalty=-1, mode="easy", vel_tol=None, use_image=False, img_history=3):
+    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         assert mode in ["easy", "hard", "torture"]
 
