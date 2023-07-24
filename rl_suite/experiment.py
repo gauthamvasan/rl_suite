@@ -102,7 +102,7 @@ class Experiment:
             env = DotBoxReacher(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward, 
                                 dt=self.args.dt, timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "point_maze":
-            from rl_suite.envs.gym_robotics_wrapper import PointMaze
+            from rl_suite.envs.point_maze import PointMaze
             env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, use_image=self.args.use_image)
             self.args.env += f"_{self.args.maze_type}"  # Make env name clear for saving results
         else:
