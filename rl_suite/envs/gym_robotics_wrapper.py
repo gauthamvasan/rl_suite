@@ -19,14 +19,41 @@ OPEN_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1, 1]
 ]
 
+SMALL_MAZE_DIVERSE_GR = [
+    [1, 1, 1, 1, 1, 1, 1],
+    [1, C, C, 1, C, C, 1],
+    [1, C, C, 1, C, C, 1],
+    [1, C, C, C, C, C, 1],
+    [1, 1, 1, 1, 1, 1, 1]
+]
+
+T_MAZE_DIVERSE_GR = [
+    [1, 1, 1, 1, 1, 1, 1],
+    [1, C, C, C, C, C, 1],
+    [1, C, 1, 1, 1, C, 1],
+    [1, C, C, 1, C, C, 1],
+    [1, C, C, C, C, C, 1],
+    [1, 1, 1, 1, 1, 1, 1]
+]
+
+PLUS_MAZE_DIVERSE_GR = [
+    [1, 1, 1, 1, 1, 1, 1],
+    [1, C, C, C, C, C, 1],
+    [1, C, C, 1, C, C, 1],
+    [1, C, 1, 1, 1, C, 1],
+    [1, C, C, 1, C, C, 1],
+    [1, C, C, C, C, C, 1],
+    [1, 1, 1, 1, 1, 1, 1]
+]
+
 MEDIUM_MAZE_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, C, 0, 1, 1, 0, 0, 1],
-    [1, 0, 0, 1, 0, 0, C, 1],
-    [1, 1, 0, 0, 0, 1, 1, 1],
-    [1, 0, 0, 1, 0, 0, 0, 1],
-    [1, C, 1, 0, 0, 1, 0, 1],
-    [1, 0, 0, 0, 1, C, 0, 1],
+    [1, C, C, 1, 1, C, C, 1],
+    [1, C, C, 1, C, C, C, 1],
+    [1, 1, C, C, C, 1, 1, 1],
+    [1, C, C, 1, C, C, C, 1],
+    [1, C, 1, C, C, 1, C, 1],
+    [1, C, C, C, 1, C, C, 1],
     [1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
@@ -55,14 +82,14 @@ MIN_TIME_MAP = [
 
 
 class PointMaze():
-    all_maps = {"small": OPEN_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR, "large": LARGE_MAZE_DIVERSE_GR,
-                "min_time": MIN_TIME_MAP}
+    all_maps = {"open": OPEN_DIVERSE_GR, "small": SMALL_MAZE_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR, 
+                "large": LARGE_MAZE_DIVERSE_GR, "min_time": MIN_TIME_MAP}
     """
     PointMaze_UMazeDense=v3 uses np.exp(-np.linalg.norm(a-b)) as reward 
     """
     def __init__(self, seed, map_type="small", reward_type="sparse", use_image=False, render_mode=None) -> None:
         assert reward_type in ["sparse", "dense"]
-        assert map_type in ["small", "medium", "large", "min_time"]
+        assert map_type in self.all_maps
         assert render_mode in ["human", "rgb_array", None]
         
         self.reward_type = reward_type
@@ -153,7 +180,7 @@ def main():
     seed = 42
     np.random.seed(seed)
 
-    map_type = "min_time"
+    map_type = "medium"
     reward_type = "sparse"
     env = PointMaze(seed=42, reward_type=reward_type, map_type=map_type, render_mode="human", use_image=False)
     # env = gym.make('PointMaze_UMaze-v3', maze_map=MIN_TIME_MAP, render_mode = "human")
