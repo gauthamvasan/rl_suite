@@ -64,7 +64,7 @@ def find_files_and_plot():
         plt.close()
 
 def hits_vs_timeout():
-    env = "point_maze_large"
+    env = "point_maze_medium"
     # bp = "/home/vasan/src/rl_suite/rl_suite"
     bp = "/Users/gautham/src/rl_suite/rl_suite"   # MacOS
     fp = bp + f"/{env}_random_stat.txt"
