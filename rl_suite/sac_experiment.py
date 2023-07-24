@@ -233,7 +233,7 @@ class SACExperiment(Experiment):
                 print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
-        self.save_model(self.args.N)
+        self.save_model(unique_str=f"{self.run_id}_model")
         self.save_returns(returns, epi_lens)
         self.learning_curve(returns, epi_lens, save_fig=True)
 

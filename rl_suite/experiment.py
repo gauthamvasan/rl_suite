@@ -124,8 +124,8 @@ class Experiment:
         data[1] = rets
         np.savetxt(f"{self._expt_dir}/{self.run_id}_returns.txt", data)
     
-    def save_model(self, step):
-        self.learner.save(self._expt_dir, step)
+    def save_model(self, unique_str):
+        self.learner.save(self._expt_dir, unique_str)
 
     def set_seed(self):
         seed = self.args.seed
