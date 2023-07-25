@@ -173,10 +173,6 @@ class SAC:
         self.soft_update_params(
             self.critic.Q2, self.critic_target.Q2, self.critic_tau
         )
-        # self.soft_update_params(
-        #     self.critic.encoder, self.critic_target.encoder,
-        #     self.encoder_tau
-        # )
     
     def save(self, model_dir, unique_str):
         model_dict = {
