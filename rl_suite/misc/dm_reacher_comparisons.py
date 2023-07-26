@@ -55,8 +55,8 @@ class VelTolReacher(ReacherWrapper):
 
 
 class AdditiveRewardReacher(ReacherWrapper):
-    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
-        super().__init__(seed, penalty=penalty, mode=mode, use_image=use_image, img_history=img_history)
+    def __init__(self, seed, mode="easy", use_image=False, img_history=3):
+        super().__init__(seed=seed, mode=mode, use_image=use_image, img_history=img_history)
         self.timeout = 1000
         self.steps = 0
 
@@ -75,7 +75,7 @@ class AdditiveRewardReacher(ReacherWrapper):
         Source: https://github.com/openai/gym/blob/dcd185843a62953e27c2d54dc8c2d647d604b635/gym/envs/mujoco/reacher.py#L28C23-L28C42
         reward = reward_dist + reward_ctrl
         """
-        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum()
+        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum() + x.reward
         done = self.steps == self.timeout
         info = {}
 
@@ -92,8 +92,8 @@ class AdditiveRewardReacher(ReacherWrapper):
 
 
 class FixedTimeLimitReacher(ReacherWrapper):
-    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
-        super().__init__(seed, penalty, mode, use_image, img_history)
+    def __init__(self, seed, mode="easy", use_image=False, img_history=3):
+        super().__init__(seed=seed, mode=mode, use_image=use_image, img_history=img_history)
         self.timeout = 1000
         self.steps = 0
 
@@ -139,13 +139,13 @@ class DMReacherComparison(SACExperiment):
         elif self.args.env == "vt_reacher_hard":
             self.env = VelTolReacher(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "ar_reacher_easy":
-            self.env = AdditiveRewardReacher(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.use_image)
+            self.env = AdditiveRewardReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
         elif self.args.env == "ar_reacher_hard":
-            self.env = AdditiveRewardReacher(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
+            self.env = AdditiveRewardReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "ftl_reacher_easy":
-            self.env = FixedTimeLimitReacher(seed=self.args.seed, penalty=self.args.reward, mode="easy", use_image=self.args.use_image)
+            self.env = FixedTimeLimitReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
         elif self.args.env == "ftl_reacher_hard":
-            self.env = FixedTimeLimitReacher(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
+            self.env = FixedTimeLimitReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
 
         # Reproducibility
         self.set_seed()
