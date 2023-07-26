@@ -191,7 +191,7 @@ class SAC_RAD:
         )
 
     def save(self, model_dir, unique_str):
-                model_dict = {
+        model_dict = {
             "actor": self.actor.state_dict(),
             "critic": self.critic.state_dict(),
             "log_alpha": self.log_alpha.detach().item(),
