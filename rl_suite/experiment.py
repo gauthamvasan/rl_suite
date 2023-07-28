@@ -104,7 +104,7 @@ class Experiment:
         elif self.args.env == "point_maze":
             from rl_suite.envs.point_maze import PointMaze
             env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, use_image=self.args.use_image)
-            self.args.env += f"_{self.args.maze_type}"  # Make env name clear for saving results
+            self.args.env += f"_{self.args.maze_type}_{self.args.reward_type}"  # Make env name clear for saving results
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
