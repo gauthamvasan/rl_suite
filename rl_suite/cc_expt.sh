@@ -1,15 +1,16 @@
 #!/bin/bash
-#SBATCH --gres=gpu:1       # Request GPU "generic resources"
-#SBATCH --cpus-per-task=8  # Cores proportional to GPUs: 6 on Cedar, 16 on Graham.
-#SBATCH --mem=16000M       # Memory proportional to GPUs: 32000 Cedar, 64000 Graham.
-#SBATCH --time=1-00:00
-#SBATCH --output=%N-%j.out
 #SBATCH --account=rrg-ashique
-#SBATCH --array=1-30 
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=20
+#SBATCH --time=2-00:00
+#SBATCH --mem-per-cpu=3072M
+#SBATCH --gres=gpu:1
 
-module load cuda/11.2.2
+module load mujoco/2.3.6
 source /home/vasan/src/rtrl/bin/activate
 
-SECONDS=0
-python learn_to_reset.py --description "g99_rt09" --reset_thresh 0.9 --work_dir "/home/vasan/scratch/reset_action/dm_reacher_easy" --N 501000 --env "dm_reacher_easy" --seed $SLURM_ARRAY_TASK_ID --penalty -1
-echo "Baseline job $seed took $SECONDS"
+reward_types=("dense" "sparse")
+maze_types-("open" "T" "plus")
+timeouts=(1000 5000)
+
+parallel -j 15 python sac_experiment.py --env "point_maze" --N 201000 --algo "sac" --replay_buffer_capacity 100000 --results_dir "./results" --init_steps 20000 ::: --seed ::: {1..15} ::: --maze_type ::: ${maze_types[@]} ::: --reward_type ::: ${reward_types[@]} ::: --timeout ::: ${timeouts[@]}
