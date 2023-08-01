@@ -7,7 +7,8 @@ import numpy as np
 from rl_suite.algo.mlp_policies import SquashedGaussianMLPActor
 from rl_suite.misc.dm_reacher_comparisons import FixedTimeLimitReacher
 
-EP = 20
+EP = 50
+TIMEOUT = 5000
 obs_dim = 6
 action_dim = 2
 device = torch.device('cuda')
@@ -19,7 +20,7 @@ actor_nn_params = {
 }
 actor = SquashedGaussianMLPActor(obs_dim, action_dim, actor_nn_params, device)
     
-def interaction(model_path, timeout=10000):
+def interaction(model_path, mode):
     print('-' * 50)
     print(model_path)
     print('-' * 50)
@@ -27,8 +28,8 @@ def interaction(model_path, timeout=10000):
     model_dict = torch.load(model_path)
     actor.load_state_dict(model_dict['actor'])
 
-    env = FixedTimeLimitReacher(seed=42, mode="easy", use_image=False)
-    env.timeout = timeout
+    env = FixedTimeLimitReacher(seed=42, mode=mode, use_image=False)
+    env.timeout = TIMEOUT
     rets = []
     ep_lens = []
     steps_to_goal = []
@@ -70,10 +71,10 @@ def interaction(model_path, timeout=10000):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', required=True, type=int, help="Seed for random number generator")       
-    parser.add_argument('--env', required=True, type=str, help="e.g., 'ball_in_cup', 'dm_reacher_easy', 'dm_reacher_hard', 'Hopper-v2' ")
-    parser.add_argument('--timeout', required=True, type=int, help="Timeout for the env")
+    parser.add_argument('--env', required=True, type=str)
+    parser.add_argument('--mode', required=True, type=str)
     args = parser.parse_args()
     
     basepath = "/home/vasan/src/rl_suite/rl_suite/misc/results"
     model_path = glob.glob(f"{basepath}/{args.env}/*-{args.seed}_model.pt")
-    ret, steps_to_goal = interaction(model_path[0], args.timeout)
+    ret, steps_to_goal = interaction(model_path[0], args.mode)
