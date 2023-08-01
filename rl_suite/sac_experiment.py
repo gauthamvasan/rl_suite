@@ -272,7 +272,7 @@ class SACExperiment(Experiment):
 
                     # Termination
                     if done or epi_steps == timeout:
-                        if 'dm_reacher' in self.args.env:
+                        if 'dm_reacher' or 'point_maze' in self.args.env:
                             self.env.reset(randomize_target=done)
                         else:
                             self.env.reset()
