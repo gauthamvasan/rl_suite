@@ -15,12 +15,12 @@ class VelTolReacher(ReacherWrapper):
     def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3, vel_tol=None):
         super().__init__(seed, penalty, mode, use_image, img_history)
         if vel_tol is None:
-            if mode == "easy":
+            if mode in ["easy", "hard"]:
                 self.vel_min = np.array([-0.43, -1.19])
                 self.vel_max = np.array([0.52, 1.17])
-            elif mode == "hard":
-                self.vel_min = np.array([-0.29, -0.9])
-                self.vel_max = np.array([0.29, 0.89])
+            # elif mode == "hard":  ### For a stricter constraint.
+                # self.vel_min = np.array([-0.29, -0.9])
+                # self.vel_max = np.array([0.29, 0.89])
         else:
             if isinstance(vel_tol, list):
                 vel_tol = np.array(vel_tol)
