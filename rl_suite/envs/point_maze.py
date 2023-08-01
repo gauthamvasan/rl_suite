@@ -138,7 +138,6 @@ class PointMaze():
         if randomize_target:
             x = self.env.reset()[0]
             self._goal_cell = x['desired_goal']
-            print(self._goal_cell)
         else:
             # The goal is unchanged, only the agent spawns at a new location.
             goal_cell = self.env.maze.cell_xy_to_rowcol(self._goal_cell)
@@ -189,22 +188,22 @@ class PointMaze():
 
 def main():    
     seed = 42
-    map_type = "medium"
-    reward_type = "sparse"
-    render_mode = None  # "human", "rgb_array"
-    np.random.seed(seed)
-    env = PointMaze(seed=42, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=False)
-    # env = gym.make('PointMaze_UMaze-v3', maze_map=MIN_TIME_MAP, render_mode = "human")
-    
     n_episodes = 10
     timeout = 1000
+    map_type = "open"
+    reward_type = "sparse"
+    render_mode = "human"  # None, "rgb_array"
+    np.random.seed(seed)
+    env = PointMaze(seed=seed, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=False)
+    # env = gym.make('PointMaze_UMaze-v3', maze_map=MIN_TIME_MAP, render_mode = "human")
 
+    obs = env.reset(randomize_target=True)
     for i_ep in range(n_episodes):
         done = False
         ret = 0
         step = 0
         # First episode. Cannot use previous goal if it was never initialized.
-        obs = env.reset(randomize_target=True)
+        
         while (not done and step < timeout):
             action = env.action_space.sample()
             next_obs, reward, done, info = env.step(action)
@@ -214,6 +213,11 @@ def main():
             # print(f"Obs: {obs.shape}, action: {action}, reward: {reward}")
             env.render()
 
+        if not done:
+            obs = env.reset(randomize_target=False)
+        else:
+            obs = env.reset(randomize_target=True)
+            
         print("Episode {} ended in {} steps with return {:.2f}. Done: {}".format(i_ep+1, step, ret, done))
     
     env.close()
