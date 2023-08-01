@@ -77,4 +77,8 @@ if __name__ == "__main__":
     
     basepath = "/home/vasan/src/rl_suite/rl_suite/misc/results"
     model_path = glob.glob(f"{basepath}/{args.env}/*-{args.seed}_model.pt")
-    ret, steps_to_goal = interaction(model_path[0], args.mode)
+    try:
+        ret, steps_to_goal = interaction(model_path[0], args.mode)
+    except IndexError as e:
+        print(model_path)
+        print(e)
