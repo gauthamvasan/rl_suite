@@ -46,9 +46,13 @@ class NpEncoder(json.JSONEncoder):
 
 class Experiment:
     def __init__(self, args):
+        self.args = args
         self.run_id = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
         self.run_id += f"_seed-{args.seed}"
-        self.args = args
+
+        # Make env
+        self.env = self.make_env()
+        
         self._expt_dir = os.path.join(args.results_dir, args.env)
         self.make_dir(self._expt_dir)
         self.save_args()

@@ -15,8 +15,8 @@ from rl_suite.running_stats import RunningStats
 
 class SACExperiment(Experiment):
     def __init__(self):
+        # Create env, run_id, results dir, etc.
         super(SACExperiment, self).__init__(self.parse_args())
-        self.env = self.make_env()
         
         # Reproducibility
         self.set_seed()
