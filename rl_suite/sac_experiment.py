@@ -95,7 +95,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--results_dir', required=True, type=str, help="Save results to this dir")
         parser.add_argument('--xlimit', default=None, type=str)
         parser.add_argument('--ylimit', default=None, type=str)
-        parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
+        parser.add_argument('--checkpoint', default=0, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         args = parser.parse_args()
 
@@ -210,6 +210,10 @@ class SACExperiment(Experiment):
                 ret += r
                 epi_steps += 1
                 sub_steps += 1
+
+                if self.args.checkpoint:
+                    if total_steps % self.args.checkpoint == 0:
+                        self.save_model(unique_str=f"{self.run_id}_model_{total_steps/1000}K")
                 
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
@@ -218,7 +222,7 @@ class SACExperiment(Experiment):
                     epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps
                     print(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
-                    if 'dm_reacher' in self.args.env:
+                    if 'dm_reacher' or 'point_maze' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
                     else:
                         obs = self.env.reset()
