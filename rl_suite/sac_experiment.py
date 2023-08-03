@@ -95,7 +95,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--results_dir', required=True, type=str, help="Save results to this dir")
         parser.add_argument('--xlimit', default=None, type=str)
         parser.add_argument('--ylimit', default=None, type=str)
-        parser.add_argument('--checkpoint', default=0, type=int, help="Save plots and rets every checkpoint")
+        parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
+        parser.add_argument('--model_checkpoint', default=0, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         args = parser.parse_args()
 
@@ -200,8 +201,8 @@ class SACExperiment(Experiment):
                 else:
                     self.learner.push_and_update(img, prop, action, r, epi_done)
                 
-                # if total_steps % 10 == 0: 
-                #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(epi_steps, next_obs, r, epi_done))
+                # if total_steps % 50 == 0: 
+                #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(total_steps, next_obs, r, epi_done))
 
                 obs = next_obs
 
@@ -211,8 +212,9 @@ class SACExperiment(Experiment):
                 epi_steps += 1
                 sub_steps += 1
 
-                if self.args.checkpoint:
-                    if total_steps % self.args.checkpoint == 0:
+                # Save model
+                if self.args.model_checkpoint:
+                    if total_steps % self.args.model_checkpoint == 0:
                         self.save_model(unique_str=f"{self.run_id}_model_{total_steps/1000}K")
                 
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here

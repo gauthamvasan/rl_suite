@@ -107,7 +107,8 @@ class Experiment:
                                 dt=self.args.dt, timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "point_maze":
             from rl_suite.envs.point_maze import PointMaze
-            env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, use_image=self.args.use_image)
+            env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, 
+                            use_image=self.args.use_image, penalty=self.args.reward,)
             self.args.env += f"_{self.args.maze_type}_{self.args.reward_type}"  # Make env name clear for saving results
         else:
             env = gym.make(self.args.env)
@@ -203,4 +204,3 @@ if __name__ == "__main__":
     expt = Experiment(args)
     a = np.loadtxt("/home/vasan/src/rl_suite/rl_suite/results/sparse_reacher/20220613-233856_sac_sparse_reacher_test-7.txt")
     expt.learning_curve(a[1], a[0], "./test.png")
-    
