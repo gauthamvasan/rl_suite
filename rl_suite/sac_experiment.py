@@ -215,7 +215,7 @@ class SACExperiment(Experiment):
                 # Save model
                 if self.args.model_checkpoint:
                     if total_steps % self.args.model_checkpoint == 0:
-                        self.save_model(unique_str=f"{self.run_id}_model_{total_steps/1000}K")
+                        self.save_model(unique_str=f"{self.run_id}_model_{total_steps//1000}K")
                 
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
