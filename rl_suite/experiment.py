@@ -46,9 +46,13 @@ class NpEncoder(json.JSONEncoder):
 
 class Experiment:
     def __init__(self, args):
+        self.args = args
         self.run_id = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
         self.run_id += f"_seed-{args.seed}"
-        self.args = args
+
+        # Make env
+        self.env = self.make_env()
+        
         self._expt_dir = os.path.join(args.results_dir, args.env)
         self.make_dir(self._expt_dir)
         self.save_args()
@@ -102,9 +106,10 @@ class Experiment:
             env = DotBoxReacher(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward, 
                                 dt=self.args.dt, timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "point_maze":
-            from rl_suite.envs.gym_robotics_wrapper import PointMaze
-            env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, use_image=self.args.use_image)
-            self.args.env += f"_{self.args.maze_type}"  # Make env name clear for saving results
+            from rl_suite.envs.point_maze import PointMaze
+            env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, 
+                            use_image=self.args.use_image, penalty=self.args.reward,)
+            self.args.env += f"_{self.args.maze_type}_{self.args.reward_type}"  # Make env name clear for saving results
         else:
             env = gym.make(self.args.env)
             env.seed(self.args.seed)
@@ -124,8 +129,8 @@ class Experiment:
         data[1] = rets
         np.savetxt(f"{self._expt_dir}/{self.run_id}_returns.txt", data)
     
-    def save_model(self, step):
-        self.learner.save(self._expt_dir, step)
+    def save_model(self, unique_str):
+        self.learner.save(self._expt_dir, unique_str)
 
     def set_seed(self):
         seed = self.args.seed
@@ -199,4 +204,3 @@ if __name__ == "__main__":
     expt = Experiment(args)
     a = np.loadtxt("/home/vasan/src/rl_suite/rl_suite/results/sparse_reacher/20220613-233856_sac_sparse_reacher_test-7.txt")
     expt.learning_curve(a[1], a[0], "./test.png")
-    

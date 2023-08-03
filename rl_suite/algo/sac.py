@@ -173,26 +173,29 @@ class SAC:
         self.soft_update_params(
             self.critic.Q2, self.critic_target.Q2, self.critic_tau
         )
-        # self.soft_update_params(
-        #     self.critic.encoder, self.critic_target.encoder,
-        #     self.encoder_tau
-        # )
-
-    def save(self, model_dir, step):
+    
+    def save(self, model_dir, unique_str):
+        model_dict = {
+            "actor": self.actor.state_dict(),
+            "critic": self.critic.state_dict(),
+            "log_alpha": self.log_alpha.detach().item(),
+            "actor_opt": self.actor_optimizer.state_dict(),
+            "critic_opt": self.critic_optimizer.state_dict(),
+            "log_alpha_opt": self.log_alpha_optimizer.state_dict(),
+        }
         torch.save(
-            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
-        )
-        torch.save(
-            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
+            model_dict, '%s/%s.pt' % (model_dir, unique_str)
         )
 
-    def load(self, model_dir, step):
-        self.actor.load_state_dict(
-            torch.load('%s/actor_%s.pt' % (model_dir, step))
-        )
-        self.critic.load_state_dict(
-            torch.load('%s/critic_%s.pt' % (model_dir, step))
-        )
+    def load(self, model_dir, unique_str):
+        model_dict = torch.load('%s/%s.pt' % (model_dir, unique_str))
+        self.actor.load_state_dict(model_dict["actor"])
+        self.critic.load_state_dict(model_dict["critic"])
+        self.log_alpha = torch.tensor(model_dict["log_alpha"]).to(self.device)
+        self.log_alpha.requires_grad = True
+        self.actor_optimizer.load_state_dict(model_dict["actor_optimizer"])
+        self.critic_optimizer.load_state_dict(model_dict["critic_optimizer"])
+        self.log_alpha_optimizer.load_state_dict(model_dict["log_alpha_optimizer"])
 
 
 class SACAgent(SAC):

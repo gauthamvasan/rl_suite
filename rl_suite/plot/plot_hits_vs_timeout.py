@@ -64,31 +64,39 @@ def find_files_and_plot():
         plt.close()
 
 def hits_vs_timeout():
-    env = "point_maze_medium"
-    # bp = "/home/vasan/src/rl_suite/rl_suite"
-    bp = "/Users/gautham/src/rl_suite/rl_suite"   # MacOS
-    fp = bp + f"/{env}_random_stat.txt"
+    envs = [
+        # "point_maze_open_sparse", 
+        "point_maze_T_sparse",
+        "point_maze_small_sparse",
+        # "point_maze_plus_sparse", 
+        "point_maze_min_time_sparse"
+    ]
+    bp = "/home/vasan/src/rl_suite/rl_suite/"
+    # bp = "/Users/gautham/src/rl_suite/rl_suite/misc"   # MacOS
+    
+    for env in envs:
+        fp = bp + f"/{env}_random_stat.txt"
 
-    df = pd.DataFrame(columns=["timeout", "seed", "hits"])
-    with open(fp, 'r') as file:
-        for line in file.readlines():
-            match = re.match(r"timeout=(\d+), seed=(\d+): (\d+)", line)
-            timeout = match.group(1)
-            seed = match.group(2)
-            hits = match.group(3)
-            df = df.append({'timeout': int(timeout), 'seed':int(seed), 'hits': int(hits)}, ignore_index=True)
+        df = pd.DataFrame(columns=["timeout", "seed", "hits"])
+        with open(fp, 'r') as file:
+            for line in file.readlines():
+                match = re.match(r"timeout=(\d+), seed=(\d+): (\d+)", line)
+                timeout = match.group(1)
+                seed = match.group(2)
+                hits = match.group(3)
+                df = df.append({'timeout': int(timeout), 'seed':int(seed), 'hits': int(hits)}, ignore_index=True)
 
-    plt.title(env)
-    plt.xlabel('Timeout')
-    plt.ylabel('Hits')
-    ax = sns.barplot(data=df, x='timeout', y='hits', palette=color_dict)
-    # ax.bar_label(ax.containers[0])
-    labels = ax.get_xticklabels()
-    new_labels = [human_format_numbers(int(k._text)) for k in labels] 
-    ax.set_xticklabels(new_labels)
-    plt.savefig(f'{env}.png')
-    plt.show()
-    plt.close()
+        plt.title(env)
+        plt.xlabel('Timeout')
+        plt.ylabel('Hits')
+        ax = sns.barplot(data=df, x='timeout', y='hits', palette=color_dict)
+        # ax.bar_label(ax.containers[0])
+        labels = ax.get_xticklabels()
+        new_labels = [human_format_numbers(int(k._text)) for k in labels] 
+        ax.set_xticklabels(new_labels)
+        plt.savefig(f'{env}.png')
+        # plt.show()
+        plt.close()
 
 if __name__ == "__main__":
     hits_vs_timeout()

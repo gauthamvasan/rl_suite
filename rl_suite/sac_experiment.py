@@ -15,8 +15,8 @@ from rl_suite.running_stats import RunningStats
 
 class SACExperiment(Experiment):
     def __init__(self):
+        # Create env, run_id, results dir, etc.
         super(SACExperiment, self).__init__(self.parse_args())
-        self.env = self.make_env()
         
         # Reproducibility
         self.set_seed()
@@ -96,6 +96,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--xlimit', default=None, type=str)
         parser.add_argument('--ylimit', default=None, type=str)
         parser.add_argument('--checkpoint', default=5000, type=int, help="Save plots and rets every checkpoint")
+        parser.add_argument('--model_checkpoint', default=0, type=int, help="Save plots and rets every checkpoint")
         parser.add_argument('--device', default="cuda", type=str)
         args = parser.parse_args()
 
@@ -200,8 +201,8 @@ class SACExperiment(Experiment):
                 else:
                     self.learner.push_and_update(img, prop, action, r, epi_done)
                 
-                # if total_steps % 10 == 0: 
-                #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(epi_steps, next_obs, r, epi_done))
+                # if total_steps % 50 == 0: 
+                #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(total_steps, next_obs, r, epi_done))
 
                 obs = next_obs
 
@@ -210,6 +211,11 @@ class SACExperiment(Experiment):
                 ret += r
                 epi_steps += 1
                 sub_steps += 1
+
+                # Save model
+                if self.args.model_checkpoint:
+                    if total_steps % self.args.model_checkpoint == 0:
+                        self.save_model(unique_str=f"{self.run_id}_model_{total_steps//1000}K")
                 
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
@@ -218,7 +224,7 @@ class SACExperiment(Experiment):
                     epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps
                     print(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
-                    if 'dm_reacher' in self.args.env:
+                    if 'dm_reacher' or 'point_maze' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
                     else:
                         obs = self.env.reset()
@@ -233,7 +239,7 @@ class SACExperiment(Experiment):
                 print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
-        self.save_model(self.args.N)
+        self.save_model(unique_str=f"{self.run_id}_model")
         self.save_returns(returns, epi_lens)
         self.learning_curve(returns, epi_lens, save_fig=True)
 
@@ -272,7 +278,7 @@ class SACExperiment(Experiment):
 
                     # Termination
                     if done or epi_steps == timeout:
-                        if 'dm_reacher' in self.args.env:
+                        if 'dm_reacher' or 'point_maze' in self.args.env:
                             self.env.reset(randomize_target=done)
                         else:
                             self.env.reset()
