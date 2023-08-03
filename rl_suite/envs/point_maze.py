@@ -12,21 +12,21 @@ from rl_suite.envs import Observation
 from gymnasium_robotics.envs.maze.maps import R, G, C
 
 OPEN_DIVERSE_GR = [
-    [1, 1, 1, 1, 1, 1, 1],
-    [1, C, C, C, C, C, 1],
-    [1, C, C, C, C, C, 1],
-    [1, C, C, C, C, C, 1],
-    [1, 1, 1, 1, 1, 1, 1]
+    [1, 1, 1, 1, 1, 1],
+    [1, C, C, C, C, 1],
+    [1, C, C, C, C, 1],
+    [1, C, C, C, C, 1],
+    [1, 1, 1, 1, 1, 1]
 ]
 
 SMALL_MAZE_DIVERSE_GR = [
-    [1, 1, 1, 1, 1, 1, 1],
-    [1, C, C, C, C, C, 1],
-    [1, C, 1, 1, 1, C, 1],
-    [1, C, C, C, C, C, 1],
-    [1, C, 1, 1, 1, C, 1],
-    [1, C, C, C, C, C, 1],
-    [1, 1, 1, 1, 1, 1, 1]
+    [1, 1, 1, 1, 1, 1],
+    [1, C, C, C, C, 1],
+    [1, C, 1, 1, C, 1],
+    [1, C, 1, C, C, 1],
+    [1, C, 1, 1, C, 1],
+    [1, C, C, C, C, 1],
+    [1, 1, 1, 1, 1, 1]
 ]
 
 T_MAZE_DIVERSE_GR = [
@@ -72,14 +72,13 @@ LARGE_MAZE_DIVERSE_GR = [
 ]
 
 MIN_TIME_MAP = [
-    [1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 0, 0, R, 1, 1],
-    [1, 1, 0, 1, 0, 1, 1],
-    [1, G, 0, 1, 0, 0, 1],
-    [1, 1, 1, 1, 1, R, 1],
-    [1, 0, 1, 1, 1, 0, 1],
-    [1, R, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1],
+    [1, 0, R, 0, R, 1],
+    [1, R, 0, 1, 0, 1],
+    [1, G, 1, 0, R, 1],
+    [1, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, R, 1],
+    [1, 1, 1, 1, 1, 1],
 ]
 
 
@@ -90,10 +89,10 @@ class PointMaze():
     """
     PointMaze_UMazeDense=v3 uses np.exp(-np.linalg.norm(a-b)) as reward 
     """
-    def __init__(self, seed, map_type="small", reward_type="sparse", use_image=False, render_mode=None) -> None:
-        assert reward_type in ["sparse", "dense"]
-        assert map_type in self.all_maps
-        assert render_mode in ["human", "rgb_array", None]
+    def __init__(self, seed, map_type="small", reward_type="sparse", penalty=-1, use_image=False, render_mode=None) -> None:
+        assert reward_type in ["sparse", "dense"], print(reward_type)
+        assert map_type in self.all_maps, print(map_type)
+        assert render_mode in ["human", "rgb_array", None], print(render_mode)
         
         self.reward_type = reward_type
         self.use_image = use_image
@@ -102,9 +101,11 @@ class PointMaze():
         print(f"point_maze_{map_type} with {reward_type} rewards. Visual task: {use_image}")
 
         self.render_mode = render_mode
+        self.reward = penalty
         
         self.env = gym.make("PointMaze_UMaze-v3", maze_map=self.all_maps[map_type], render_mode=render_mode)
         self.set_seeds(seed)
+        self._maze_map = self.all_maps[map_type]
 
         self._obs_dim = 4 if use_image else 6
         self._action_dim = 2
@@ -135,13 +136,16 @@ class PointMaze():
         return img
 
     def reset(self, randomize_target=True):
-        if randomize_target:
-            x = self.env.reset()[0]
-            self._goal_cell = x['desired_goal']
-        else:
+        options = {}
+        if not randomize_target:
             # The goal is unchanged, only the agent spawns at a new location.
             goal_cell = self.env.maze.cell_xy_to_rowcol(self._goal_cell)
-            x = self.env.reset(options={"goal_cell": goal_cell})[0]
+            if self._maze_map[goal_cell[1]][goal_cell[0]] != 1:
+                options = {"goal_cell": goal_cell}
+        
+        x = self.env.reset(options=options)[0]
+        self._goal_cell = x['desired_goal']
+
         return self.make_obs(x)
 
     def step(self, action):
@@ -150,9 +154,10 @@ class PointMaze():
         done = r
 
         if self.reward_type == "sparse":
-            reward = -1.
+            reward = self.reward
         else:
-            reward = -np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'])
+            distance = np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
+            reward = np.exp(-distance)
 
         return next_obs, reward, done, info
     
@@ -190,9 +195,9 @@ def main():
     seed = 42
     n_episodes = 10
     timeout = 1000
-    map_type = "open"
-    reward_type = "sparse"
-    render_mode = "human"  # None, "rgb_array"
+    map_type = "min_time"
+    reward_type = "dense"
+    render_mode = None  # "human", "rgb_array"
     np.random.seed(seed)
     env = PointMaze(seed=seed, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=False)
     # env = gym.make('PointMaze_UMaze-v3', maze_map=MIN_TIME_MAP, render_mode = "human")
@@ -221,6 +226,7 @@ def main():
         print("Episode {} ended in {} steps with return {:.2f}. Done: {}".format(i_ep+1, step, ret, done))
     
     env.close()
+
 
 if __name__ == "__main__":
     main()
