@@ -156,8 +156,7 @@ class PointMaze():
         if self.reward_type == "sparse":
             reward = self.reward
         else:
-            distance = np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
-            reward = np.exp(-distance)
+            reward = -0.25 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
 
         return next_obs, reward, done, info
     
@@ -193,8 +192,8 @@ class PointMaze():
 
 def main():    
     seed = 42
-    n_episodes = 10
-    timeout = 1000
+    n_episodes = 100
+    timeout = 500
     map_type = "min_time"
     reward_type = "dense"
     render_mode = None  # "human", "rgb_array"
