@@ -66,9 +66,10 @@ def find_files_and_plot():
 def hits_vs_timeout():
     envs = [
         # "point_maze_open_sparse", 
-        "point_maze_T_sparse", 
+        "point_maze_T_sparse",
+        "point_maze_small_sparse",
         # "point_maze_plus_sparse", 
-        # "point_maze_min_time_sparse"
+        "point_maze_min_time_sparse"
     ]
     bp = "/home/vasan/src/rl_suite/rl_suite/"
     # bp = "/Users/gautham/src/rl_suite/rl_suite/misc"   # MacOS
