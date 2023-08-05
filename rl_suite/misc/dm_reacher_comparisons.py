@@ -64,6 +64,10 @@ class AdditiveRewardReacher(ReacherWrapper):
         self.steps = 0
         return super().reset()
 
+    def compute_reward(self, x, action):
+        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum() + x.reward
+        return reward
+
     def step(self, action):
         if isinstance(action, torch.Tensor):
             action = action.cpu().numpy().flatten()
@@ -75,7 +79,7 @@ class AdditiveRewardReacher(ReacherWrapper):
         Source: https://github.com/openai/gym/blob/dcd185843a62953e27c2d54dc8c2d647d604b635/gym/envs/mujoco/reacher.py#L28C23-L28C42
         reward = reward_dist + reward_ctrl
         """
-        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum() + x.reward
+        reward = self.compute_reward(x, action)
         done = self.steps == self.timeout
         info = {}
 
@@ -89,6 +93,17 @@ class AdditiveRewardReacher(ReacherWrapper):
             next_obs = self.make_obs(x)
             
         return next_obs, reward, done, info
+
+
+class AdditiveRewardReacherV2(AdditiveRewardReacher):
+    def __init__(self, seed, mode="easy", use_image=False, img_history=3):
+        super().__init__(seed=seed, mode=mode, use_image=use_image, img_history=img_history)
+    
+    def compute_reward(self, x, action):
+        if x.reward:
+            return 1
+        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum()
+        return reward
 
 
 class FixedTimeLimitReacher(ReacherWrapper):
@@ -146,7 +161,9 @@ class DMReacherComparison(SACExperiment):
             self.env = FixedTimeLimitReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
         elif self.args.env == "ftl_reacher_hard":
             self.env = FixedTimeLimitReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
-
+        elif self.args.env == "ar_reacher_easy_v2":
+            self.env = AdditiveRewardReacherV2(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
+        
         # Reproducibility
         self.set_seed()
                 
