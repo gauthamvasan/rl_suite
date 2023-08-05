@@ -220,6 +220,14 @@ class SACExperiment(Experiment):
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
                     sub_epi += 1
+
+                    # Prevent discontinuity in saving models
+                    x = total_steps//10000
+                    y = (total_steps + self.args.reset_penalty_steps)//10000
+                    # Save model
+                    if self.args.model_checkpoint and x != y:
+                        self.save_model(unique_str=f"{self.run_id}_model_{y}0K")
+
                     ret += self.args.reset_penalty_steps * self.args.reward
                     epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps
