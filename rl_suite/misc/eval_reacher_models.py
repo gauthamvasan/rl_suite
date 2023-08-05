@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 
 from rl_suite.algo.mlp_policies import SquashedGaussianMLPActor
-from rl_suite.misc.dm_reacher_comparisons import FixedTimeLimitReacher, AdditiveRewardReacher
+from rl_suite.misc.dm_reacher_comparisons import FixedTimeLimitReacher, AdditiveRewardReacher, VelTolReacher, AdditiveRewardReacherV2
 
 N = 201000
 EP = 50
@@ -69,16 +69,22 @@ def interaction(model_path, mode):
     return np.mean(rets), np.mean(steps_to_goal)
 
 
-def eval_vt_reacher_on_ar_easy():
+def eval_reacher_across_tasks():
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', required=True, type=int, help="Seed for random number generator")
+    parser.add_argument('--env', required=True, type=str, help="Model env")
+    parser.add_argument('--eval_env', required=True, type=str, help="Evaluation env")
     args = parser.parse_args()
 
     seed = args.seed
-    mode = "easy"
-    basepath = "/home/vasan/src/rl_suite/rl_suite/misc/rupam_eval/vt_reacher_easy"
+    basepath = f"/home/vasan/src/rl_suite/rl_suite/misc/rupam_eval/{args.env}"
 
-    env = AdditiveRewardReacher(seed=seed, mode=mode, use_image=False)
+    if args.eval_env == "ar_reacher_easy":
+        env = AdditiveRewardReacher(seed=seed, mode="easy", use_image=False)
+    elif args.eval_env == "vt_reacher_easy":
+        env = VelTolReacher(seed=seed, mode="easy", use_image=False)
+    elif args.eval_env == "ar_reacher_easy_v2":
+        env = AdditiveRewardReacherV2(seed=seed, mode="easy", use_image=False)
 
     ret = 0
     step = 0
@@ -128,7 +134,7 @@ def eval_vt_reacher_on_ar_easy():
     data = np.zeros((2, len(rets)))
     data[0] = np.array(ep_lens)
     data[1] = np.array(rets)
-    np.savetxt(f"{basepath}/vt_model_on_ar_eval_seed-{seed}.txt", data)
+    np.savetxt(f"{basepath}/{args.env}_model_on_{args.eval_env}_eval_seed-{seed}.txt", data)
 
 
 def eval_reacher_models_on_5K_episodes():
@@ -148,4 +154,4 @@ def eval_reacher_models_on_5K_episodes():
 
 if __name__ == "__main__":
     # eval_reacher_models_on_5K_episodes()
-    eval_vt_reacher_on_ar_easy()
+    eval_reacher_across_tasks()
