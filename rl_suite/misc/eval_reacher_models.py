@@ -7,7 +7,7 @@ import numpy as np
 from rl_suite.algo.mlp_policies import SquashedGaussianMLPActor
 from rl_suite.misc.dm_reacher_comparisons import FixedTimeLimitReacher, AdditiveRewardReacher, VelTolReacher, AdditiveRewardReacherV2
 
-N = 201000
+N = 501000
 EP = 50
 TIMEOUT = 5000
 obs_dim = 6
@@ -77,7 +77,7 @@ def eval_reacher_across_tasks():
     args = parser.parse_args()
 
     seed = args.seed
-    basepath = f"/home/vasan/src/rl_suite/rl_suite/misc/rupam_eval/{args.env}"
+    basepath = f"/home/vasan/scratch/tro_paper/rupam_eval/{args.env}"
 
     if args.eval_env == "ar_reacher_easy":
         env = AdditiveRewardReacher(seed=seed, mode="easy", use_image=False)
@@ -145,7 +145,7 @@ def eval_reacher_models_on_5K_episodes():
     args = parser.parse_args()
     
     # basepath = "/home/vasan/src/rl_suite/rl_suite/misc/results"
-    basepath = "/home/vasan/scratch/tro_paper/rupam_eval_200K"
+    basepath = "/home/vasan/scratch/tro_paper/rupam_eval"
     model_path = glob.glob(f"{basepath}/{args.env}/*-{args.seed}_model.pt")
     try:
         ret, steps_to_goal = interaction(model_path[0], args.mode)
