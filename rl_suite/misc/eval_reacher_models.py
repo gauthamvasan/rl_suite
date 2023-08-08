@@ -144,7 +144,8 @@ def eval_reacher_models_on_5K_episodes():
     parser.add_argument('--mode', required=True, type=str)
     args = parser.parse_args()
     
-    basepath = "/home/vasan/src/rl_suite/rl_suite/misc/results"
+    # basepath = "/home/vasan/src/rl_suite/rl_suite/misc/results"
+    basepath = "/home/vasan/scratch/tro_paper/rupam_eval_200K"
     model_path = glob.glob(f"{basepath}/{args.env}/*-{args.seed}_model.pt")
     try:
         ret, steps_to_goal = interaction(model_path[0], args.mode)
@@ -153,5 +154,5 @@ def eval_reacher_models_on_5K_episodes():
         print(e)
 
 if __name__ == "__main__":
-    # eval_reacher_models_on_5K_episodes()
-    eval_reacher_across_tasks()
+    eval_reacher_models_on_5K_episodes()
+    # eval_reacher_across_tasks()
