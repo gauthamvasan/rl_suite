@@ -163,6 +163,8 @@ class DMReacherComparison(SACExperiment):
             self.env = FixedTimeLimitReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
         elif self.args.env == "ar_reacher_easy_v2":
             self.env = AdditiveRewardReacherV2(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
+        elif self.args.env == "ar_reacher_hard_v2":
+            self.env = AdditiveRewardReacherV2(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
         
         # Reproducibility
         self.set_seed()
