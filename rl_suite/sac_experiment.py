@@ -84,8 +84,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--encoder_tau', default=0.005, type=float)
         parser.add_argument('--l2_reg', default=1e-4, type=float, help="L2 regularization coefficient")        
         # MLP params
-        parser.add_argument('--actor_hidden_sizes', default="512 512", type=str)
-        parser.add_argument('--critic_hidden_sizes', default="512 512", type=str)
+        parser.add_argument('--actor_hidden_sizes', default="512,512", type=str)
+        parser.add_argument('--critic_hidden_sizes', default="512,512", type=str)
         parser.add_argument('--nn_activation', default="relu", type=str)
         # RAD
         parser.add_argument('--rad_offset', default=0.01, type=float)
@@ -114,13 +114,13 @@ class SACExperiment(Experiment):
         if args.algo == "sac":
             args.actor_nn_params = {
                 'mlp': {
-                    'hidden_sizes': list(map(int, args.actor_hidden_sizes.split())),
+                    'hidden_sizes': list(map(int, args.actor_hidden_sizes.split(","))),
                     'activation': args.nn_activation,
                 }
             }
             args.critic_nn_params = {
                 'mlp': {
-                    'hidden_sizes': list(map(int, args.critic_hidden_sizes.split())),
+                    'hidden_sizes': list(map(int, args.critic_hidden_sizes.split(","))),
                     'activation': args.nn_activation,
                 }
             }
@@ -220,6 +220,14 @@ class SACExperiment(Experiment):
                 if not epi_done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
                     sub_epi += 1
+
+                    # Prevent discontinuity in saving models
+                    x = total_steps//10000
+                    y = (total_steps + self.args.reset_penalty_steps)//10000
+                    # Save model
+                    if self.args.model_checkpoint and x != y:
+                        self.save_model(unique_str=f"{self.run_id}_model_{y}0K")
+
                     ret += self.args.reset_penalty_steps * self.args.reward
                     epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps

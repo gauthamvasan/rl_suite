@@ -7,9 +7,11 @@ import cv2
 import gymnasium as gym
 import numpy as np
 
+from collections import deque
 from gym.spaces import Box
-from rl_suite.envs import Observation
 from gymnasium_robotics.envs.maze.maps import R, G, C
+from rl_suite.envs import Observation
+
 
 OPEN_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1],
@@ -96,8 +98,10 @@ class PointMaze():
         
         self.reward_type = reward_type
         self.use_image = use_image
-        if self.use_image and render_mode is None:
-            render_mode = "rgb_array"
+        if self.use_image:
+            self._image_buffer = deque([], maxlen=3)
+            if render_mode is None:
+                render_mode = "rgb_array"
         print(f"point_maze_{map_type} with {reward_type} rewards. Visual task: {use_image}")
 
         self.render_mode = render_mode
@@ -107,9 +111,10 @@ class PointMaze():
         self.set_seeds(seed)
         self._maze_map = self.all_maps[map_type]
 
-        self._obs_dim = 4 if use_image else 6
+        self._obs_dim = 6 if use_image else 8
         self._action_dim = 2
         self._img_dim = (160, 160)
+        self._prev_action = np.zeros(2)
     
     def set_seeds(self, seed):
         self.env.reset(seed=seed) # This is just to set the seed
@@ -118,14 +123,22 @@ class PointMaze():
     def make_obs(self, x):
         if self.use_image:
             obs = Observation()
-            obs.images = self.get_image()           
+
+            # Get new image
+            new_img = self.get_image()
+            self._image_buffer.append(new_img)
+            obs.images = np.concatenate(self._image_buffer, axis=0)
+
+            # N.B: Use only velocity as a part of proprioception obs
             obs.proprioception = np.zeros(self._obs_dim, dtype=np.float32)
             obs.proprioception[:2] = x['observation'].astype(np.float32)[2:]
-            obs.proprioception[2:] = x['desired_goal'].astype(np.float32)
+            obs.proprioception[2:4] = x['desired_goal'].astype(np.float32)
+            obs[4:] = self._prev_action
         else:
             obs = np.zeros(self._obs_dim, dtype=np.float32)
             obs[:4] = x['observation'].astype(np.float32)
-            obs[4:] = x['desired_goal'].astype(np.float32)
+            obs[4:6] = x['desired_goal'].astype(np.float32)
+            obs[6:] = self._prev_action
         return obs
     
     def get_image(self):
@@ -146,17 +159,25 @@ class PointMaze():
         x = self.env.reset(options=options)[0]
         self._goal_cell = x['desired_goal']
 
+        if self.use_image:
+            new_img = self.get_image()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+        
+        self._prev_action = np.zeros(self._action_dim)
+
         return self.make_obs(x)
 
     def step(self, action):
         next_x, r, _, _, info = self.env.step(action)
         next_obs = self.make_obs(next_x)
         done = r
+        self._prev_action = action[:]
 
         if self.reward_type == "sparse":
             reward = self.reward
         else:
-            reward = -0.25 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
+            reward = -0.1 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
 
         return next_obs, reward, done, info
     
@@ -196,9 +217,10 @@ def main():
     timeout = 500
     map_type = "min_time"
     reward_type = "dense"
+    use_image = True
     render_mode = None  # "human", "rgb_array"
     np.random.seed(seed)
-    env = PointMaze(seed=seed, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=False)
+    env = PointMaze(seed=seed, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=use_image)
     # env = gym.make('PointMaze_UMaze-v3', maze_map=MIN_TIME_MAP, render_mode = "human")
 
     obs = env.reset(randomize_target=True)
@@ -214,7 +236,7 @@ def main():
             ret += reward
             step += 1
             obs = next_obs
-            # print(f"Obs: {obs.shape}, action: {action}, reward: {reward}")
+            # print(f"Obs: {obs[4:]}, action: {action}, reward: {reward}")
             env.render()
 
         if not done:
