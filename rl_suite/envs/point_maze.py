@@ -159,9 +159,11 @@ class PointMaze():
         x = self.env.reset(options=options)[0]
         self._goal_cell = x['desired_goal']
 
-        new_img = self.get_image()
-        for _ in range(self._image_buffer.maxlen):
-            self._image_buffer.append(new_img)
+        if self.use_image:
+            new_img = self.get_image()
+            for _ in range(self._image_buffer.maxlen):
+                self._image_buffer.append(new_img)
+        
         self._prev_action = np.zeros(self._action_dim)
 
         return self.make_obs(x)
@@ -175,7 +177,7 @@ class PointMaze():
         if self.reward_type == "sparse":
             reward = self.reward
         else:
-            reward = -0.25 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
+            reward = -0.1 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
 
         return next_obs, reward, done, info
     
