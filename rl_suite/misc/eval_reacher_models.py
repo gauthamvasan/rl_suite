@@ -85,6 +85,8 @@ def eval_reacher_across_tasks():
         env = VelTolReacher(seed=seed, mode="easy", use_image=False)
     elif args.eval_env == "ar_reacher_easy_v2":
         env = AdditiveRewardReacherV2(seed=seed, mode="easy", use_image=False)
+    elif args.eval_env == "ar_reacher_hard_v2":
+        env = AdditiveRewardReacherV2(seed=seed, mode="hard", use_image=False)
 
     ret = 0
     step = 0
