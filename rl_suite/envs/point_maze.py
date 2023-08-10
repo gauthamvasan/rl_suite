@@ -133,7 +133,7 @@ class PointMaze():
             obs.proprioception = np.zeros(self._obs_dim, dtype=np.float32)
             obs.proprioception[:2] = x['observation'].astype(np.float32)[2:]
             obs.proprioception[2:4] = x['desired_goal'].astype(np.float32)
-            obs[4:] = self._prev_action
+            obs.proprioception[4:] = self._prev_action
         else:
             obs = np.zeros(self._obs_dim, dtype=np.float32)
             obs[:4] = x['observation'].astype(np.float32)
@@ -194,7 +194,7 @@ class PointMaze():
         if not self.use_image:
             raise AttributeError(f'use_image={self.use_image}')
 
-        image_shape = (3, 160, 160)
+        image_shape = (9, 160, 160)
         return Box(low=0, high=255, shape=image_shape)
 
     @property
