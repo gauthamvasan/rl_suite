@@ -4,6 +4,8 @@ D4RL references:
 - https://github.com/Farama-Foundation/Gymnasium-Robotics/blob/main/gymnasium_robotics/envs/maze/maze_v4.py
 """
 import cv2
+import time
+
 import gymnasium as gym
 import numpy as np
 
@@ -133,7 +135,7 @@ class PointMaze():
             obs.proprioception = np.zeros(self._obs_dim, dtype=np.float32)
             obs.proprioception[:2] = x['observation'].astype(np.float32)[2:]
             obs.proprioception[2:4] = x['desired_goal'].astype(np.float32)
-            obs[4:] = self._prev_action
+            obs.proprioception[4:] = self._prev_action
         else:
             obs = np.zeros(self._obs_dim, dtype=np.float32)
             obs[:4] = x['observation'].astype(np.float32)
@@ -145,6 +147,7 @@ class PointMaze():
         assert self.use_image or self.render_mode=="rgb_array"
         img = self.render()
         img = cv2.resize(img, self._img_dim, interpolation = cv2.INTER_AREA)
+        img = img[40:, :, :]
         img = np.transpose(img, [2, 0, 1])  # c, h, w
         return img
 
@@ -194,7 +197,7 @@ class PointMaze():
         if not self.use_image:
             raise AttributeError(f'use_image={self.use_image}')
 
-        image_shape = (3, 160, 160)
+        image_shape = (9, 120, 160)
         return Box(low=0, high=255, shape=image_shape)
 
     @property
@@ -229,13 +232,23 @@ def main():
         ret = 0
         step = 0
         # First episode. Cannot use previous goal if it was never initialized.
-        
+        tic = time.time()
         while (not done and step < timeout):
             action = env.action_space.sample()
             next_obs, reward, done, info = env.step(action)
             ret += reward
             step += 1
             obs = next_obs
+
+            if use_image:
+                cv_img = obs.images[6:9, :, :]
+                cv_img = np.moveaxis(cv_img, 0, -1).astype(np.uint8)
+                cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+                # cv2.imshow(f"Point Maze: {map_type}", cv_img, )
+                time.sleep(0.05)
+
+                # if cv2.waitKey(1) == ord('q'):                
+                #     break
             # print(f"Obs: {obs[4:]}, action: {action}, reward: {reward}")
             env.render()
 
@@ -244,7 +257,8 @@ def main():
         else:
             obs = env.reset(randomize_target=True)
             
-        print("Episode {} ended in {} steps with return {:.2f}. Done: {}".format(i_ep+1, step, ret, done))
+        print("Episode {} ended in {} steps with return {:.2f}. Done: {}. Render time: {:.2f}".format(
+            i_ep+1, step, ret, done, time.time()-tic))
     
     env.close()
 
