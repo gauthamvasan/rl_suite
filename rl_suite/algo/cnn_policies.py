@@ -1,4 +1,3 @@
-from matplotlib.pyplot import axis
 import torch
 
 import numpy as np
@@ -7,6 +6,8 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn import Parameter
 from torch.distributions import Normal
+from rl_suite.algo.mlp_policies import orthogonal_weight_init
+
 
 def random_augment(images, rad_height, rad_width):
     """ RAD from Laskin et al.,
@@ -28,21 +29,6 @@ def random_augment(images, rad_height, rad_width):
     for i, (image, w11, h11) in enumerate(zip(images, w1, h1)):
         cropped_images[i][:] = image[:, h11:h11 + _h, w11:w11 + _w]
     return cropped_images
-
-def weight_init(m):
-    """Custom weight init for Conv2D and Linear layers."""
-    if isinstance(m, nn.Linear):
-        nn.init.orthogonal_(m.weight.data)
-        m.bias.data.fill_(0.0)
-    elif isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        # delta-orthogonal init from https://arxiv.org/pdf/1806.05393.pdf
-        assert m.weight.size(2) == m.weight.size(3)
-        m.weight.data.fill_(0.0)
-        m.bias.data.fill_(0.0)
-        mid = m.weight.size(2) // 2
-        gain = nn.init.calculate_gain('relu')
-        nn.init.orthogonal_(m.weight.data[:, :, mid, mid], gain)
-
 
 def conv_out_size(input_size, kernel_size, stride, padding=0):
     return ((input_size - kernel_size + 2 * padding) // stride) + 1
@@ -134,10 +120,11 @@ class SSEncoderModel(nn.Module):
         self.convs = nn.Sequential(
             *layers
         )
+        
         self.ss = SpatialSoftmax(width, height, conv_params[-1][1])
         self.fc = nn.Linear(conv_params[-1][1] * width * height, latent_dim)
-        self.ln = nn.LayerNorm(latent_dim)
-        self.apply(weight_init)
+        # self.ln = nn.LayerNorm(latent_dim)
+        self.apply(orthogonal_weight_init)
 
     def forward(self, images, proprioceptions, random_rad=True, detach=False):
         if self.encoder_type == 'proprioception':
@@ -165,12 +152,14 @@ class SSEncoderModel(nn.Module):
         else:
             raise NotImplementedError('Invalid encoder type')
 
+
 class ActorModel(nn.Module):
     """ MLP actor network. """
     def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False):
         super().__init__()
 
         self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+        print("Encoder")
         if freeze_cnn:
             print("Actor CNN weights won't be trained!")
             for param in self.encoder.parameters():
@@ -189,7 +178,7 @@ class ActorModel(nn.Module):
         )
 
         self.outputs = dict()
-        self.apply(weight_init)
+        self.apply(orthogonal_weight_init)
         self.trunk[-1].weight.data.fill_(0.0)
         self.trunk[-1].bias.data.fill_(0.0)
         print('Using normal distribution initialization.')
@@ -239,7 +228,7 @@ class CriticModel(nn.Module):
         self.trunk = nn.Sequential(*layers)
 
         self.outputs = dict()
-        self.apply(weight_init)
+        self.apply(orthogonal_weight_init)
 
     def forward(self, images, proprioceptions, random_rad=True, detach_encoder=False):
         latents = self.encoder(images, proprioceptions, random_rad, detach=detach_encoder)
@@ -350,7 +339,7 @@ class SACRADCritic(nn.Module):
         )
 
         self.outputs = dict()
-        self.apply(weight_init)
+        self.apply(orthogonal_weight_init)
 
     def forward(self, obs, state, action, detach_encoder=False):
         # detach_encoder allows to stop gradient propogation to encoder
@@ -385,7 +374,7 @@ class ResetActionActorModel(nn.Module):
         self.action_layer = nn.Linear(mlp_params[-1][0], mlp_params[-1][-1])
         self.reset_action_layer = nn.Linear(mlp_params[-1][0], 2)
         
-        self.apply(weight_init)
+        self.apply(orthogonal_weight_init)
         # change, initial the last layer to be 0 mean, 0 log std
         self.action_layer.weight.data.fill_(0.0)
         self.action_layer.bias.data.fill_(0.0)
@@ -492,7 +481,7 @@ class SAC_RAD_ResetActionActor(ResetActionActorModel):
     #     return torch.tanh(mu), torch.tanh(x_action), log_p, log_std, torch.tanh(reset_mu), torch.tanh(reset_action), log_reset_action_prob, reset_log_std
 
 if __name__ == '__main__':
-    ss_config = {
+    net_params = {
         'conv': [
             # in_channel, out_channel, kernel_size, stride
             [-1, 32, 3, 2],
@@ -509,9 +498,19 @@ if __name__ == '__main__':
             [1024, -1]
         ],
     }
+    image_shape = (9, 120, 160)
+    proprioception_shape = (6,)
+    action_dim = 2
+    rad_offset = 0.02
+    device = torch.device("cuda")
 
-    critic = CriticModel(image_shape=(9, 125, 200), proprioception_shape=(6,), net_params=ss_config, rad_offset=0.02)
-    img = torch.zeros((1, 9, 125, 200))
-    prop = torch.zeros((1, 6))
+    img = torch.zeros(image_shape).unsqueeze(0).to(device)
+    prop = torch.zeros(proprioception_shape).unsqueeze(0).to(device)
+
+    actor = SACRADActor(image_shape, proprioception_shape, action_dim, net_params, rad_offset).to(device)
+    print(actor(img, prop))
+    
+    critic = CriticModel(image_shape, proprioception_shape, net_params, rad_offset).to(device)
     print(critic(img, prop))
+    
     
