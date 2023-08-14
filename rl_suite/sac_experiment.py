@@ -149,6 +149,7 @@ class SACExperiment(Experiment):
             args.device = torch.device("cpu")
         else:
             args.device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+            
         return args
 
     def run(self):
