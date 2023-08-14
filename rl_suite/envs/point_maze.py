@@ -232,7 +232,7 @@ def main():
         ret = 0
         step = 0
         # First episode. Cannot use previous goal if it was never initialized.
-        
+        tic = time.time()
         while (not done and step < timeout):
             action = env.action_space.sample()
             next_obs, reward, done, info = env.step(action)
@@ -244,11 +244,11 @@ def main():
                 cv_img = obs.images[6:9, :, :]
                 cv_img = np.moveaxis(cv_img, 0, -1).astype(np.uint8)
                 cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-                cv2.imshow(f"Point Maze: {map_type}", cv_img, )
+                # cv2.imshow(f"Point Maze: {map_type}", cv_img, )
                 time.sleep(0.05)
 
-                if cv2.waitKey(1) == ord('q'):                
-                    break
+                # if cv2.waitKey(1) == ord('q'):                
+                #     break
             # print(f"Obs: {obs[4:]}, action: {action}, reward: {reward}")
             env.render()
 
@@ -257,7 +257,8 @@ def main():
         else:
             obs = env.reset(randomize_target=True)
             
-        print("Episode {} ended in {} steps with return {:.2f}. Done: {}".format(i_ep+1, step, ret, done))
+        print("Episode {} ended in {} steps with return {:.2f}. Done: {}. Render time: {:.2f}".format(
+            i_ep+1, step, ret, done, time.time()-tic))
     
     env.close()
 
