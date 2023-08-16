@@ -3,12 +3,12 @@ import numpy as np
 
 
 class MountainCarContinuous:
-    def __init__(self, seed, reward=-1) -> None:
-        assert reward < 0, "Per-timestep reward must be negative"
+    def __init__(self, seed, penalty=-1) -> None:
+        assert penalty < 0, "Per-timestep reward must be negative"
         self.env = gym.make('MountainCarContinuous-v0')
         self.env.reset(seed=seed)
         self.env.action_space.seed(seed)
-        self.reward = reward
+        self.reward = penalty
     
     def reset(self):
         return self.env.reset()[0]
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     use_image = True
     render_mode = None  # "human", "rgb_array"
     np.random.seed(seed)
-    env = MountainCarContinuous(seed=seed, reward=-1)
+    env = MountainCarContinuous(seed=seed, penalty=-1)
 
     for i_ep in range(n_episodes):
         done = False

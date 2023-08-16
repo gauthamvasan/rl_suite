@@ -91,7 +91,7 @@ class Experiment:
                 env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)                
         elif self.args.env == "mountain_car_continuous":
-            env = MountainCarContinuous(timeout=self.args.timeout)
+            env = MountainCarContinuous(seed=self.args.seed, penalty=self.args.reward)
         elif self.args.env == "mj_reacher":
             from rl_suite.envs.visual_reacher import MJReacherWrapper            
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.use_image)            
