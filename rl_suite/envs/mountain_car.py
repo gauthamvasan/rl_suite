@@ -3,11 +3,16 @@ import numpy as np
 
 
 class MountainCarContinuous:
+    """ 
+    Classic control MountainCar env with continuous action space. 
+    N.B: Recommended timeout=10K, and it requires discount factor (γ) = 1
+    https://gymnasium.farama.org/environments/classic_control/mountain_car_continuous/
+    """
     def __init__(self, seed, penalty=-1) -> None:
         assert penalty < 0, "Per-timestep reward must be negative"
         self.env = gym.make('MountainCarContinuous-v0')
-        self.env.reset(seed=seed)
-        self.env.action_space.seed(seed)
+        self.env.reset(seed=seed)           # Set env seed
+        self.env.action_space.seed(seed)    # Set action space wrapper object seed
         self.reward = penalty
     
     def reset(self):
@@ -48,7 +53,7 @@ if __name__ == "__main__":
         step = 0
         obs = env.reset()
         while (not done and step < timeout):
-            action = np.array([np.random.uniform(-1, 1)])
+            action = env.action_space.sample()
             next_obs, reward, done, info = env.step(action)
             ret += reward
             step += 1
