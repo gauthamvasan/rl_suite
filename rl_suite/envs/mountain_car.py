@@ -7,6 +7,7 @@ class MountainCarContinuous:
         assert reward < 0, "Per-timestep reward must be negative"
         self.env = gym.make('MountainCarContinuous-v0')
         self.env.reset(seed=seed)
+        self.env.action_space.seed(seed)
         self.reward = reward
     
     def reset(self):
@@ -34,7 +35,7 @@ class MountainCarContinuous:
 
 if __name__ == "__main__":   
     seed = 42
-    n_episodes = 100
+    n_episodes = 50
     timeout = 10000
     use_image = True
     render_mode = None  # "human", "rgb_array"
@@ -47,7 +48,7 @@ if __name__ == "__main__":
         step = 0
         obs = env.reset()
         while (not done and step < timeout):
-            action = env.action_space.sample()
+            action = np.array([np.random.uniform(-1, 1)])
             next_obs, reward, done, info = env.step(action)
             ret += reward
             step += 1

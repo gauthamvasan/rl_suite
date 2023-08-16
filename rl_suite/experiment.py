@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 # from rl_suite.mysql_db import MySQLDBManager
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
-from rl_suite.envs.gym_wrapper import MountainCarContinuous
+from rl_suite.envs.mountain_car import MountainCarContinuous
 from rl_suite.envs.dot_seeker import DotSeeker, DotBoxReacher
 from rl_suite.plot.plot import smoothed_curve
 from sys import platform
@@ -92,7 +92,6 @@ class Experiment:
                     dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)                
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(timeout=self.args.timeout)
-            env.env.seed(self.args.seed)
         elif self.args.env == "mj_reacher":
             from rl_suite.envs.visual_reacher import MJReacherWrapper            
             env = MJReacherWrapper(tol=self.args.tol, penalty=self.args.reward, use_image=self.args.use_image)            
