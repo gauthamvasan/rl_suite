@@ -87,6 +87,8 @@ class SACExperiment(Experiment):
         parser.add_argument('--actor_hidden_sizes', default="512,512", type=str)
         parser.add_argument('--critic_hidden_sizes', default="512,512", type=str)
         parser.add_argument('--nn_activation', default="relu", type=str)
+        # CNN architecture
+        parser.add_argument('--cnn_architecture', default="default", type=str)
         # RAD
         parser.add_argument('--rad_offset', default=0.01, type=float)
         parser.add_argument('--freeze_cnn', default=0, type=int)
@@ -125,25 +127,44 @@ class SACExperiment(Experiment):
                 }
             }
         else:
-            # TODO: Fix this hardcoding by providing choice of network architectures
-            args.net_params = {
-                # Spatial softmax encoder net params
-                'conv': [
-                    # in_channel, out_channel, kernel_size, stride
-                    [-1, 32, 3, 2],
-                    [32, 32, 3, 2],
-                    [32, 32, 3, 2],
-                    [32, 32, 3, 1],
-                ],
-            
-                'latent': 50,
+            if args.cnn_architecture == "V2":
+                args.net_params = {
+                    # Spatial softmax encoder net params
+                    'conv': [
+                        # in_channel, out_channel, kernel_size, stride
+                        [-1, 32, 3, 2],
+                        [32, 32, 3, 2],
+                        [32, 32, 3, 2],
+                        [32, 32, 3, 1],
+                    ],
 
-                'mlp': [
-                    [-1, 512],
-                    [512, 512],
-                    [512, -1]
-                ],
-            }            
+                    'latent': 256,
+
+                    'mlp': [
+                        [-1, 1024],
+                        [1024, 1024],
+                        [1024, -1]
+                    ],
+                }
+            else:
+                args.net_params = {
+                    # Spatial softmax encoder net params
+                    'conv': [
+                        # in_channel, out_channel, kernel_size, stride
+                        [-1, 32, 3, 2],
+                        [32, 32, 3, 2],
+                        [32, 32, 3, 2],
+                        [32, 32, 3, 1],
+                    ],
+                
+                    'latent': 50,
+
+                    'mlp': [
+                        [-1, 512],
+                        [512, 512],
+                        [512, -1]
+                    ],
+                }
 
         if args.device == 'cpu':
             args.device = torch.device("cpu")
