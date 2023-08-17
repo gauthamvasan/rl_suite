@@ -93,15 +93,17 @@ class PointMaze():
     """
     PointMaze_UMazeDense=v3 uses np.exp(-np.linalg.norm(a-b)) as reward 
     """
-    def __init__(self, seed, map_type="small", reward_type="sparse", penalty=-1, use_image=False, render_mode=None) -> None:
+    def __init__(self, seed, map_type="small", reward_type="sparse", penalty=-1, 
+                 use_image=False, img_history=3, render_mode=None) -> None:
         assert reward_type in ["sparse", "dense"], print(reward_type)
         assert map_type in self.all_maps, print(map_type)
         assert render_mode in ["human", "rgb_array", None], print(render_mode)
         
         self.reward_type = reward_type
         self.use_image = use_image
+        self.img_history = img_history
         if self.use_image:
-            self._image_buffer = deque([], maxlen=3)
+            self._image_buffer = deque([], maxlen=img_history)
             if render_mode is None:
                 render_mode = "rgb_array"
         print(f"point_maze_{map_type} with {reward_type} rewards. Visual task: {use_image}")
@@ -113,7 +115,7 @@ class PointMaze():
         self.set_seeds(seed)
         self._maze_map = self.all_maps[map_type]
 
-        self._obs_dim = 6 if use_image else 8
+        self._obs_dim = 4 if use_image else 8
         self._action_dim = 2
         self._img_dim = (160, 160)
         self._prev_action = np.zeros(2)
@@ -134,8 +136,7 @@ class PointMaze():
             # N.B: Use only velocity as a part of proprioception obs
             obs.proprioception = np.zeros(self._obs_dim, dtype=np.float32)
             obs.proprioception[:2] = x['observation'].astype(np.float32)[2:]
-            obs.proprioception[2:4] = x['desired_goal'].astype(np.float32)
-            obs.proprioception[4:] = self._prev_action
+            obs.proprioception[2:] = self._prev_action
         else:
             obs = np.zeros(self._obs_dim, dtype=np.float32)
             obs[:4] = x['observation'].astype(np.float32)
@@ -180,7 +181,7 @@ class PointMaze():
         if self.reward_type == "sparse":
             reward = self.reward
         else:
-            reward = -0.1 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
+            reward = -0.25 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
 
         return next_obs, reward, done, info
     
@@ -197,7 +198,7 @@ class PointMaze():
         if not self.use_image:
             raise AttributeError(f'use_image={self.use_image}')
 
-        image_shape = (9, 120, 160)
+        image_shape = (3 * self.img_history, 120, 160)
         return Box(low=0, high=255, shape=image_shape)
 
     @property
@@ -217,10 +218,10 @@ class PointMaze():
 def main():    
     seed = 42
     n_episodes = 100
-    timeout = 500
-    map_type = "min_time"
+    timeout = 5000
+    map_type = "open"
     reward_type = "dense"
-    use_image = True
+    use_image = False
     render_mode = None  # "human", "rgb_array"
     np.random.seed(seed)
     env = PointMaze(seed=seed, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=use_image)
@@ -249,7 +250,9 @@ def main():
 
                 # if cv2.waitKey(1) == ord('q'):                
                 #     break
-            # print(f"Obs: {obs[4:]}, action: {action}, reward: {reward}")
+
+            if step % 100 == 0:
+                print(f"Obs: {obs[:4]}, action: {action}, reward: {reward}")
             env.render()
 
         if not done:
