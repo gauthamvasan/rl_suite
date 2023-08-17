@@ -79,6 +79,10 @@ class SACRADBuffer(object):
         self.full = False
         self.count = 0
 
+        size_of_buffer = ((((self.images.size * self.images.itemsize) + (self.propris.size * self.propris.itemsize) + \
+            (self.actions.size * self.actions.itemsize) + (2 * capacity) / 1024) / 1024)/ 1024)
+        print(f"Size of replay buffer: {size_of_buffer}")
+
     def add(self, image, propri, action, reward, done):
         if not self.ignore_image:
             self.images[self.idx] = image
