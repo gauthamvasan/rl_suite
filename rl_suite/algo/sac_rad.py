@@ -30,10 +30,10 @@ class SAC_RAD:
         self.action_dim = cfg.action_shape[0]
         
         self.actor = SACRADActor(cfg.image_shape, cfg.proprioception_shape, cfg.action_shape[0], cfg.net_params,
-                                cfg.rad_offset, cfg.freeze_cnn).to(device)
+                                cfg.rad_offset, cfg.freeze_cnn, cfg.spatial_softmax).to(device)
 
         self.critic = SACRADCritic(cfg.image_shape, cfg.proprioception_shape, cfg.action_shape[0], cfg.net_params,
-                                cfg.rad_offset, cfg.freeze_cnn).to(device)
+                                cfg.rad_offset, cfg.freeze_cnn, cfg.spatial_softmax).to(device)
 
         self.critic_target = deepcopy(self.critic) # also copies the encoder instance
 

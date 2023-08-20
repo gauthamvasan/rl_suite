@@ -155,10 +155,10 @@ class SSEncoderModel(nn.Module):
 
 class ActorModel(nn.Module):
     """ MLP actor network. """
-    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False):
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False, spatial_softmax=True):
         super().__init__()
 
-        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax)
         print("Encoder")
         if freeze_cnn:
             print("Actor CNN weights won't be trained!")
@@ -208,10 +208,10 @@ class ActorModel(nn.Module):
 
 
 class CriticModel(nn.Module):
-    def __init__(self, image_shape, proprioception_shape, net_params, rad_offset, freeze_cnn=False):
+    def __init__(self, image_shape, proprioception_shape, net_params, rad_offset, freeze_cnn=False, spatial_softmax=True):
         super().__init__()
 
-        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax)
         if freeze_cnn:
             print("Critic CNN weights won't be trained!")
             for param in self.encoder.parameters():

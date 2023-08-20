@@ -128,6 +128,7 @@ class SACExperiment(Experiment):
             }
         else:
             if args.cnn_architecture == "V2":
+                args.spatial_softmax = False
                 args.net_params = {
                     # Spatial softmax encoder net params
                     'conv': [
@@ -147,6 +148,7 @@ class SACExperiment(Experiment):
                     ],
                 }
             else:
+                args.spatial_softmax = True
                 args.net_params = {
                     # Spatial softmax encoder net params
                     'conv': [
