@@ -78,6 +78,7 @@ class SSEncoderModel(nn.Module):
 
     def __init__(self, image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax=True):
         super().__init__()
+        self.spatial_softmax = spatial_softmax
 
         if image_shape[-1] != 0:  # use image
             c, h, w = image_shape
@@ -121,8 +122,10 @@ class SSEncoderModel(nn.Module):
             *layers
         )
         
-        self.ss = SpatialSoftmax(width, height, conv_params[-1][1])
-        self.fc = nn.Linear(conv_params[-1][1] * width * height, latent_dim)
+        if self.spatial_softmax:
+            self.ss = SpatialSoftmax(width, height, conv_params[-1][1])
+        else:
+            self.fc = nn.Linear(conv_params[-1][1] * width * height, latent_dim)
         # self.ln = nn.LayerNorm(latent_dim)
         self.apply(orthogonal_weight_init)
 
@@ -132,16 +135,20 @@ class SSEncoderModel(nn.Module):
 
         if self.encoder_type == 'pixel' or self.encoder_type == 'multi':
             images = images / 255.
+            n, c, h, w = images.shape
             if random_rad:
                 images = random_augment(images, self.rad_h, self.rad_w)
-            else:
-                n, c, h, w = images.shape
+            else:                
                 images = images[:, :,
                          self.rad_h: h - self.rad_h,
                          self.rad_w: w - self.rad_w,
                          ]
 
-            h = self.ss(self.convs(images))
+            if self.spatial_softmax:
+                h = self.ss(self.convs(images))
+            else:
+                h = self.fc(self.convs(images).view((n, -1)))
+
             if detach:
                 h = h.detach()
 
@@ -240,8 +247,8 @@ class SACRADActor(ActorModel):
     LOG_STD_MIN = -10
     LOG_STD_MAX = 2
     
-    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False):
-        super().__init__(image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn)
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False, spatial_softmax=True):
+        super().__init__(image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn, spatial_softmax)
 
     @staticmethod
     def squash(mu, action, log_p):
@@ -321,10 +328,10 @@ class QFunction(nn.Module):
 
 class SACRADCritic(nn.Module):
     """Critic network, employes two q-functions."""
-    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False):
+    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False, spatial_softmax=True):
         super().__init__()
 
-        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
+        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax)
         # if freeze_cnn:
         #     print("Critic CNN weights won't be trained!")
         #     for param in self.encoder.parameters():
