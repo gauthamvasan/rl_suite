@@ -7,6 +7,7 @@ except ImportError:
     def make_np(x):
         return np.array(x).copy().astype('float16')
 
+
 class RunningStats(object):
     """Computes running mean and standard deviation
     Url: https://gist.github.com/wassname/a9502f562d4d3e73729dc5b184db2501
