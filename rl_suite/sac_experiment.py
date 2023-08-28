@@ -1,6 +1,7 @@
 import argparse
 import torch
 import cv2
+import time
 
 import numpy as np
 
@@ -212,7 +213,7 @@ class SACExperiment(Experiment):
 
                 # Select an action
                 if self.args.algo == "sac":
-                    action = self.learner.sample_action(obs)                
+                    action = self.learner.sample_action(obs)
                 else:
                     action = self.learner.sample_action(img, prop)
                 
@@ -256,7 +257,7 @@ class SACExperiment(Experiment):
                     epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps
                     print(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
-                    if 'dm_reacher' or 'point_maze' in self.args.env:
+                    if 'dm_reacher' in self.args.env or 'point_maze' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
                     else:
                         obs = self.env.reset()
@@ -310,7 +311,7 @@ class SACExperiment(Experiment):
 
                     # Termination
                     if done or epi_steps == timeout:
-                        if 'dm_reacher' or 'point_maze' in self.args.env:
+                        if 'dm_reacher' in self.args.env or 'point_maze' in self.args.env:
                             self.env.reset(randomize_target=done)
                         else:
                             self.env.reset()

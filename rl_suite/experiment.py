@@ -4,7 +4,6 @@ General experiment template script
 """
 
 import argparse
-import gym
 import torch
 import random
 import warnings
@@ -110,8 +109,8 @@ class Experiment:
                             use_image=self.args.use_image, penalty=self.args.reward,)
             self.args.env += f"_{self.args.maze_type}_{self.args.reward_type}"  # Make env name clear for saving results
         else:
-            env = gym.make(self.args.env)
-            env.seed(self.args.seed)
+            from rl_suite.envs.gymnasium_wrapper import GymnasiumWrapper
+            env = GymnasiumWrapper(env=self.args.env, seed=self.args.seed, time_limit=self.args.timeout)
         env.name = self.args.env
         return env
 
