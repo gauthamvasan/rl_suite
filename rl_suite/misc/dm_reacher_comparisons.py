@@ -65,7 +65,10 @@ class AdditiveRewardReacher(ReacherWrapper):
         return super().reset()
 
     def compute_reward(self, x, action):
-        reward = -self.env._physics.finger_to_target_dist() + -np.square(action).sum() + x.reward
+        distance = self.env._physics.finger_to_target_dist()
+        reward = -distance + np.exp(-100 * (distance**2))
+        if self.steps % 100 == 0:
+            print(-distance, np.exp(-100 * (distance**2)))
         return reward
 
     def step(self, action):
@@ -95,7 +98,7 @@ class AdditiveRewardReacher(ReacherWrapper):
         return next_obs, reward, done, info
 
 
-class AdditiveRewardReacherV2(AdditiveRewardReacher):
+class BrockmanTassaReacher(AdditiveRewardReacher):
     def __init__(self, seed, mode="easy", use_image=False, img_history=3):
         super().__init__(seed=seed, mode=mode, use_image=use_image, img_history=img_history)
     
@@ -161,10 +164,10 @@ class DMReacherComparison(SACExperiment):
             self.env = FixedTimeLimitReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
         elif self.args.env == "ftl_reacher_hard":
             self.env = FixedTimeLimitReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
-        elif self.args.env == "ar_reacher_easy_v2":
-            self.env = AdditiveRewardReacherV2(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
-        elif self.args.env == "ar_reacher_hard_v2":
-            self.env = AdditiveRewardReacherV2(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
+        elif self.args.env == "bt_reacher_easy":
+            self.env = BrockmanTassaReacher(seed=self.args.seed, mode="easy", use_image=self.args.use_image)
+        elif self.args.env == "bt_reacher_hard":
+            self.env = BrockmanTassaReacher(seed=self.args.seed, mode="hard", use_image=self.args.use_image)
         
         # Reproducibility
         self.set_seed()
