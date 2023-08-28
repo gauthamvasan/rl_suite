@@ -79,9 +79,9 @@ class SACRADBuffer(object):
         self.full = False
         self.count = 0
 
-        size_of_buffer = ((((self.images.size * self.images.itemsize) + (self.propris.size * self.propris.itemsize) + \
-            (self.actions.size * self.actions.itemsize) + (2 * capacity) / 1024) / 1024)/ 1024)
-        print(f"Size of replay buffer: {size_of_buffer}")
+        size_of_buffer = (((((self.images.size * self.images.itemsize) + (self.propris.size * self.propris.itemsize) + \
+            (self.actions.size * self.actions.itemsize) + (8 * capacity)) / 1024) / 1024)/ 1024)
+        print("Size of replay buffer: {:.2f}GB".format(size_of_buffer))
 
     def add(self, image, propri, action, reward, done):
         if not self.ignore_image:
@@ -134,6 +134,10 @@ class SACReplayBuffer:
         self.dones = np.zeros(capacity, dtype=np.float32)
         self.ptr, self.size, self.max_size = 0, 0, capacity
         self.lock = Lock()
+
+        size_of_buffer = (((((self.observations.size * self.observations.itemsize) + \
+            (self.actions.size * self.actions.itemsize) + (8 * capacity)) / 1024) / 1024)/ 1024)
+        print("Size of replay buffer: {:.2f}GB".format(size_of_buffer))
 
     def add(self, obs, action, reward, done):
         with self.lock:
