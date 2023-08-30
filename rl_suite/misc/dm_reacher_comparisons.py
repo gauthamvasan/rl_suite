@@ -65,11 +65,16 @@ class AdditiveRewardReacher(ReacherWrapper):
         return super().reset()
 
     def compute_reward(self, x, action):
+        """ 
+        Source: https://github.com/openai/gym/blob/dcd185843a62953e27c2d54dc8c2d647d604b635/gym/envs/mujoco/reacher.py#L28C23-L28C42
+        reward = reward_dist + reward_ctrl
+        """
+        if x.reward:
+            return 1
+
         distance = self.env._physics.finger_to_target_dist()
-        reward = -distance + np.exp(-100 * (distance**2))
-        if self.steps % 100 == 0:
-            print(-distance, np.exp(-100 * (distance**2)))
-        return reward
+        # reward = -distance + np.exp(-100 * (distance**2))
+        return -distance
 
     def step(self, action):
         if isinstance(action, torch.Tensor):
@@ -78,10 +83,6 @@ class AdditiveRewardReacher(ReacherWrapper):
         x = self.env.step(action)
         self.steps +=  1
 
-        """ 
-        Source: https://github.com/openai/gym/blob/dcd185843a62953e27c2d54dc8c2d647d604b635/gym/envs/mujoco/reacher.py#L28C23-L28C42
-        reward = reward_dist + reward_ctrl
-        """
         reward = self.compute_reward(x, action)
         done = self.steps == self.timeout
         info = {}
