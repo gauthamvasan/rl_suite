@@ -2,10 +2,11 @@ import torch
 import pickle
 import glob
 import argparse
+import time
 import numpy as np
 
 from rl_suite.algo.mlp_policies import SquashedGaussianMLPActor
-from rl_suite.misc.dm_reacher_comparisons import FixedTimeLimitReacher, VelTolReacher, AdditiveRewardReacherV2
+from rl_suite.misc.dm_reacher_comparisons import FixedTimeLimitReacher, VelTolReacher, AdditiveRewardReacher
 
 N = 501000
 EP = 500
@@ -35,6 +36,7 @@ def interaction(model_path, mode):
     ep_lens = []
     steps_to_goal = []
     for ep in range(EP):
+        tic = time.time()
         obs = env.reset()
         ret = 0
         reached_goal = False
@@ -59,7 +61,7 @@ def interaction(model_path, mode):
             if done:
                 rets.append(ret)
                 ep_lens.append(step)
-                print(f"Episode {ep+1} ended in {step} steps with return {ret}")
+                print(f"Episode {ep+1} ended in {step} steps with return {ret}, time: {time.time()-tic}")
                 break
             obs = next_obs
 
@@ -84,9 +86,9 @@ def eval_reacher_across_tasks():
     elif args.eval_env == "vt_reacher_hard":
         env = VelTolReacher(seed=seed, mode="hard", use_image=False)
     elif args.eval_env == "ar_reacher_easy":
-        env = AdditiveRewardReacherV2(seed=seed, mode="easy", use_image=False)
+        env = AdditiveRewardReacher(seed=seed, mode="easy", use_image=False)
     elif args.eval_env == "ar_reacher_hard":
-        env = AdditiveRewardReacherV2(seed=seed, mode="hard", use_image=False)
+        env = AdditiveRewardReacher(seed=seed, mode="hard", use_image=False)
     elif args.eval_env == "ftl_reacher_easy":
         env = FixedTimeLimitReacher(seed=seed, mode="easy", use_image=False)
     elif args.eval_env == "ftl_reacher_hard":
