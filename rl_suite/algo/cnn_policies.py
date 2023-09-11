@@ -1,4 +1,5 @@
 import torch
+import logging
 
 import numpy as np
 import torch.nn.functional as F
@@ -166,9 +167,9 @@ class ActorModel(nn.Module):
         super().__init__()
 
         self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax)
-        print("Encoder")
+        logging.info("Encoder initialized for Actor")
         if freeze_cnn:
-            print("Actor CNN weights won't be trained!")
+            logging.warn("Actor CNN weights won't be trained!")
             for param in self.encoder.parameters():
                 param.requires_grad = False
 
@@ -220,7 +221,7 @@ class CriticModel(nn.Module):
 
         self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax)
         if freeze_cnn:
-            print("Critic CNN weights won't be trained!")
+            logging.warn("Critic CNN weights won't be trained!")
             for param in self.encoder.parameters():
                 param.requires_grad = False
 
@@ -332,10 +333,10 @@ class SACRADCritic(nn.Module):
         super().__init__()
 
         self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax)
-        # if freeze_cnn:
-        #     print("Critic CNN weights won't be trained!")
-        #     for param in self.encoder.parameters():
-        #         param.requires_grad = False
+        if freeze_cnn:
+            logging.info("Critic CNN weights won't be trained!")
+            for param in self.encoder.parameters():
+                param.requires_grad = False
 
 
         self.Q1 = QFunction(
@@ -515,9 +516,9 @@ if __name__ == '__main__':
     prop = torch.zeros(proprioception_shape).unsqueeze(0).to(device)
 
     actor = SACRADActor(image_shape, proprioception_shape, action_dim, net_params, rad_offset).to(device)
-    print(actor(img, prop))
+    logging.info(actor(img, prop))
     
     critic = CriticModel(image_shape, proprioception_shape, net_params, rad_offset).to(device)
-    print(critic(img, prop))
+    logging.info(critic(img, prop))
     
     

@@ -1,4 +1,5 @@
 import torch
+import logging
 import numpy as np
 
 from collections import namedtuple
@@ -81,7 +82,7 @@ class SACRADBuffer(object):
 
         size_of_buffer = (((((self.images.size * self.images.itemsize) + (self.propris.size * self.propris.itemsize) + \
             (self.actions.size * self.actions.itemsize) + (8 * capacity)) / 1024) / 1024)/ 1024)
-        print("Size of replay buffer: {:.2f}GB".format(size_of_buffer))
+        logging.info("Size of replay buffer: {:.2f}GB".format(size_of_buffer))
 
     def add(self, image, propri, action, reward, done):
         if not self.ignore_image:
@@ -137,7 +138,7 @@ class SACReplayBuffer:
 
         size_of_buffer = (((((self.observations.size * self.observations.itemsize) + \
             (self.actions.size * self.actions.itemsize) + (8 * capacity)) / 1024) / 1024)/ 1024)
-        print("Size of replay buffer: {:.2f}GB".format(size_of_buffer))
+        logging.info("Size of replay buffer: {:.2f}GB".format(size_of_buffer))
 
     def add(self, obs, action, reward, done):
         with self.lock:
