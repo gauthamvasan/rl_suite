@@ -2,7 +2,7 @@ import argparse
 import torch
 import cv2
 import time
-
+import logging
 import numpy as np
 
 from datetime import datetime
@@ -13,6 +13,12 @@ from rl_suite.algo.sac_rad import SACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
 from rl_suite.experiment import Experiment
 from rl_suite.running_stats import RunningStats
+
+
+logging.basicConfig(
+    format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 
 class SACExperiment(Experiment):
@@ -33,7 +39,7 @@ class SACExperiment(Experiment):
             self.learner = SACAgent(cfg=self.args, buffer=buffer, device=self.args.device)
         else:
             self.args.image_shape = self.env.image_space.shape
-            print("image shape:", self.args.image_shape)
+            logging.info(f"image shape:, {self.args.image_shape}")
             self.args.proprioception_shape = self.env.proprioception_space.shape
             self.args.action_shape = self.env.action_space.shape
             buffer = SACRADBuffer(self.env.image_space.shape, self.env.proprioception_space.shape, 
@@ -93,7 +99,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--cnn_architecture', default="default", type=str)
         # RAD
         parser.add_argument('--rad_offset', default=0.01, type=float)
-        parser.add_argument('--freeze_cnn', default=0, type=int)
+        parser.add_argument('--freeze_cnn', action='store_true')
         # Misc
         parser.add_argument('--init_policy_test', action='store_true', help="Initiate hits vs timeout test")
         parser.add_argument('--results_dir', required=True, type=str, help="Save results to this dir")
@@ -179,10 +185,10 @@ class SACExperiment(Experiment):
 
     def run(self):
         if self.args.init_policy_test:
-            print("Initial policy test")
+            logging.info("Initial policy test")
             self._run_init_policy_test()
         else:
-            print("{}-{} run with {} steps starts now ...".format(self.args.env, self.args.algo, self.args.N))
+            logging.info("{}-{} run with {} steps starts now ...".format(self.args.env, self.args.algo, self.args.N))
             self._run_experiment()
             
     def _run_experiment(self):
@@ -198,7 +204,7 @@ class SACExperiment(Experiment):
         returns = []
         epi_lens = []
         start_time = datetime.now()
-        print(f'Experiment starts at: {start_time}')
+        logging.info(f'Experiment starts at: {start_time}')
         while not experiment_done:
             obs = self.env.reset() # start a new episode
             ret = 0
@@ -233,7 +239,7 @@ class SACExperiment(Experiment):
                 
                 for k, v in stat.items():
                     L.log(k, v, total_steps)
-                    
+
                 # if total_steps % 50 == 0: 
                 #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(total_steps, next_obs, r, epi_done))
 
@@ -264,7 +270,7 @@ class SACExperiment(Experiment):
                     ret += self.args.reset_penalty_steps * self.args.reward
                     epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps
-                    print(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
+                    logging.info(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
                     if 'dm_reacher' in self.args.env or 'point_maze' in self.args.env:
                         obs = self.env.reset(randomize_target=epi_done)
                     else:
@@ -283,14 +289,14 @@ class SACExperiment(Experiment):
                 epi_lens.append(epi_steps)
                 self.save_returns(returns, epi_lens)
                 self.learning_curve(returns, epi_lens, save_fig=True)
-                # print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
+                # logging.info(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
         self.save_model(unique_str=f"{self.run_id}_model")
         self.save_returns(returns, epi_lens)
         self.learning_curve(returns, epi_lens, save_fig=True)
 
-        print(f"Finished in {duration}")
+        logging.info(f"Finished in {duration}")
 
     def _run_init_policy_test(self):
         """ N.B: Use only for minimum-time tasks """
@@ -317,7 +323,7 @@ class SACExperiment(Experiment):
                     # Receive reward and next state            
                     _, _, done, _ = self.env.step(action)
                     
-                    # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
+                    # logging.info("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
 
                     # Log
                     steps += 1
