@@ -118,7 +118,7 @@ class SAC_RAD:
         self.critic_optimizer.step()
 
         critic_stats = {
-            'train_critic/loss': critic_loss.item()
+            'train/critic_loss': critic_loss.item()
         }
 
         return critic_stats
@@ -144,7 +144,7 @@ class SAC_RAD:
         self.log_alpha_optimizer.step()
 
         actor_stats = {
-            'train_actor/loss': actor_loss.item(),
+            'train/actor_loss': actor_loss.item(),
             'train_actor/target_entropy': self.target_entropy.item(),
             'train_actor/entropy': entropy.mean().item(),
             'train_alpha/loss': alpha_loss.item(),

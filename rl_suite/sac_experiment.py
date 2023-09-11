@@ -7,6 +7,7 @@ import numpy as np
 
 from datetime import datetime
 from tqdm import tqdm
+from rl_suite.logger import Logger
 from rl_suite.algo.sac import SACAgent
 from rl_suite.algo.sac_rad import SACRADAgent
 from rl_suite.algo.replay_buffer import SACReplayBuffer, SACRADBuffer
@@ -188,20 +189,24 @@ class SACExperiment(Experiment):
         # Normalize wrapper
         rms = RunningStats()
 
+        # Logger
+        L = Logger(self._expt_dir, use_tb=False)
+
         # Experiment block starts
         experiment_done = False
         total_steps = 0
-        sub_epi = 0
         returns = []
         epi_lens = []
         start_time = datetime.now()
         print(f'Experiment starts at: {start_time}')
-        while not experiment_done: 
+        while not experiment_done:
             obs = self.env.reset() # start a new episode
             ret = 0
+            sub_epi = 0
             epi_steps = 0
             sub_steps = 0
             epi_done = 0
+            epi_start_time = time.time()
             while not experiment_done and not epi_done:
                 if self.args.algo == "sac_rad":
                     img = obs.images
@@ -222,10 +227,13 @@ class SACExperiment(Experiment):
                 
                 # Learn
                 if self.args.algo == "sac":
-                    self.learner.push_and_update(obs, action, r, epi_done)
+                    stat = self.learner.push_and_update(obs, action, r, epi_done)
                 else:
-                    self.learner.push_and_update(img, prop, action, r, epi_done)
+                    stat = self.learner.push_and_update(img, prop, action, r, epi_done)
                 
+                for k, v in stat.items():
+                    L.log(k, v, total_steps)
+                    
                 # if total_steps % 50 == 0: 
                 #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(total_steps, next_obs, r, epi_done))
 
@@ -265,11 +273,17 @@ class SACExperiment(Experiment):
                 experiment_done = total_steps >= self.args.N
 
             if epi_done: # episode done, save result
+                L.log('train/duration', time.time() - epi_start_time, total_steps)
+                L.log('train/episode_return', ret, total_steps)
+                L.log('train/sub_episode', sub_epi, total_steps)
+                L.log('train/episode', len(returns), total_steps)
+                L.dump(total_steps)
+
                 returns.append(ret)
                 epi_lens.append(epi_steps)
                 self.save_returns(returns, epi_lens)
                 self.learning_curve(returns, epi_lens, save_fig=True)
-                print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
+                # print(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
         self.save_model(unique_str=f"{self.run_id}_model")
