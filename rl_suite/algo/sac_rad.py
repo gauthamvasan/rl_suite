@@ -147,7 +147,7 @@ class SAC_RAD:
             'train/actor_loss': actor_loss.item(),
             'train_actor/target_entropy': self.target_entropy.item(),
             'train_actor/entropy': entropy.mean().item(),
-            'train_alpha/loss': alpha_loss.item(),
+            'train/ent_loss': alpha_loss.item(),
             'train_alpha/value': self.alpha.item(),
             'train/entropy': entropy.mean().item(),
         }

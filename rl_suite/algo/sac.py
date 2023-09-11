@@ -134,7 +134,7 @@ class SAC:
         actor_stats = {
             'train/actor_loss': actor_loss.item(),
             'train_actor/target_entropy': self.target_entropy.item(),
-            'train_alpha/loss': alpha_loss.item(),
+            'train/ent_loss': alpha_loss.item(),
             'train_alpha/value': self.alpha.item(),
             'train/entropy': entropy.mean().item(),
         }
