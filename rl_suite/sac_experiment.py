@@ -196,7 +196,7 @@ class SACExperiment(Experiment):
         rms = RunningStats()
 
         # Logger
-        L = Logger(self._expt_dir, use_tb=False)
+        L = Logger(self._expt_dir, prefix=f"{self.run_id}_", use_tb=False)
 
         # Experiment block starts
         experiment_done = False

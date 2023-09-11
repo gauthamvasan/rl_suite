@@ -92,7 +92,7 @@ class MetersGroup(object):
 
 
 class Logger(object):
-    def __init__(self, log_dir, use_tb=False, config='rl'):
+    def __init__(self, log_dir, prefix="", use_tb=False, config='rl'):
         self._log_dir = log_dir
         if use_tb:
             tb_dir = os.path.join(log_dir, 'tb')
@@ -102,11 +102,11 @@ class Logger(object):
         else:
             self._sw = None
         self._train_mg = MetersGroup(
-            os.path.join(log_dir, 'train.log'),
+            os.path.join(log_dir, f'{prefix}train.log'),
             formating=FORMAT_CONFIG[config]['train']
         )
         self._eval_mg = MetersGroup(
-            os.path.join(log_dir, 'eval.log'),
+            os.path.join(log_dir, f'{prefix}eval.log'),
             formating=FORMAT_CONFIG[config]['eval']
         )
 
