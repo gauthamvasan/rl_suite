@@ -135,7 +135,7 @@ class SACExperiment(Experiment):
                 }
             }
         else:
-            if args.cnn_architecture == "V2":
+            if args.cnn_architecture in ["v2", "V2"]:
                 args.spatial_softmax = False
                 args.net_params = {
                     # Spatial softmax encoder net params
