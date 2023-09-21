@@ -33,7 +33,7 @@ def smoothed_plot(data, x_tick=1000, window_len=1000):
     plt.tight_layout()
     plt.show()
 
-def plotter(basepath, color_palette, title, xlim=None, ylim=None, 
+def plotter(cfg, title, xlim=None, ylim=None, 
             legend_loc=None, x_tick=5000, window_len=5000, save_path="./"):
     """ Plot confidence intervals for multiple runs.
 
@@ -51,15 +51,22 @@ def plotter(basepath, color_palette, title, xlim=None, ylim=None,
         _type_: _description_
     """    
     print("-"*50)
-    print(color_palette)
+    print(cfg)
     print("-"*50)
     setsizes()
     setaxes()
+
+    color_palette = {}
+    for env, vals in cfg.items():
+        color_palette[env] = vals['color']
+
     df = pd.DataFrame(columns=["step", "avg_ret", "seed", "timeout"])
     legend_elements = []
-    for env, color in color_palette.items():
+    for env, vals in cfg.items():
+        basepath = vals['basepath']
+        color = vals['color']
         all_paths = glob.glob(f"{basepath}/{env}/*_returns.txt")
-        assert len(all_paths) > 0
+        assert len(all_paths) > 0, print(f"{basepath}/{env}/*_returns.txt")
         print(f"{len(all_paths)} seeds were found.")
         counter = 0
         last_return = []
@@ -103,13 +110,19 @@ def plotter(basepath, color_palette, title, xlim=None, ylim=None,
 def sac_baseline_plot():
     # Mean CI plot
     basepath = "/home/vasan/scratch/sac_baseline"
-    envs = ["Hopper-v4", "Humanoid-v4", "Ant-v4", "Reacher-v4",
-            "HalfCheetah-v4", "Swimmer-v4", "Walker2d-v4", "InvertedDoublePendulum-v4"]
-    
+    # envs = ["Hopper-v4", "Humanoid-v4", "Ant-v4", "Reacher-v4",
+    #         "HalfCheetah-v4", "Swimmer-v4", "Walker2d-v4", "InvertedDoublePendulum-v4"]
+    envs = ["Hopper-v2", "Humanoid-v2", "Ant-v2", "Reacher-v2",
+        "HalfCheetah-v2", "Swimmer-v2", "Walker2d-v2", "InvertedDoublePendulum-v2"]
+
     for env in envs:
-        color_palette = {env: "tab:orange"}
+        cfg = {
+            env: {'color': "tab:orange", 'basepath': basepath},
+            f'{env}-nb': {'color': "tab:green", 'basepath': f"{basepath}/no_bootstrap"},
+        }
         title = env
-        plotter(basepath, color_palette, title, xlim=[0, 1000000], ylim=None, save_path="./results")
+        plotter(cfg, title, xlim=[0, 1000000], ylim=None, 
+            save_path="./results/nb_comparison", legend_loc="best")
 
 def point_maze_dense_plot():
     basepath = "/home/vasan/scratch/tro_paper"
@@ -142,4 +155,5 @@ if __name__ == '__main__':
     # data = np.loadtxt(fp)
     # smoothed_plot(data, x_tick, window_len)
 
-    point_maze_sparse_plot()
+    # point_maze_sparse_plot()
+    sac_baseline_plot()

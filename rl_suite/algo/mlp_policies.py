@@ -116,10 +116,9 @@ class Critic(nn.Module):
 class SquashedGaussianMLPActor(nn.Module):
     """ Continous MLP Actor for Soft Actor-Critic """
 
-    LOG_STD_MAX = 2
-    LOG_STD_MIN = -10
-
     def __init__(self, obs_dim, action_dim, nn_params, device):
+        self.LOG_STD_MAX = 2
+        self.LOG_STD_MIN = -20
         super(SquashedGaussianMLPActor, self).__init__()
         self.device = device
 
@@ -132,12 +131,8 @@ class SquashedGaussianMLPActor(nn.Module):
 
         # Orthogonal Weight Initialization
         self.apply(orthogonal_weight_init)
-        self.mu.weight.data.fill_(0.0)
-        self.mu.bias.data.fill_(0.0)
-        self.log_std.weight.data.fill_(0.0)
-        self.log_std.bias.data.fill_(0.0)
+        
         self.to(device=device)
-        print('Using normal distribution initialization.')
 
     def _dist(self, x):
         phi = self.phi(x)

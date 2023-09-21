@@ -26,6 +26,14 @@ class SAC:
         self.betas = cfg.betas
 
         self.actor = SquashedGaussianMLPActor(cfg.obs_dim, cfg.action_dim, cfg.actor_nn_params, device)
+        if cfg.use_normal_init:
+            self.actor.LOG_STD_MIN = -10
+            self.actor.mu.weight.data.fill_(0.0)
+            self.actor.mu.bias.data.fill_(0.0)
+            self.actor.log_std.weight.data.fill_(0.0)
+            self.actor.log_std.bias.data.fill_(0.0)
+            print('Using normal distribution initialization.')
+
         self.critic = SACCritic(cfg.obs_dim, cfg.action_dim, cfg.critic_nn_params, device)
         self.critic_target = deepcopy(self.critic) # also copies the encoder instance
 
