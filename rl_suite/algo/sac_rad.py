@@ -31,7 +31,12 @@ class SAC_RAD:
         
         self.actor = SACRADActor(cfg.image_shape, cfg.proprioception_shape, cfg.action_shape[0], cfg.net_params,
                                 cfg.rad_offset, cfg.freeze_cnn, cfg.spatial_softmax).to(device)
-
+        if cfg.use_normal_init:
+            self.actor.LOG_STD_MIN = -10
+            self.actor.trunk[-1].weight.data.fill_(0.0)
+            self.actor.trunk[-1].bias.data.fill_(0.0)
+            print('Using normal distribution initialization.')
+        
         self.critic = SACRADCritic(cfg.image_shape, cfg.proprioception_shape, cfg.action_shape[0], cfg.net_params,
                                 cfg.rad_offset, cfg.freeze_cnn, cfg.spatial_softmax).to(device)
 

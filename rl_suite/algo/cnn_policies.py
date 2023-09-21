@@ -186,10 +186,9 @@ class ActorModel(nn.Module):
         )
 
         self.outputs = dict()
+        
+        # Orthogonal Weight Initialization
         self.apply(orthogonal_weight_init)
-        self.trunk[-1].weight.data.fill_(0.0)
-        self.trunk[-1].bias.data.fill_(0.0)
-        print('Using normal distribution initialization.')
 
     def forward(self, images, proprioceptions, random_rad=True, detach_encoder=False):
         latents = self.encoder(images, proprioceptions, random_rad, detach=detach_encoder)
@@ -245,10 +244,9 @@ class CriticModel(nn.Module):
 
 
 class SACRADActor(ActorModel):
-    LOG_STD_MIN = -10
-    LOG_STD_MAX = 2
-    
     def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False, spatial_softmax=True):
+        self.LOG_STD_MIN = -20
+        self.LOG_STD_MAX = 2
         super().__init__(image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn, spatial_softmax)
 
     @staticmethod
