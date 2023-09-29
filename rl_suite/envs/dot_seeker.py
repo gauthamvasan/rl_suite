@@ -199,12 +199,18 @@ class DotBoxReacher(DotSeeker):
 
 
 if __name__ == "__main__":       
-    n_episodes = 100
+    n_episodes = 1
     timeout = 20000
     seed = 42
     # env = DotBoxReacher(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=True) 
     env = DotSeeker(dt=0.2, timeout=timeout, pos_tol=0.05, seed=seed)
     np.random.seed(seed)
+
+    # Initialize the video writer (you can choose the codec and output file format)
+    import cv2
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    frame_rate = 30
+    screen_width, screen_height = 160, 160
 
     for i_episode in range(n_episodes):
         obs = env.reset() 
@@ -212,6 +218,9 @@ if __name__ == "__main__":
         steps = 0
         ret = 0
         ep_len = 0
+
+        # Video editing
+        out = cv2.VideoWriter(f'dot_seeker_{i_episode}.mp4', fourcc, frame_rate, (screen_width, screen_height))
         while not done and steps < timeout:
             env.render()
             time.sleep(0.05)
@@ -223,7 +232,17 @@ if __name__ == "__main__":
             steps += 1
             ret += reward
             ep_len += 1
+
+            # Capture the current Pygame screen as an image
+            frame = pygame.surfarray.array3d(pygame.display.get_surface())
+
+            # Convert the Pygame surface to a NumPy array for OpenCV
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+            # Write the frame to the video file
+            out.write(frame)
         
+        out.release()
         print(f"Episode {i_episode+1} took {ep_len} steps and ended with return {ret}. Total steps: {steps}")
 
     env.close()
