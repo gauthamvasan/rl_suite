@@ -23,6 +23,14 @@ OPEN_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1]
 ]
 
+U_DIVERSE_GR = [
+    [1, 1, 1, 1, 1, 1],
+    [1, C, C, C, C, 1],
+    [1, 1, 1, 1, C, 1],
+    [1, C, C, C, C, 1],
+    [1, 1, 1, 1, 1, 1]
+]
+
 SMALL_MAZE_DIVERSE_GR = [
     [1, 1, 1, 1, 1, 1],
     [1, C, C, C, C, 1],
@@ -98,7 +106,7 @@ MIN_TIME_MAP = [
 
 class PointMaze():
     all_maps = {"open": OPEN_DIVERSE_GR, "small": SMALL_MAZE_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR, 
-                "large": LARGE_MAZE_DIVERSE_GR, "min_time": MIN_TIME_MAP,
+                "large": LARGE_MAZE_DIVERSE_GR, "min_time": MIN_TIME_MAP, "U": U_DIVERSE_GR,
                 "T": T_MAZE_DIVERSE_GR, "plus": PLUS_MAZE_DIVERSE_GR}
     """
     PointMaze_UMazeDense=v3 uses np.exp(-np.linalg.norm(a-b)) as reward 

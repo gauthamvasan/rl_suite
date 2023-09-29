@@ -45,7 +45,7 @@ class DotSeeker(Env):
         # Target 
         self.target_width = int(0.08 * self.width)
         self.target_color = pygame.Color("lightcoral")
-        self.arp_dt = 0.45 
+        self.arp_dt = 0.5 
 
         self.steps = 0
         self.rng = np.random.default_rng(seed=seed)
@@ -65,7 +65,12 @@ class DotSeeker(Env):
 
         self.ar = ARProcess(p=3, alpha=0.8, size=2, seed=self.rng.integers(0, 10**6, 1))
         self.prev_ar_pos = self.ar.step()[0]
-        self.target_pos = self.rng.uniform(-1, 1, 2)
+
+        # Avoid spawning agent and target too close to each other
+        done = True
+        while done:
+            self.target_pos = self.rng.uniform(-1, 1, 2)
+            done = np.allclose(self.pos, self.target_pos, atol=self.pos_tol)
         
         if self.use_image:
             obs = Observation()

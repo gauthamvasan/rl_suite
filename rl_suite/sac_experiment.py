@@ -95,6 +95,7 @@ class SACExperiment(Experiment):
         parser.add_argument('--actor_hidden_sizes', default="512,512", type=str)
         parser.add_argument('--critic_hidden_sizes', default="512,512", type=str)
         parser.add_argument('--nn_activation', default="relu", type=str)
+        parser.add_argument('--use_normal_init', action='store_true')
         # CNN architecture
         parser.add_argument('--cnn_architecture', default="default", type=str)
         # RAD
@@ -135,7 +136,7 @@ class SACExperiment(Experiment):
                 }
             }
         else:
-            if args.cnn_architecture == "V2":
+            if args.cnn_architecture in ["v2", "V2"]:
                 args.spatial_softmax = False
                 args.net_params = {
                     # Spatial softmax encoder net params
