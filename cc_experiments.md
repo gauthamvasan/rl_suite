@@ -9,6 +9,7 @@ pip install --no-index gymnasium_robotics gymnasium gym
 pip install dm_control==1.0.13
 pip install beautifultable matplotlib tqdm
 pip install --no-index pygame
+pip install seaborn
 ```
 
 ### Comments
