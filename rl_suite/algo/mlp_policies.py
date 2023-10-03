@@ -160,6 +160,11 @@ class SquashedGaussianMLPActor(nn.Module):
             phi = self.phi(x)
         return phi
 
+    def get_lprob(self, dist, action):
+        lprob = dist.log_prob(action)
+        lprob -= (2 * (np.log(2) - action - F.softplus(-2 * action))).sum(axis=1)
+        return lprob
+
 
 class SquashedGaussianMLP_ResetActionActor(nn.Module):
     """ Continous MLP Actor for Soft Actor-Critic """
