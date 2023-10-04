@@ -128,6 +128,9 @@ class Experiment:
         np.savetxt(f"{self._expt_dir}/{self.run_id}_returns.txt", data)
     
     def save_model(self, unique_str):
+        """ 
+        TODO: This assumes learner object exists. This needs to be fixed.
+        """
         self.learner.save(self._expt_dir, unique_str)
 
     def set_seed(self):
