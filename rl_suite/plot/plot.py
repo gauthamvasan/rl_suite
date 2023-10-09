@@ -148,6 +148,64 @@ def point_maze_sparse_plot():
     save_path="./results"
     plotter(basepath, color_palette, title, ylim=None, save_path="./results")
 
+def point_maze_steps_to_goal_plot():
+    x_tick = 10000
+    window_len = 20000
+    df = pd.DataFrame(columns=["step", "avg_ret", "seed", "timeout"])
+    legend_elements = []
+    N = 500000
+
+    color_palette = {
+        # "point_maze_open_sparse": "darkorange",
+        # "point_maze_small_sparse": "mediumaquamarine",
+        "point_maze_U_sparse": "teal",
+        # "point_maze_open_dense": "darkmagenta",
+        # "point_maze_small_dense": "royalblue",
+        "point_maze_U_dense": "deeppink",
+        # "point_maze_min_time_sparse": "darkorange",
+        # "point_maze_min_time_dense": "royalblue",
+    }
+
+    #basepath = "/home/vasan/scratch/tro_paper/min_time_K500"
+    basepath = "/home/vasan/scratch/tro_paper"
+    key = "U"
+
+    for env, color in color_palette.items():
+        fp = f"{basepath}/{env}/*.txt"
+        all_paths = glob.glob(fp)
+        assert len(all_paths) > 0
+        counter = 0
+        for fp in all_paths:
+            counter += 1
+            data = np.loadtxt(fp)
+            try:
+                rets, timesteps = smoothed_curve(data[1], data[0], x_tick=x_tick, window_len=window_len)
+                steps_to_goal, timesteps = smoothed_curve(data[0], data[0], x_tick=x_tick, window_len=window_len)
+                for i, (r, t) in enumerate(zip(rets, timesteps)):
+                    df = pd.concat([df, pd.DataFrame.from_records([{'env': env, 'seed':counter, 'step':t, 'avg_ret':r, 'steps_to_goal': steps_to_goal[i]}])])
+            except IndexError as e:
+                print(f"Run {fp} incomplete. It was not added to the plot")
+        legend_elements.append(Line2D([0], [0], color=color, lw=4, label=env),)
+
+    # plt.figure()
+    setsizes()
+    setaxes()
+    plt.xlim([0, N])
+    plt.ylim([0, 1500])
+    # sns.lineplot(x="step", y='avg_ret', data=df[df['env']==env], hue='env', palette=color_palette)
+    print(color_palette)
+    # sns.lineplot(x="step", y='avg_ret', data=df[df['env'].str.contains('point_maze_T_dense')], hue='env', palette=color_palette)
+    sns.lineplot(x="istep", y='steps_to_goal', data=df[df['env'].str.contains(key)], hue='env', palette=color_palette)
+    set_labels("Point Maze", labelpad=25)
+
+    # plt.legend(handles=legend_elements, loc='lower right')
+    plt.legend(handles=legend_elements, loc='best')
+    plt.tight_layout()
+    plt.locator_params(axis='x', nbins=8)
+    plt.savefig(f'point_maze_{key}_steps_to_goal.pdf', dpi=200)
+    plt.show()
+    plt.close()
+
 if __name__ == '__main__':
     # Smooth plot
     # x_tick = window_len = 5000
@@ -156,4 +214,5 @@ if __name__ == '__main__':
     # smoothed_plot(data, x_tick, window_len)
 
     # point_maze_sparse_plot()
-    sac_baseline_plot()
+    # sac_baseline_plot()
+    point_maze_steps_to_goal_plot()
