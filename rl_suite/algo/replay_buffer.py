@@ -136,9 +136,9 @@ class SACReplayBuffer:
         self.ptr, self.size, self.max_size = 0, 0, capacity
         self.lock = Lock()
 
-        size_of_buffer = (((((self.observations.size * self.observations.itemsize) + \
-            (self.actions.size * self.actions.itemsize) + (8 * capacity)) / 1024) / 1024)/ 1024)
-        logging.info("Size of replay buffer: {:.2f}GB".format(size_of_buffer))
+        size_of_buffer = ((((self.observations.size * self.observations.itemsize) + \
+            (self.actions.size * self.actions.itemsize) + (8 * capacity)) / 1024) / 1024)
+        logging.info("Size of replay buffer: {:.2f}MB".format(size_of_buffer))
 
     def add(self, obs, action, reward, done):
         with self.lock:
