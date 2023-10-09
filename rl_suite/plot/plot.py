@@ -199,7 +199,7 @@ def point_maze_steps_to_goal_plot():
     print(color_palette)
     # sns.lineplot(x="step", y='avg_ret', data=df[df['env'].str.contains('point_maze_T_dense')], hue='env', palette=color_palette)
     sns.lineplot(x="step", y='steps_to_goal', data=df[df['env'].str.contains(key)], hue='env', palette=color_palette)
-    set_labels("", labelpad=25)
+    set_labels("", labelpad=25, xlabel="Timesteps", ylabel="Steps\nto\nGoal")
 
     # plt.legend(handles=legend_elements, loc='lower right')
     plt.legend(handles=legend_elements, loc='best')
