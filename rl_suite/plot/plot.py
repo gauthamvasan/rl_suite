@@ -156,21 +156,24 @@ def point_maze_steps_to_goal_plot():
     N = 500000
 
     color_palette = {
-        # "point_maze_open_sparse": "darkorange",
-        # "point_maze_small_sparse": "mediumaquamarine",
+        "point_maze_open_sparse": "darkorange",
+        "point_maze_medium_sparse": "mediumaquamarine",
         "point_maze_U_sparse": "teal",
-        # "point_maze_open_dense": "darkmagenta",
-        # "point_maze_small_dense": "royalblue",
+        "point_maze_open_dense": "darkmagenta",
+        "point_maze_medium_dense": "royalblue",
         "point_maze_U_dense": "deeppink",
-        # "point_maze_min_time_sparse": "darkorange",
-        # "point_maze_min_time_dense": "royalblue",
+        "point_maze_min_time_sparse": "darkorange",
+        "point_maze_min_time_dense": "royalblue",
     }
 
-    #basepath = "/home/vasan/scratch/tro_paper/min_time_K500"
+    # basepath = "/home/vasan/scratch/tro_paper/min_time_K500"
     basepath = "/home/vasan/scratch/tro_paper"
-    key = "U"
+    key = "medium"
 
     for env, color in color_palette.items():
+        if key not in env:
+            continue
+
         fp = f"{basepath}/{env}/*.txt"
         all_paths = glob.glob(fp)
         assert len(all_paths) > 0
@@ -185,7 +188,7 @@ def point_maze_steps_to_goal_plot():
                     df = pd.concat([df, pd.DataFrame.from_records([{'env': env, 'seed':counter, 'step':t, 'avg_ret':r, 'steps_to_goal': steps_to_goal[i]}])])
             except IndexError as e:
                 print(f"Run {fp} incomplete. It was not added to the plot")
-        legend_elements.append(Line2D([0], [0], color=color, lw=4, label=env),)
+        legend_elements.append(Line2D([0], [0], color=color, lw=4, label='Minimum-time Task' if 'sparse' in env else 'Guiding Reward Task'),)
 
     # plt.figure()
     setsizes()
@@ -195,7 +198,7 @@ def point_maze_steps_to_goal_plot():
     # sns.lineplot(x="step", y='avg_ret', data=df[df['env']==env], hue='env', palette=color_palette)
     print(color_palette)
     # sns.lineplot(x="step", y='avg_ret', data=df[df['env'].str.contains('point_maze_T_dense')], hue='env', palette=color_palette)
-    sns.lineplot(x="istep", y='steps_to_goal', data=df[df['env'].str.contains(key)], hue='env', palette=color_palette)
+    sns.lineplot(x="step", y='steps_to_goal', data=df[df['env'].str.contains(key)], hue='env', palette=color_palette)
     set_labels("Point Maze", labelpad=25)
 
     # plt.legend(handles=legend_elements, loc='lower right')
