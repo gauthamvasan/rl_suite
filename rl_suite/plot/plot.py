@@ -156,11 +156,11 @@ def point_maze_steps_to_goal_plot():
     N = 500000
 
     color_palette = {
-        "point_maze_open_sparse": "darkorange",
-        "point_maze_medium_sparse": "mediumaquamarine",
-        "point_maze_U_sparse": "teal",
+        "point_maze_open_sparse": "mediumaquamarine",
         "point_maze_open_dense": "darkmagenta",
+        "point_maze_medium_sparse": "mediumaquamarine",
         "point_maze_medium_dense": "royalblue",
+        "point_maze_U_sparse": "teal",
         "point_maze_U_dense": "deeppink",
         "point_maze_min_time_sparse": "darkorange",
         "point_maze_min_time_dense": "royalblue",
