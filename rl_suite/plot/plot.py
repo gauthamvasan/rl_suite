@@ -155,20 +155,31 @@ def point_maze_steps_to_goal_plot():
     legend_elements = []
     N = 500000
 
+    # color_palette = {
+    #     "point_maze_open_sparse": "mediumaquamarine",
+    #     "point_maze_open_dense": "darkmagenta",
+    #     "point_maze_medium_sparse": "mediumaquamarine",
+    #     "point_maze_medium_dense": "royalblue",
+    #     "point_maze_U_sparse": "teal",
+    #     "point_maze_U_dense": "deeppink",
+    #     "point_maze_min_time_sparse": "darkorange",
+    #     "point_maze_min_time_dense": "royalblue",
+    # }
+
     color_palette = {
-        "point_maze_open_sparse": "mediumaquamarine",
-        "point_maze_open_dense": "darkmagenta",
-        "point_maze_medium_sparse": "mediumaquamarine",
+        "point_maze_open_sparse": "darkorange",
+        "point_maze_open_dense": "royalblue",
+        "point_maze_medium_sparse": "darkorange",
         "point_maze_medium_dense": "royalblue",
-        "point_maze_U_sparse": "teal",
-        "point_maze_U_dense": "deeppink",
+        "point_maze_U_sparse": "darkorange",
+        "point_maze_U_dense": "royalblue",
         "point_maze_min_time_sparse": "darkorange",
         "point_maze_min_time_dense": "royalblue",
     }
 
-    basepath = "/home/vasan/scratch/tro_paper/min_time_K500"
-    # basepath = "/home/vasan/scratch/tro_paper"
-    key = "min_time"
+    # basepath = "/home/vasan/scratch/tro_paper/min_time_K500"
+    basepath = "/home/vasan/scratch/tro_paper"
+    key = "open"
 
     for env, color in color_palette.items():
         if key not in env:
@@ -194,7 +205,8 @@ def point_maze_steps_to_goal_plot():
     setsizes()
     setaxes()
     plt.xlim([0, N])
-    plt.ylim([0, 1500])
+    # plt.ylim([0, 1500])
+    plt.yscale('log')
     # sns.lineplot(x="step", y='avg_ret', data=df[df['env']==env], hue='env', palette=color_palette)
     print(color_palette)
     # sns.lineplot(x="step", y='avg_ret', data=df[df['env'].str.contains('point_maze_T_dense')], hue='env', palette=color_palette)
