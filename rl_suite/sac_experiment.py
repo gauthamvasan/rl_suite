@@ -212,9 +212,9 @@ class SACExperiment(Experiment):
             sub_epi = 0
             epi_steps = 0
             sub_steps = 0
-            epi_done = 0
+            done = 0
             epi_start_time = time.time()
-            while not experiment_done and not epi_done:
+            while not done:
                 if self.args.algo == "sac_rad":
                     img = obs.images
                     prop = obs.proprioception
@@ -230,19 +230,19 @@ class SACExperiment(Experiment):
                     action = self.learner.sample_action(img, prop)
                 
                 # Observe
-                next_obs, r, epi_done, _ = self.env.step(action)
+                next_obs, r, done, _ = self.env.step(action)
                 
                 # Learn
                 if self.args.algo == "sac":
-                    stat = self.learner.push_and_update(obs, action, r, epi_done)
+                    stat = self.learner.push_and_update(obs, action, r, done)
                 else:
-                    stat = self.learner.push_and_update(img, prop, action, r, epi_done)
+                    stat = self.learner.push_and_update(img, prop, action, r, done)
                 
                 for k, v in stat.items():
                     L.log(k, v, total_steps)
 
                 # if total_steps % 50 == 0: 
-                #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(total_steps, next_obs, r, epi_done))
+                #     print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(total_steps, next_obs, r, done))
 
                 obs = next_obs
 
@@ -257,7 +257,7 @@ class SACExperiment(Experiment):
                     if total_steps % self.args.model_checkpoint == 0:
                         self.save_model(unique_str=f"{self.run_id}_model_{total_steps//1000}K")
                 
-                if not epi_done and sub_steps >= self.args.timeout: # set timeout here
+                if not done and sub_steps >= self.args.timeout: # set timeout here
                     sub_steps = 0
                     sub_epi += 1
 
@@ -271,26 +271,28 @@ class SACExperiment(Experiment):
                     ret += self.args.reset_penalty_steps * self.args.reward
                     epi_steps += self.args.reset_penalty_steps
                     total_steps += self.args.reset_penalty_steps
-                    logging.info(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
+                    # logging.info(f'Sub episode {sub_epi} done. Total steps: {total_steps}')
                     if 'dm_reacher' in self.args.env or 'point_maze' in self.args.env:
-                        obs = self.env.reset(randomize_target=epi_done)
+                        obs = self.env.reset(randomize_target=done)
                     else:
                         obs = self.env.reset()
 
-                experiment_done = total_steps >= self.args.N
+                if total_steps >= self.args.N:
+                    experiment_done = True
+                    break
 
-            if epi_done: # episode done, save result
-                L.log('train/duration', time.time() - epi_start_time, total_steps)
-                L.log('train/episode_return', ret, total_steps)
-                L.log('train/sub_episode', sub_epi, total_steps)
-                L.log('train/episode', len(returns), total_steps)
-                L.dump(total_steps)
+            # if done: # episode done, save result
+            L.log('train/duration', time.time() - epi_start_time, total_steps)
+            L.log('train/episode_return', ret, total_steps)
+            L.log('train/sub_episode', sub_epi, total_steps)
+            L.log('train/episode', len(returns), total_steps)
+            L.dump(total_steps)
 
-                returns.append(ret)
-                epi_lens.append(epi_steps)
-                self.save_returns(returns, epi_lens)
-                self.learning_curve(returns, epi_lens, save_fig=True)
-                # logging.info(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
+            returns.append(ret)
+            epi_lens.append(epi_steps)
+            self.save_returns(returns, epi_lens)
+            self.learning_curve(returns, epi_lens, save_fig=True)
+            # logging.info(f"Episode {len(returns)} ended after {epi_steps} steps with return {ret:.2f}. Total steps: {total_steps}")
 
         duration = datetime.now() - start_time
         self.save_model(unique_str=f"{self.run_id}_model")
@@ -298,6 +300,7 @@ class SACExperiment(Experiment):
         self.learning_curve(returns, epi_lens, save_fig=True)
 
         logging.info(f"Finished in {duration}")
+        return epi_lens, returns
 
     def _run_init_policy_test(self):
         """ N.B: Use only for minimum-time tasks """

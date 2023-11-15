@@ -12,7 +12,8 @@ FORMAT_CONFIG = {
         'train': [
             ('episode', 'E', 'int'), ('sub_episode', 'SE', 'int'), ('step', 'S', 'int'),
             ('duration', 'D', 'time'), ('episode_return', 'R', 'float'),
-            ('batch_reward', 'BR', 'float'), ('num_updates', 'NUM', 'int'),
+            # ('batch_reward', 'BR', 'float'), 
+            ('num_updates', 'NUM', 'int'),
             ('actor_loss', 'ALOSS', 'float'), ('critic_loss', 'CLOSS', 'float'),
             ('entropy', 'ENT', 'float'), 
             ('ent_loss', 'ENTLOSS', 'float'), # For SAC
