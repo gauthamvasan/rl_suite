@@ -91,6 +91,14 @@ class MetersGroup(object):
         self._dump_to_console(data, prefix)
         self._meters.clear()
 
+    def print_log(self, step, prefix):
+        if len(self._meters) == 0:
+            return
+        data = self._prime_meters()
+        data['step'] = step
+        self._dump_to_console(data, prefix)
+        self._meters.clear()
+
 
 class Logger(object):
     def __init__(self, log_dir, prefix="", use_tb=False, config='rl'):
@@ -163,3 +171,7 @@ class Logger(object):
     def dump(self, step):
         self._train_mg.dump(step, 'train')
         self._eval_mg.dump(step, 'eval')
+    
+    def print_log(self, step):
+        self._train_mg.print_log(step, 'train')
+        self._eval_mg.print_log(step, 'eval')
