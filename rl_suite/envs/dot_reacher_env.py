@@ -11,7 +11,7 @@ from rl_suite.envs import Observation
 
 
 class DotReacherEnv(Env):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=0.2, timeout=20000, clamp_action=False, penalty=-0.1):
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=0.2, timeout=20000, penalty=-0.1):
         """ Continuous Action Space; Acceleration Control
 
         Args:
@@ -19,14 +19,12 @@ class DotReacherEnv(Env):
             vel_tol (float): Velocity tolerance - how fast should the agent be moving when it's close to the target
             dt (float): Action cycle time
             timeout (int): Maximum episode length
-            clamp_action (bool): Should actions be clamped or unbounded
         """
 
         self._pos_tol = pos_tol
         self._vel_tol = vel_tol
         self._timeout = timeout
         self.reward = penalty
-        self._clamp_action = clamp_action
         self.dt = dt
 
         super(DotReacherEnv, self).__init__()
@@ -69,8 +67,7 @@ class DotReacherEnv(Env):
         self.steps += 1
 
         # Clamp the action
-        if self._clamp_action:
-            action = torch.clamp(action, min=self._action_low, max=self._action_high)
+        action = torch.clamp(action, min=self._action_low, max=self._action_high)
 
         # Acceleration control for smoothness
         self.pos = self.pos + self.vel * self.dt + 0.5 * action * self.dt ** 2
@@ -97,9 +94,9 @@ class DotReacherEnv(Env):
 
 
 class VisualDotReacherEnv(DotReacherEnv):
-    def __init__(self, pos_tol=0.1, vel_tol=0.05, dt=1, timeout=20000, clamp_action=False, 
-            img_dim=(120, 160, 3), penalty=-0.1):
-        super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, clamp_action, penalty)
+    def __init__(self, pos_tol=0.1, vel_tol=0.05, dt=1, timeout=20000, 
+                 img_dim=(120, 160, 3), penalty=-0.1):
+        super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, penalty)
         self.img_dim = np.array(img_dim)
         self.target_radius = np.round(self._pos_tol * img_dim[0] / 2.).astype(np.int)
         self.dot_radius = np.round(0.02 * img_dim[0]).astype(np.int)
@@ -161,7 +158,7 @@ def random_pi_dot_reacher():
     torch.manual_seed(3)
 
     # Env
-    env = DotReacherEnv(pos_tol=0.1, vel_tol=0.05, dt=1, clamp_action=False, timeout=20000)
+    env = DotReacherEnv(pos_tol=0.1, vel_tol=0.05, dt=1, timeout=20000)
 
     # Experiment
     EP = 50
@@ -237,7 +234,7 @@ def viz_dot_reacher():
     torch.manual_seed(3)
 
     # Env
-    env = VisualDotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=20000, dt=0.2, clamp_action=True)
+    env = VisualDotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=20000, dt=0.2)
 
     # Experiment
     EP = 5
@@ -303,7 +300,7 @@ def p_value_table():
 
     for timeout in timeouts:
         for pos_tol, vel_tol in zip(pos_tols, vel_tols):
-            env = DotReacherEnv(pos_tol, vel_tol, dt=0.2, clamp_action=True, timeout=timeout)
+            env = DotReacherEnv(pos_tol, vel_tol, dt=0.2, timeout=timeout)
             rets = []
             ep_lens = []
             ep = 0            

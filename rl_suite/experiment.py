@@ -84,11 +84,11 @@ class Experiment:
                 self.args.vel_tol = 0.05
                 
             if self.args.use_image:
-                env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
-                    dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)
+                env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
+                                          penalty=self.args.reward, dt=self.args.dt, timeout=self.args.timeout)
             else:
-                env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward,
-                    dt=self.args.dt, timeout=self.args.timeout, clamp_action=self.args.clamp_action)                
+                env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
+                                    penalty=self.args.reward, dt=self.args.dt, timeout=self.args.timeout)                
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(seed=self.args.seed, penalty=self.args.reward)
         elif self.args.env == "mj_reacher":
