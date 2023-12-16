@@ -62,15 +62,15 @@ class SAC:
 
     def init_optimizers(self):
         self.actor_optimizer = torch.optim.Adam(
-            self.actor.parameters(), lr=self.actor_lr, betas=self.betas, weight_decay=self.cfg.l2_reg,
+            self.actor.parameters(), lr=self.actor_lr, betas=self.betas,
         )
 
         self.critic_optimizer = torch.optim.Adam(
-            self.critic.parameters(), lr=self.critic_lr, betas=self.betas, weight_decay=self.cfg.l2_reg,
+            self.critic.parameters(), lr=self.critic_lr, betas=self.betas,
         )
 
         self.log_alpha_optimizer = torch.optim.Adam(
-            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999), weight_decay=self.cfg.l2_reg,
+            [self.log_alpha], lr=self.alpha_lr, betas=(0.5, 0.999),
         )
 
     @property
