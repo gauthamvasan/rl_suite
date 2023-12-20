@@ -85,10 +85,10 @@ class Experiment:
                 
             if self.args.use_image:
                 env = VisualDotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
-                                          penalty=self.args.reward, dt=self.args.dt, timeout=self.args.timeout)
+                                          penalty=self.args.reward, timeout=self.args.timeout)
             else:
                 env = DotReacherEnv(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, 
-                                    penalty=self.args.reward, dt=self.args.dt, timeout=self.args.timeout)                
+                                    penalty=self.args.reward, timeout=self.args.timeout)                
         elif self.args.env == "mountain_car_continuous":
             env = MountainCarContinuous(seed=self.args.seed, penalty=self.args.reward)
         elif self.args.env == "mj_reacher":
@@ -98,11 +98,11 @@ class Experiment:
             from rl_suite.envs.mani_skill_envs import PickCube
             env = PickCube(seed=self.args.seed, use_image=self.args.use_image)
         elif self.args.env == "dot_seeker":
-            env = DotSeeker(pos_tol=self.args.pos_tol, penalty=self.args.reward, dt=self.args.dt, 
+            env = DotSeeker(pos_tol=self.args.pos_tol, penalty=self.args.reward,
                              timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "dot_box_reacher":
             env = DotBoxReacher(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward, 
-                                dt=self.args.dt, timeout=self.args.timeout, use_image=self.args.use_image)
+                                timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "point_maze":
             from rl_suite.envs.point_maze import PointMaze
             env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, 

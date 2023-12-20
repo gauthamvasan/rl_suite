@@ -11,7 +11,7 @@ from rl_suite.envs import Observation
 
 
 class DotReacherEnv(Env):
-    def __init__(self, pos_tol=0.25, vel_tol=0.1, dt=0.2, timeout=20000, penalty=-0.1):
+    def __init__(self, pos_tol=0.25, vel_tol=0.1, timeout=20000, penalty=-0.1):
         """ Continuous Action Space; Acceleration Control
 
         Args:
@@ -25,7 +25,7 @@ class DotReacherEnv(Env):
         self._vel_tol = vel_tol
         self._timeout = timeout
         self.reward = penalty
-        self.dt = dt
+        self.dt = 0.2
 
         super(DotReacherEnv, self).__init__()
 
@@ -94,7 +94,7 @@ class DotReacherEnv(Env):
 
 
 class VisualDotReacherEnv(DotReacherEnv):
-    def __init__(self, pos_tol=0.1, vel_tol=0.05, dt=1, timeout=20000, 
+    def __init__(self, pos_tol=0.1, vel_tol=0.05, timeout=20000, 
                  img_dim=(120, 160, 3), penalty=-0.1):
         super(VisualDotReacherEnv, self).__init__(pos_tol, vel_tol, dt, timeout, penalty)
         self.img_dim = np.array(img_dim)
@@ -158,10 +158,11 @@ def random_pi_dot_reacher():
     torch.manual_seed(3)
 
     # Env
-    env = DotReacherEnv(pos_tol=0.1, vel_tol=0.05, dt=1, timeout=20000)
+    timeout = 10000
+    env = DotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=timeout)
 
     # Experiment
-    EP = 50
+    EP = 500
     rets = []
     ep_lens = []
     # Slogs = []
@@ -171,7 +172,7 @@ def random_pi_dot_reacher():
         obs = env.reset()
         # Slogs[-1].append(obs)
         ret = 0
-        epi_steps = 0
+        ep_steps = 0
         while True:
             # Take action
             A = torch.rand((1, 2))
@@ -180,20 +181,20 @@ def random_pi_dot_reacher():
 
             # Receive reward and next state
             next_obs, R, done, _ = env.step(A)
-            # print("Step: {}, Obs: {}, Next Obs: {}".format(steps, obs, next_obs))
+            # print("Step: {}, Obs: {}, Action: {}".format(steps, obs, A))
 
             # Log
             # Slogs[-1].append(next_obs)
             ret += R
             steps += 1
-            epi_steps += 1
+            ep_steps += 1
 
             # Termination
-            if done:
+            if done or ep_steps == timeout:
                 rets.append(ret)
-                ep_lens.append(epi_steps)
+                ep_lens.append(ep_steps)
                 print('-' * 50)
-                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(ep, epi_steps, ret, steps))
+                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(ep, ep_steps, ret, steps))
                 print('-' * 50)
                 break
 
@@ -234,7 +235,7 @@ def viz_dot_reacher():
     torch.manual_seed(3)
 
     # Env
-    env = VisualDotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=20000, dt=0.2)
+    env = VisualDotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=20000)
 
     # Experiment
     EP = 5
@@ -348,7 +349,7 @@ def p_value_table():
 
 
 if __name__ == '__main__':
-    # random_pi_dot_reacher()
-    viz_dot_reacher()
+    random_pi_dot_reacher()
+    # viz_dot_reacher()
     # p_value_table()
     

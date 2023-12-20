@@ -22,10 +22,10 @@ if "DISPLAY" not in os.environ:
 
 
 class DotSeeker(Env):
-    def __init__(self, dt=0.2, timeout=10000, pos_tol=0.05, penalty=-1, 
+    def __init__(self, timeout=10000, pos_tol=0.05, penalty=-1, 
                  seed=42, use_image=False, img_history=3) -> None:
         super().__init__()
-        self.dt = dt
+        self.dt = 0.2
         self.pos_tol = pos_tol
         self.timeout = timeout
         self.penalty = penalty
@@ -189,9 +189,9 @@ class DotSeeker(Env):
 
 
 class DotBoxReacher(DotSeeker):
-    def __init__(self, dt=0.2, timeout=10000, pos_tol=0.1, vel_tol=0.05,
+    def __init__(self, timeout=10000, pos_tol=0.1, vel_tol=0.05,
                  penalty=-1, seed=42, use_image=False, img_history=3) -> None:
-        super().__init__(dt, timeout, pos_tol, penalty, seed, use_image, img_history)
+        super().__init__(timeout, pos_tol, penalty, seed, use_image, img_history)
         self.arp_dt = 0
         self.vel_tol = vel_tol
     
@@ -207,8 +207,8 @@ if __name__ == "__main__":
     n_episodes = 1
     timeout = 20000
     seed = 42
-    # env = DotBoxReacher(dt=0.2, timeout=timeout, pos_tol=0.1, use_image=True) 
-    env = DotSeeker(dt=0.2, timeout=timeout, pos_tol=0.05, seed=seed)
+    # env = DotBoxReacher(timeout=timeout, pos_tol=0.1, use_image=True) 
+    env = DotSeeker(timeout=timeout, pos_tol=0.05, seed=seed)
     np.random.seed(seed)
 
     # Initialize the video writer (you can choose the codec and output file format)
