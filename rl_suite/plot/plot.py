@@ -82,7 +82,9 @@ def plotter(cfg, title, xlim=None, ylim=None,
                 print(f"Run {fp} incomplete. It was not added to the plot")
         legend_elements.append(Line2D([0], [0], color=color, lw=4, label=env),)
         print("Average return in the last {} steps = {:.2f}".format(window_len, np.mean(last_return)))
-        
+        ind = last_return.index(max(last_return))
+        print("Best performing seed: {}".format(all_paths[ind]))
+
     # Plot
     # sns.lineplot(x="step", y='avg_ret', data=df[df['env']==env], hue='env', palette=color_palette)
     sns.lineplot(x="step", y='avg_ret', data=df, hue='env', legend='brief', palette=color_palette)
