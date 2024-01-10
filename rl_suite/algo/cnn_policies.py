@@ -243,11 +243,37 @@ class CriticModel(nn.Module):
         return vals.view(-1)
 
 
-class SACRADActor(ActorModel):
+class SACRADActor(nn.Module):
     def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn=False, spatial_softmax=True):
+        super().__init__()
         self.LOG_STD_MIN = -20
         self.LOG_STD_MAX = 2
-        super().__init__(image_shape, proprioception_shape, action_dim, net_params, rad_offset, freeze_cnn, spatial_softmax)
+
+        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset, spatial_softmax)
+        logging.info("Encoder initialized for Actor")
+        if freeze_cnn:
+            logging.warn("Actor CNN weights won't be trained!")
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+
+        mlp_params = net_params['mlp']
+        mlp_params[0][0] = self.encoder.latent_dim
+        mlp_params[-1][-1] = action_dim * 2
+        layers = []
+        for i, (in_dim, out_dim) in enumerate(mlp_params[:-1]):
+            layers.append(nn.Linear(in_dim, out_dim))
+            layers.append(nn.ReLU())
+        self.trunk = nn.Sequential(
+            *layers
+        )
+
+        self.mu_log_std = nn.Linear(mlp_params[-1][0], mlp_params[-1][1])
+
+        self.outputs = dict()
+        
+        # Orthogonal Weight Initialization
+        self.apply(orthogonal_weight_init)
+
 
     @staticmethod
     def squash(mu, action, log_p):
@@ -267,9 +293,21 @@ class SACRADActor(ActorModel):
         residual = (-0.5 * noise.pow(2) - log_std).sum(-1, keepdim=True)
         return residual - 0.5 * np.log(2 * np.pi) * noise.size(-1)
 
+    def get_features(self, images, proprioceptions):
+        with torch.no_grad():
+            latents = self.encoder(images, proprioceptions, random_rad=True, detach=False)
+            phi = self.trunk(latents)
+        return phi
+
+    def get_image_features(self, images, proprioceptions):
+        with torch.no_grad():
+            latents = self.encoder(images, proprioceptions, random_rad=True, detach=False)            
+        return latents
+
     def forward(self, images, proprioceptions, random_rad=True, detach_encoder=False):
         latents = self.encoder(images, proprioceptions, random_rad, detach=detach_encoder)
-        mu, log_std = self.trunk(latents).chunk(2, dim=-1)
+        phi = self.trunk(latents)
+        mu, log_std = self.mu_log_std(phi).chunk(2, dim=-1)
 
         # constrain log_std inside [log_std_min, log_std_max]
         # log_std = torch.tanh(log_std)
