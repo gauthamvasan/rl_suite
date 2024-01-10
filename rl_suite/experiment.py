@@ -72,9 +72,6 @@ class Experiment:
         elif self.args.env == "dm_reacher_hard":
             from rl_suite.envs.dm_control_wrapper import ReacherWrapper
             env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="hard", use_image=self.args.use_image)
-        elif self.args.env == "dm_reacher_torture":
-            from rl_suite.envs.dm_control_wrapper import ReacherWrapper
-            env = ReacherWrapper(seed=self.args.seed, penalty=self.args.reward, mode="torture", use_image=self.args.use_image)
         elif "dot_reacher" in self.args.env:
             if self.args.env == "dot_reacher_easy":
                 self.args.pos_tol = 0.25
@@ -100,14 +97,19 @@ class Experiment:
         elif self.args.env == "dot_seeker":
             env = DotSeeker(pos_tol=self.args.pos_tol, penalty=self.args.reward,
                              timeout=self.args.timeout, use_image=self.args.use_image)
-        elif self.args.env == "dot_box_reacher":
-            env = DotBoxReacher(pos_tol=self.args.pos_tol, vel_tol=self.args.vel_tol, penalty=self.args.reward, 
-                                timeout=self.args.timeout, use_image=self.args.use_image)
         elif self.args.env == "point_maze":
             from rl_suite.envs.point_maze import PointMaze
             env = PointMaze(seed=self.args.seed, map_type=self.args.maze_type, reward_type=self.args.reward_type, 
                             use_image=self.args.use_image, penalty=self.args.reward,)
             self.args.env += f"_{self.args.maze_type}_{self.args.reward_type}"  # Make env name clear for saving results
+        elif 'finger' in self.args.env:            
+            from rl_suite.envs.finger_task import FingerSpin, FingerTurn
+            if self.args.env == "finger_spin":
+                env = FingerSpin(seed=self.args.seed)
+            elif self.args.env == "finger_turn_easy":
+                env = FingerTurn(task='turn_easy', seed=self.args.seed)
+            elif self.args.env == "finger_turn_hard":
+                env = FingerTurn(task='turn_hard', seed=self.args.seed)
         else:
             from rl_suite.envs.gymnasium_wrapper import GymnasiumWrapper
             env = GymnasiumWrapper(env=self.args.env, seed=self.args.seed, time_limit=self.args.timeout)
