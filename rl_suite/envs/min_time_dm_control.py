@@ -65,12 +65,14 @@ class DMControlBaseEnv:
 
 class BallInCupWrapper(DMControlBaseEnv):
     """ Minimum-time variant of Ball in a cup env """
-    def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
+    def __init__(self, seed, timeout, reward=-1, use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed, 'time_limit': float('inf')})
-        self.reward = penalty
+        self.timeout = timeout
+        self.reward = reward
         self._obs_dim = 8 if not use_image else 4
         self._action_dim = 2
+        self.steps = 0
 
         self._use_image = use_image
         
@@ -96,6 +98,7 @@ class BallInCupWrapper(DMControlBaseEnv):
         return img
 
     def reset(self):
+        self.steps = 0
         if self._use_image:
             obs = Observation()
             obs.proprioception = self.make_obs(self.env.reset())
@@ -108,16 +111,18 @@ class BallInCupWrapper(DMControlBaseEnv):
         else:
             obs = self.make_obs(self.env.reset())
 
-        return obs
+        return obs, {}
 
     def step(self, action):
         if isinstance(action, torch.Tensor):
             action = action.cpu().numpy().flatten()
 
         x = self.env.step(action)
+        self.steps += 1
 
         reward = self.reward
         done = x.reward
+        truncated = self.steps == self.timeout
         info = {}
 
         if self._use_image:
@@ -127,14 +132,14 @@ class BallInCupWrapper(DMControlBaseEnv):
             self._image_buffer.append(new_img)
             next_obs.images = np.concatenate(self._image_buffer, axis=0)
         else:
-            next_obs = self.make_obs(x)
-
-        return next_obs, reward, done, info
+            next_obs = self.make_obs(x)        
+        
+        return next_obs, reward, done, truncated, info
 
 
 class ReacherWrapper(DMControlBaseEnv):
     """ Minimum-time variant of reacher env with 3 modes: Easy, Hard,  """
-    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
+    def __init__(self, seed, timeout, reward=-1, mode="easy", use_image=False, img_history=3):
         """ Outputs state transition data as torch arrays """
         assert mode in ["easy", "hard", "torture"]
 
@@ -148,8 +153,10 @@ class ReacherWrapper(DMControlBaseEnv):
         self._obs_dim = 4 if use_image else 6
         self._action_dim = 2
         
-        self.reward = penalty
+        self.timeout = timeout
+        self.reward = reward
         self._use_image = use_image
+        self.steps = 0
         
         if use_image:
             self._image_buffer = deque([], maxlen=img_history)
@@ -204,6 +211,7 @@ class ReacherWrapper(DMControlBaseEnv):
             observation=observation)
 
     def reset(self, randomize_target=True):
+        self.steps = 0
         if self._use_image:
             obs = Observation()
             if randomize_target:
@@ -222,16 +230,18 @@ class ReacherWrapper(DMControlBaseEnv):
             else:
                 obs = self.make_obs(self._reset_agent_only())
 
-        return obs
+        return obs, {}
 
     def step(self, action):
         if isinstance(action, torch.Tensor):
             action = action.cpu().numpy().flatten()
 
         x = self.env.step(action)
+        self.steps += 0
 
         reward = self.reward
         done = x.reward
+        truncated = self.steps == self.timeout
         info = {}
 
         if self._use_image:
@@ -243,7 +253,7 @@ class ReacherWrapper(DMControlBaseEnv):
         else:
             next_obs = self.make_obs(x)
             
-        return next_obs, reward, done, info
+        return next_obs, reward, done, truncated, info
 
     @property
     def image_space(self):

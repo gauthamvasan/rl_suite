@@ -111,12 +111,13 @@ class PointMaze():
     """
     PointMaze_UMazeDense=v3 uses np.exp(-np.linalg.norm(a-b)) as reward 
     """
-    def __init__(self, seed, map_type="small", reward_type="sparse", penalty=-1, 
+    def __init__(self, seed, timeout, map_type="small", reward_type="sparse", reward=-1, 
                  use_image=False, img_history=3, render_mode=None) -> None:
         assert reward_type in ["sparse", "dense"], print(reward_type)
         assert map_type in self.all_maps, print(map_type)
         assert render_mode in ["human", "rgb_array", None], print(render_mode)
         
+        self.timeout = timeout
         self.reward_type = reward_type
         self.use_image = use_image
         self.img_history = img_history
@@ -127,7 +128,7 @@ class PointMaze():
         print(f"point_maze_{map_type} with {reward_type} rewards. Visual task: {use_image}")
 
         self.render_mode = render_mode
-        self.reward = penalty
+        self.reward = reward
         
         self.env = gym.make("PointMaze_UMaze-v3", maze_map=self.all_maps[map_type], render_mode=render_mode)
         self.set_seeds(seed)
@@ -137,6 +138,7 @@ class PointMaze():
         self._action_dim = 2
         self._img_dim = (160, 160)
         self._prev_action = np.zeros(2)
+        self.steps = 0
     
     def set_seeds(self, seed):
         self.env.reset(seed=seed) # This is just to set the seed
@@ -188,12 +190,14 @@ class PointMaze():
         
         self._prev_action = np.zeros(self._action_dim)
 
-        return self.make_obs(x)
+        return self.make_obs(x), {}
 
     def step(self, action):
         next_x, r, _, _, info = self.env.step(action)
+        self.steps += 1
         next_obs = self.make_obs(next_x)
         done = r
+        truncated = self.steps == self.timeout
         self._prev_action = action[:]
 
         if self.reward_type == "sparse":
@@ -201,7 +205,7 @@ class PointMaze():
         else:
             reward = -0.25 * np.linalg.norm(next_x['achieved_goal'] - next_x['desired_goal'], axis=-1)
 
-        return next_obs, reward, done, info
+        return next_obs, reward, done, truncated, info
     
     def render(self):
         if self.render_mode is not None:

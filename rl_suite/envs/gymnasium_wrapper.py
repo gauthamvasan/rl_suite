@@ -4,24 +4,28 @@ import numpy as np
 
 class GymnasiumWrapper:
     def __init__(self, env, seed, time_limit) -> None:
-        self.env = gym.make(env)
-        self.time_limit = time_limit
+        self.env = gym.make(env, max_episode_steps=time_limit)
+        self.time_limit = time_limit    # Not used at the moment
         observation, info = self.env.reset()
 
         # Set seed
         self.env.reset(seed=seed) # This is just to set the seed
         self.env.action_space.seed(seed)
 
-    def reset(self):
+    def reset(self, **kwargs):
         self.steps = 0
         observation, info = self.env.reset()
-        return observation
+        return observation, {}
 
     def step(self, action):
         self.steps += 1
-        next_observation, reward, terminated, truncated, info = self.env.step(action)
-        terminated = terminated or self.steps == self.time_limit
-        return next_observation, reward, terminated, info
+        
+        # Clamp action
+        action = np.clip(action, self.env.action_space.low, self.env.action_space.high)
+
+        next_observation, reward, terminated, truncated, info = self.env.step(action)     
+        terminated = terminated or truncated
+        return next_observation, reward, terminated, truncated, info
     
     def render(self):
         return self.env.render()
@@ -39,31 +43,30 @@ class GymnasiumWrapper:
 
 
 if __name__ == "__main__":
-    env = "Ant-v2"
+    env = "AntMaze_UMaze-v3"
     seed = 42
     n_episodes = 100
     timeout = 1000
     np.random.seed(seed)
-    env = GymnasiumWrapper(env, seed)
-
-    obs = env.reset()
+    env = GymnasiumWrapper(env, seed, time_limit=timeout)
+    
     for i_ep in range(n_episodes):
-        done = False
+        obs = env.reset()
+        terminated = False
         ret = 0
         step = 0
-        while (not done and step < timeout):
+        while not terminated:
             action = env.action_space.sample()
-            next_obs, reward, done, info = env.step(action)
+            next_obs, reward, terminated, truncated, info = env.step(action)
             ret += reward
             step += 1
             obs = next_obs
 
             # if step % 100 == 0:
             #     print(f"Obs: {obs[:4]}, action: {action}, reward: {reward}")
-            env.render()
+            # env.render()
 
-        obs = env.reset()
-        print("Episode {} ended in {} steps with return {:.2f}. Done: {}.".format(i_ep+1, step, ret, done))
+        print("Episode {} ended in {} steps with return {:.2f}. Done: {}.".format(i_ep+1, step, ret, terminated))
     
     env.close()
     
