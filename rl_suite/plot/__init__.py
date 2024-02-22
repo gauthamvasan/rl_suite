@@ -42,7 +42,7 @@ def setaxes():
         # tick.label.set_fontsize(getxticklabelsize())
         tick.label.set_fontsize(14)
 
-def human_format_numbers(num, use_float=False):
+def human_format_numbers(num, use_float=True):
     # Make human readable short-forms for large numbers
     magnitude = 0
     while abs(num) >= 1000:
@@ -50,7 +50,7 @@ def human_format_numbers(num, use_float=False):
         num /= 1000.0
     # add more suffixes if you need them
     if use_float:
-        return '%.2f%s' % (num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
+        return '%.1f%s' % (num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
     return '%d%s' % (num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
 
 def set_labels(title, xlabel="Timesteps", ylabel="Return", labelpad=25):

@@ -7,7 +7,7 @@ import numpy as np
 from gym.core import Env
 from gym.spaces.box import Box
 from beautifultable import BeautifulTable
-from rl_suite.envs import Observation
+from incremental_rl.agent_builder import Observation
 
 
 class DotReacherEnv(Env):
@@ -45,12 +45,12 @@ class DotReacherEnv(Env):
         # TODO: Verify that min/max velocity are always within these bounds
         return Box(low=-10, high=10, shape=(4,))
 
-    def reset(self):
+    def reset(self, **kwargs):
         self.steps = 0
         self.pos = torch.rand((1, 2)) * (self._pos_high - self._pos_low) + self._pos_low
         self.vel = torch.zeros((1, 2))
         obs = torch.cat((self.pos, self.vel), 1)
-        return obs
+        return obs, {}
 
     def step(self, action):
         """
@@ -83,14 +83,14 @@ class DotReacherEnv(Env):
         reward = self.reward
 
         # Done
-        done = torch.allclose(self.pos, torch.zeros(2), atol=self._pos_tol) and \
+        terminated = torch.allclose(self.pos, torch.zeros(2), atol=self._pos_tol) and \
                torch.allclose(self.vel, torch.zeros(2), atol=self._vel_tol)
-        # done = done or self.steps == self._timeout
+        truncated = self.steps == self._timeout
 
         # Metadata
         info = {}
 
-        return next_obs, reward, done, info
+        return next_obs, reward, terminated, truncated, info
 
 
 class VisualDotReacherEnv(DotReacherEnv):
@@ -140,9 +140,9 @@ class VisualDotReacherEnv(DotReacherEnv):
         return self.get_obs()
 
     def step(self, action):
-        _, reward, done, info = super(VisualDotReacherEnv, self).step(action)
+        _, reward, terminated, truncated, info = super(VisualDotReacherEnv, self).step(action)
         obs = self.get_obs()
-        return obs, reward, done, info
+        return obs, reward, terminated, truncated, info
 
     @property
     def image_space(self):
@@ -153,16 +153,17 @@ class VisualDotReacherEnv(DotReacherEnv):
     def proprioception_space(self):
         return Box(low=-10, high=10, shape=(2,))
 
+
 def random_pi_dot_reacher():
     # Problem
     torch.manual_seed(3)
 
     # Env
-    timeout = 10000
+    timeout = 20000
     env = DotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=timeout)
 
     # Experiment
-    EP = 500
+    EP = 50
     rets = []
     ep_lens = []
     # Slogs = []
@@ -180,7 +181,7 @@ def random_pi_dot_reacher():
             # print(A)
 
             # Receive reward and next state
-            next_obs, R, done, _ = env.step(A)
+            next_obs, R, terminated, truncated, _ = env.step(A)
             # print("Step: {}, Obs: {}, Action: {}".format(steps, obs, A))
 
             # Log
@@ -190,12 +191,10 @@ def random_pi_dot_reacher():
             ep_steps += 1
 
             # Termination
-            if done or ep_steps == timeout:
+            if terminated or truncated:
                 rets.append(ret)
                 ep_lens.append(ep_steps)
-                print('-' * 50)
-                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(ep, ep_steps, ret, steps))
-                print('-' * 50)
+                print("Episode: {}: # steps = {}, return = {:.2f}. Total Steps: {}".format(ep, ep_steps, ret, steps))
                 break
 
             obs = next_obs
@@ -228,128 +227,6 @@ def random_pi_dot_reacher():
     # plt.show()
 
 
-def viz_dot_reacher():
-    import matplotlib.pyplot as plt
-
-    # Problem
-    torch.manual_seed(3)
-
-    # Env
-    env = VisualDotReacherEnv(pos_tol=0.1, vel_tol=0.05, timeout=20000)
-
-    # Experiment
-    EP = 5
-    rets = []
-    steps = 0
-    # create two subplots
-    ax1 = plt.subplot(1, 1, 1)
-
-    # create two image plots
-    plt.ion()
-    for ep in range(EP):
-        obs = env.reset()
-        im1 = ax1.imshow(np.ones(env.img_dim, dtype=np.uint8)*255)
-        ret = 0
-        epi_steps = 0
-        while True:
-            img = obs.images
-            proprioception = obs.proprioception
-            im1.set_data(np.transpose(img.numpy(), [1, 2, 0]).astype(np.uint8))            
-            # Take action
-            A = torch.rand((1, 2))
-            A = A * (env._action_high - env._action_low) + env._action_low
-            # print(A)
-
-            # Receive reward and next state
-            plt.pause(0.02)
-            next_obs, R, done, _ = env.step(A)            
-            print("Step: {}, Obs: {}, Next Obs: {}".format(steps, obs.proprioception, next_obs.proprioception))
-
-            # Log
-            # Slogs[-1].append(next_obs)
-            ret += R
-            steps += 1
-            epi_steps += 1
-
-            # Termination
-            if done:
-                rets.append(ret)
-                print('-' * 50)
-                print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(ep, epi_steps, ret, steps))
-                print('-' * 50)
-                time.sleep(2)
-                break
-
-            obs = next_obs
-
-    # Plotting
-    plt.plot(-100 * torch.tensor(rets))
-    plt.show()
-
-def p_value_table():
-    seed = 1
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    pos_tols = [0.25, 0.15, 0.1, 0.1, 0.05]
-    vel_tols = [0.25, 0.1, 0.075, 0.05, 0.05]
-    timeouts = [500, 1000, 5000, 20000]
-    n_timesteps = 50000
-
-    table = BeautifulTable(maxwidth=140, precision=6)
-    table.set_style(BeautifulTable.STYLE_MARKDOWN)
-    table.columns.header = ['pos_tol', 'vel_tol', 'timeout', 'Mean', 'Std. Error', 'Median', 'p-val', 'Success Rate', 'Max', 'Min']
-
-    for timeout in timeouts:
-        for pos_tol, vel_tol in zip(pos_tols, vel_tols):
-            env = DotReacherEnv(pos_tol, vel_tol, dt=0.2, timeout=timeout)
-            rets = []
-            ep_lens = []
-            ep = 0            
-            step = 0
-            ret = 0
-            epi_steps = 0         
-            obs = env.reset()
-            while step <= n_timesteps:                
-                # Take action
-                A = torch.rand((1, 2))
-                A = A * (env._action_high - env._action_low) + env._action_low
-                # print(A)
-
-                # Receive reward and next state
-                next_obs, R, done, _ = env.step(A)
-                # print("Step: {}, Obs: {}, Next Obs: {}".format(steps, obs, next_obs))
-
-                ret += R                    
-                epi_steps += 1
-                obs = next_obs
-                step += 1
-
-                # Termination
-                if done or epi_steps == timeout:
-                    ep += 1
-                    rets.append(ret)
-                    ep_lens.append(epi_steps)
-                    print('-' * 50)
-                    print("Episode: {}: # steps = {}, return = {}. Total Steps: {}".format(ep, epi_steps, ret, step))
-                    print('-' * 50)
-                    obs = env.reset()
-                    ret = 0
-                    epi_steps = 0
-
-            # Random policy stats
-            rets = np.array(rets)
-            ep_lens = np.array(ep_lens)
-            inds = np.where(ep_lens == timeout)
-            row = [pos_tol, vel_tol, timeout, np.mean(ep_lens), np.std(ep_lens)/np.sqrt(len(ep_lens)-1), np.median(ep_lens), 
-                    n_timesteps/float(ep-len(inds)), (1 - len(inds[0])/len(ep_lens))*100., max(ep_lens), min(ep_lens)]
-            table.rows.append(row)
-            print(row)
-    
-    print(table)
-
-
 if __name__ == '__main__':
     random_pi_dot_reacher()
-    # viz_dot_reacher()
-    # p_value_table()
     

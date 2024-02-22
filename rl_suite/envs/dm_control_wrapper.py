@@ -1,40 +1,85 @@
-"""
-DeepMind control suite tasks implemented in minimum-time formulation
-- https://github.com/deepmind/dm_control/tree/main/dm_control
-"""
-
-import cv2
-import torch
 import gym
-import dm_env
-import os
-
+import torch
 import numpy as np
-import matplotlib.pyplot as plt
 
-from rl_suite.envs import Observation
-from dm_control.suite.utils import randomizers
-from dm_control.suite.reacher import Reacher, Physics
-from dm_control.rl.control import flatten_observation
 from dm_control import suite
-from dm_control.rl import control
-from dm_control.suite import common
-from dm_control.utils import io as resources
-from gym.spaces import Box
-from collections import deque
-from tqdm import tqdm
+from dm_control.rl.control import flatten_observation
+from incremental_rl.agent_builder import Observation
+from gym.spaces.box import Box
+
+ENV_MAP = {
+    "acrobot":                  {'domain': "acrobot", "task": "swingup"},
+    "acrobot_sparse":           {'domain': "acrobot", "task": "swingup_sparse"},
+    "ball_in_cup":              {"domain": "ball_in_cup", "task": "catch"},
+    "cartpole_balance":         {"domain": "cartpole", "task": "balance"},
+    "cartpole_balance_sparse":  {"domain": "cartpole", "task": "balance_sparse"},
+    "cartpole_swingup":         {"domain": "cartpole", "task": "swingup"},
+    "cartpole_swingup_sparse":  {"domain": "cartpole", "task": "swingup_sparse"},
+    "cheetah":                  {"domain": "cheetah", "task": "run"},
+    "finger_spin":              {"domain": "finger", "task": "spin"},
+    "finger_turn_easy":         {"domain": "finger", "task": "turn_easy"},
+    "finger_turn_hard":         {"domain": "finger", "task": "turn_hard"},
+    "fish_upright":             {"domain": "fish", "task": "upright"},
+    "fish_swim":                {"domain": "fish", "task": "swim"},
+    "hopper_stand":             {"domain": "hopper", "task": "stand"},
+    "hopper_hop":               {"domain": "hopper", "task": "hop"},
+    "humanoid_stand":           {"domain": "humanoid", "task": "stand"},
+    "humanoid_walk":            {"domain": "humanoid", "task": "walk"},
+    "humanoid_run":             {"domain": "humanoid", "task": "run"},
+    "manipulator_bring_ball":   {"domain": "manipulator", "task": "bring_ball"},
+    "pendulum_swingup":         {"domain": "pendulum", "task": "swingup"},
+    "point_mass_easy":          {"domain": "point_mass", "task": "easy"},
+    "reacher_easy":             {"domain": "reacher", "task": "easy"},
+    "reacher_hard":             {"domain": "reacher", "task": "hard"},
+    "swimmer6":                 {"domain": "swimmer", "task": "swimmer6"},
+    "swimmer15":                {"domain": "swimmer", "task": "swimmer15"},
+    "walker_stand":             {"domain": "walker", "task": "stand"},
+    "walker_walk":              {"domain": "walker", "task": "walk"},
+    "walker_run":               {"domain": "walker", "task": "run"},
+}
 
 
-class DMControlBaseEnv:
-    def __init__(self):
-        pass
+class DMControl():
+    def __init__(self, env_name, seed):
+        self.env = suite.load(domain_name=ENV_MAP[env_name]['domain'], task_name=ENV_MAP[env_name]['task'], 
+                              task_kwargs={'random': seed})
+        
+        # Observation space
+        self._obs_dim = 0
+        for key, val in self.env.observation_spec().items():
+            if val.shape:
+                self._obs_dim += val.shape[0]
+            else:
+                self._obs_dim += 1
+        
+        # Action space
+        self._action_dim = self.env.action_spec().shape[0]
     
-    def reset(self):
-        raise NotImplemented
+    def make_obs(self, x):
+        obs = []
+        for _, val in x.items():
+            obs.append(val.ravel())
+        return np.concatenate(obs)
+
+    def reset(self, **kwargs):
+        time_step = self.env.reset()
+        obs = self.make_obs(time_step.observation)
+        return obs, {}
     
     def step(self, action):
-        raise NotImplemented
-    
+        if isinstance(action, torch.Tensor):
+            action = action.cpu().numpy().flatten()
+
+        x = self.env.step(action)
+
+        reward = x.reward
+        terminated = x.last()
+        truncated = False
+        info = {}
+        next_obs = self.make_obs(x.observation)
+
+        return next_obs, reward, terminated, truncated, info
+
     @property
     def observation_space(self):
         return Box(shape=(self._obs_dim,), high=10, low=-10)
@@ -61,306 +106,33 @@ class DMControlBaseEnv:
     def render(self):
         self.env.render()
     
-    
 
-class BallInCupWrapper(DMControlBaseEnv):
-    """ Minimum-time variant of Ball in a cup env """
-    def __init__(self, seed, penalty=-1, use_image=False, img_history=3):
-        """ Outputs state transition data as torch arrays """
-        self.env = suite.load(domain_name="ball_in_cup", task_name="catch", task_kwargs={'random': seed, 'time_limit': float('inf')})
-        self.reward = penalty
-        self._obs_dim = 8 if not use_image else 4
-        self._action_dim = 2
+if __name__ == "__main__":
+    env = DMControl(env_name="finger_turn_easy", seed=42)    
+    EP = 50 
+    rets = []
+    ep_lens = []
+    for i in range(EP):
+        obs = env.reset()
+        terminated = False
+        steps = 0
+        ret = 0
+        while not terminated:
+            action = np.random.uniform(-1, 1, size=env._action_dim)
+            next_obs, reward, terminated, truncated, info = env.step(action)
+            obs = next_obs
+            # print(next_obs, reward, terminated)
+            steps += 1 
+            ret += reward
+        rets.append(ret)
+        ep_lens.append(steps)
+        print("Episode: {} ended in {} steps with return: {}".format(i+1, steps, ret))
 
-        self._use_image = use_image
-        
-        if use_image:
-            self._image_buffer = deque([], maxlen=img_history)
-            print("Visual ball in cup")
-        else:
-            print('Non visual ball in cup')
-
-    def make_obs(self, x):
-        obs = np.zeros(self._obs_dim, dtype=np.float32)
-        if not self._use_image:
-            obs[:4] = x.observation['position'].astype(np.float32)
-            obs[4:8] = x.observation['velocity'].astype(np.float32)
-        else:
-            obs[:4] = x.observation['velocity'].astype(np.float32)
-        return obs
-
-    def _get_new_img(self):
-        img = self.env.physics.render()
-        img = img[20:120, 100:220, :]
-        img = np.transpose(img, [2, 0, 1])  # c, h, w
-        return img
-
-    def reset(self):
-        if self._use_image:
-            obs = Observation()
-            obs.proprioception = self.make_obs(self.env.reset())
-
-            new_img = self._get_new_img()
-            for _ in range(self._image_buffer.maxlen):
-                self._image_buffer.append(new_img)
-
-            obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            obs = self.make_obs(self.env.reset())
-
-        return obs
-
-    def step(self, action):
-        if isinstance(action, torch.Tensor):
-            action = action.cpu().numpy().flatten()
-
-        x = self.env.step(action)
-
-        reward = self.reward
-        done = x.reward
-        info = {}
-
-        if self._use_image:
-            next_obs = Observation()
-            next_obs.proprioception = self.make_obs(x)
-            new_img = self._get_new_img()
-            self._image_buffer.append(new_img)
-            next_obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            next_obs = self.make_obs(x)
-
-        return next_obs, reward, done, info
-
-
-class ReacherWrapper(DMControlBaseEnv):
-    """ Minimum-time variant of reacher env with 3 modes: Easy, Hard,  """
-    def __init__(self, seed, penalty=-1, mode="easy", use_image=False, img_history=3):
-        """ Outputs state transition data as torch arrays """
-        assert mode in ["easy", "hard", "torture"]
-
-        if mode == "torture":
-            physics = Physics.from_xml_string(*ReacherWrapper.get_modified_model_and_assets())
-            task = Reacher(target_size=.001, random=seed)
-            self.env = control.Environment(physics, task, time_limit=float('inf'), **{})
-        else:
-            self.env = suite.load(domain_name="reacher", task_name=mode, task_kwargs={'random': seed, 'time_limit': float('inf')})
-
-        self._obs_dim = 4 if use_image else 6
-        self._action_dim = 2
-        
-        self.reward = penalty
-        self._use_image = use_image
-        
-        if use_image:
-            self._image_buffer = deque([], maxlen=img_history)
-            print(f'Visual dm reacher {mode}')
-        else:
-            print(f'Non visual dm reacher {mode}')
-
-    def make_obs(self, x):
-        obs = np.zeros(self._obs_dim, dtype=np.float32)
-        obs[:2] = x.observation['position'].astype(np.float32)
-        obs[2:4] = x.observation['velocity'].astype(np.float32)
-
-        if not self._use_image: # this should be inferred from image
-            obs[4:6] = x.observation['to_target'].astype(np.float32)
-        
-        return obs
-
-    @staticmethod
-    def get_modified_model_and_assets():
-        """Returns a tuple containing the model XML string and a dict of assets."""
-        PARENT_DIR = os.path.dirname(os.path.dirname(__file__))
-        return resources.GetResource(os.path.join(PARENT_DIR, 'envs/reacher_small_finger.xml')), common.ASSETS
-
-    def _get_new_img(self):
-        img = self.env.physics.render()
-        img = img[85:155, 110:210, :]
-        img = np.transpose(img, [2, 0, 1])  # c, h, w
-        return img
-
-    def _initialize_episode_random_agent_only(self):
-        """Sets the state of the environment at the start of each episode."""
-        self.env.physics.named.model.geom_size['target', 0] = self.env.task._target_size
-        randomizers.randomize_limited_and_rotational_joints(self.env.physics, self.env.task.random)
-
-        super(Reacher, self.env.task).initialize_episode(self.env.physics)
-
-    def _reset_agent_only(self):
-        """Starts a new episode and returns the first `TimeStep`."""
-        self.env._reset_next_step = False
-        self.env._step_count = 0
-        with self.env.physics.reset_context():
-            self._initialize_episode_random_agent_only()
-
-        observation = self.env.task.get_observation(self.env.physics)
-        if self.env._flat_observation:
-            observation = flatten_observation(observation)
-
-        return dm_env.TimeStep(
-            step_type=dm_env.StepType.FIRST,
-            reward=None,
-            discount=None,
-            observation=observation)
-
-    def reset(self, randomize_target=True):
-        if self._use_image:
-            obs = Observation()
-            if randomize_target:
-                obs.proprioception = self.make_obs(self.env.reset())
-            else:
-                obs.proprioception = self.make_obs(self._reset_agent_only())
-
-            new_img = self._get_new_img()
-            for _ in range(self._image_buffer.maxlen):
-                self._image_buffer.append(new_img)
-
-            obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            if randomize_target:
-                obs = self.make_obs(self.env.reset())
-            else:
-                obs = self.make_obs(self._reset_agent_only())
-
-        return obs
-
-    def step(self, action):
-        if isinstance(action, torch.Tensor):
-            action = action.cpu().numpy().flatten()
-
-        x = self.env.step(action)
-
-        reward = self.reward
-        done = x.reward
-        info = {}
-
-        if self._use_image:
-            next_obs = Observation()
-            next_obs.proprioception = self.make_obs(x)
-            new_img = self._get_new_img()
-            self._image_buffer.append(new_img)
-            next_obs.images = np.concatenate(self._image_buffer, axis=0)
-        else:
-            next_obs = self.make_obs(x)
-            
-        return next_obs, reward, done, info
-
-    @property
-    def image_space(self):
-        if not self._use_image:
-            raise AttributeError(f'use_image={self._use_image}')
-
-        image_shape = (3 * self._image_buffer.maxlen, 70, 100)
-        return Box(low=0, high=255, shape=image_shape)
-   
-
-def random_policy_hits_vs_timeout():
-    total_steps = 20000
-    timeouts = [1, 2, 5, 10, 25, 50, 100, 500, 1000, 5000]
-
-    # Env
-    envs = ['dm reacher easy', 'dm reacher hard', 'ball in cup']
-    envs = ['dm reacher hard']
-    for env_s in envs:
-        steps_record = open(f"{env_s}_steps_record.txt", 'w')
-        hits_record = open(f"{env_s}_random_stat.txt", 'w')
-
-        for timeout in tqdm(timeouts):
-            for seed in range(30):
-                torch.manual_seed(seed)
-                np.random.seed(seed)
-
-                if env_s == 'ball in cup':
-                    env = BallInCupWrapper(seed)
-                elif env_s == 'dm reacher torture':
-                    env = ReacherWrapper(seed=seed, mode="torture")
-                elif env_s == 'dm reacher hard':
-                    env = ReacherWrapper(seed=seed, mode="hard")
-                elif env_s == 'dm reacher easy':
-                    env = ReacherWrapper(seed=seed, mode="easy")
-                else:
-                    raise NotImplementedError()
-
-                if not hasattr(env, "_action_dim"):
-                    env._action_dim = env.action_spec().shape[0]
-
-                steps_record.write(f"timeout={timeout}, seed={seed}: ")
-                # Experiment
-                hits = 0
-                steps = 0
-                epi_steps = 0
-                env.reset()
-                while steps < total_steps:
-                    action = np.random.normal(size=env.action_space.shape)
-
-                    # Receive reward and next state            
-                    _, _, done, _ = env.step(action)
-                    
-                    # print("Step: {}, Next Obs: {}, reward: {}, done: {}".format(steps, next_obs, reward, done))
-
-                    # Log
-                    steps += 1
-                    epi_steps += 1
-
-                    # Termination
-                    if done or epi_steps == timeout:
-                        if 'dm reacher' in env_s:
-                            env.reset(randomize_target=done)
-                        else:
-                            env.reset()
-                            
-                        epi_steps = 0
-
-                        if done:
-                            hits += 1
-                        else:
-                            steps += 20
-                            
-                        steps_record.write(str(steps)+', ')
-
-                steps_record.write('\n')
-                hits_record.write(f"timeout={timeout}, seed={seed}: {hits}\n")
-        
-        steps_record.close()
-        hits_record.close()
-
-if __name__ == '__main__':
-    # for domain_name, task_name in suite.ALL_TASKS: # suite.BENCHMARKING
-    #     print(domain_name, texit()ask_name)
-    #     env = suite.load(domain_name, task_name)
-
-    # m = ManipulatorWrapper(task_name="insert_ball", seed=3)
-
-    # interaction("manipulator", "bring_ball")
-    # interaction("acrobot", "swingup_sparse")
-
-    # visualize_behavior("manipulator", "bring_ball")
-    # visualize_behavior("ball_in_cup", "catch")
-    # visualize_behavior("reacher", "hard")
-    # visualize_behavior("acrobot", "swingup_sparse")
-
-    # r = ReacherWrapper(seed=1)
-    # random_policy_stats()
-    # ranndom_policy_hits_vs_timeout()
-    # env = BallInCupWrapper(1, 1000, use_image=True)
-    # env = ReacherWrapper(seed=1, timeout=50, use_image=True)
-    # obs = env.reset()
-    # img = obs.images
-
-    # print(img.shape)
-    # img_to_show = np.transpose(img, [1, 2, 0])
-    # img_to_show = img_to_show[:,:,-3:]
-    # cv2.imshow('', img_to_show)
-    # cv2.waitKey(0)
-
-    # for t in range(1000):
-    #     randomize_target = t % 100 == 0
-            
-    #     next_obs = env.reset(randomize_target=randomize_target)
-    #     next_img = next_obs.images
-    #     img_to_show = np.transpose(next_img, [1, 2, 0])
-    #     img_to_show = img_to_show[:,:,-3:]
-    #     cv2.imshow('', img_to_show)
-    #     cv2.waitKey(50)
-
-    env = ReacherWrapper(seed=3)
+    # Random policy stats
+    rets = np.array(rets)
+    ep_lens = np.array(ep_lens)
+    print("Mean: {:.2f}".format(np.mean(rets)))
+    print("Standard Error: {:.2f}".format(np.std(rets) / np.sqrt(len(rets) - 1)))
+    print("Median: {:.2f}".format(np.median(rets)))
+    print("Max length:", max(ep_lens))
+    print("Min length:", min(ep_lens))

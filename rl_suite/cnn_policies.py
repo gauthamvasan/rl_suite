@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn import Parameter
 from torch.distributions import Normal
-from rl_suite.algo.mlp_policies import orthogonal_weight_init
+from rl_suite.mlp_policies import orthogonal_weight_init
 
 
 def random_augment(images, rad_height, rad_width):
@@ -396,133 +396,6 @@ class SACRADCritic(nn.Module):
 
         return q1, q2
 
-class ResetActionActorModel(nn.Module):
-    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset):
-        super().__init__()
-
-        self.encoder = SSEncoderModel(image_shape, proprioception_shape, net_params, rad_offset)
-
-        mlp_params = net_params['mlp']
-        mlp_params[0][0] = self.encoder.latent_dim
-        mlp_params[-1][-1] = action_dim*2 - 2
-        layers = []
-        for _, (in_dim, out_dim) in enumerate(mlp_params[:-1]):
-            layers.append(nn.Linear(in_dim, out_dim))
-            # change: if i < len(mlp_params) - 1:
-            layers.append(nn.ReLU())
-
-        self.trunk = nn.Sequential(
-            *layers
-        )
-
-        self.action_layer = nn.Linear(mlp_params[-1][0], mlp_params[-1][-1])
-        self.reset_action_layer = nn.Linear(mlp_params[-1][0], 2)
-        
-        self.apply(orthogonal_weight_init)
-        # change, initial the last layer to be 0 mean, 0 log std
-        self.action_layer.weight.data.fill_(0.0)
-        self.action_layer.bias.data.fill_(0.0)
-        self.reset_action_layer.weight.data.fill_(0.0)
-        self.reset_action_layer.bias.data.fill_(0.0)
-
-    def get_action_module_parameters(self):
-        return list(self.trunk.parameters()) + list(self.action_layer.parameters()) 
-    
-    def get_reset_action_module_parameters(self):
-        return self.reset_action_layer.parameters()
-
-
-class SAC_RAD_ResetActionActor(ResetActionActorModel):
-    LOG_STD_MIN = -10
-    LOG_STD_MAX = 2
-    
-    def __init__(self, image_shape, proprioception_shape, action_dim, net_params, rad_offset):
-        super().__init__(image_shape, proprioception_shape, action_dim, net_params, rad_offset)
-
-    def forward(self, images, proprioceptions, random_rad=True, compute_log_pi=True, detach_encoder=False):
-        
-        latents = self.trunk(self.encoder(images, proprioceptions, random_rad, detach=detach_encoder))
-        mu, log_std = self.action_layer(latents).chunk(2, dim=-1)
-        latents_no_grad = latents.detach()
-        reset_mu, reset_log_std = self.reset_action_layer(latents_no_grad).chunk(2, dim=-1)
-        # mu, log_std = self.trunk(latents).chunk(2, dim=-1)
-
-        # constrain log_std inside [log_std_min, log_std_max]
-        log_std = torch.tanh(log_std)
-        log_std = self.LOG_STD_MIN + 0.5 * (
-            self.LOG_STD_MAX - self.LOG_STD_MIN
-        ) * (log_std + 1)
-
-        reset_log_std = torch.tanh(reset_log_std)
-        reset_log_std = self.LOG_STD_MIN + 0.5 * (
-            self.LOG_STD_MAX - self.LOG_STD_MIN
-        ) * (reset_log_std + 1)
-
-        # compute_pi:
-        std = log_std.exp()
-        #noise = torch.randn_like(mu)
-        #pi = mu + noise * std
-        pi_dist = Normal(mu, std)
-        pi = pi_dist.rsample()
-        if compute_log_pi:
-            #log_pi = self.gaussian_logprob(noise, log_std)
-            log_pi = pi_dist.log_prob(pi).sum(axis=-1)
-            log_pi -= (2 * (np.log(2) - pi - F.softplus(-2 * pi))).sum(axis=1)
-        else:
-            log_pi = None
-
-        reset_std = reset_log_std.exp()
-        #reset_noise = torch.randn_like(reset_mu)
-        #reset_action = reset_mu + reset_noise*reset_std
-        reset_dist = Normal(reset_mu, reset_std)
-        reset_action = reset_dist.rsample()
-        if compute_log_pi:
-            #log_reset_action_prob = self.gaussian_logprob(reset_noise, reset_log_std)
-            log_reset_action_prob = reset_dist.log_prob(reset_action).sum(axis=-1)
-            log_reset_action_prob -= (2 * (np.log(2) - reset_action - F.softplus(-2 * reset_action))).sum(axis=1)
-        else:
-            log_reset_action_prob = None
-
-        mu, pi = torch.tanh(mu), torch.tanh(pi)
-        reset_mu, reset_action = torch.tanh(reset_mu), torch.tanh(reset_action)
-        return mu, pi, log_pi, log_std, reset_mu, reset_action, log_reset_action_prob, reset_log_std
-
-    # def forward(self, images, proprioceptions, random_rad=True, compute_log_pi=True, detach_encoder=False):
-        
-    #     latents = self.trunk(self.encoder(images, proprioceptions, random_rad, detach=detach_encoder))
-    #     mu, log_std = self.action_layer(latents).chunk(2, dim=-1)
-    #     latents_no_grad = latents.detach()
-    #     reset_mu, reset_log_std = self.reset_action_layer(latents_no_grad).chunk(2, dim=-1)
-
-    #     # constrain log_std inside [log_std_min, log_std_max]
-    #     log_std = torch.tanh(log_std)
-    #     log_std = self.LOG_STD_MIN + 0.5 * (
-    #         self.LOG_STD_MAX - self.LOG_STD_MIN
-    #     ) * (log_std + 1)
-
-    #     reset_log_std = torch.tanh(reset_log_std)
-    #     reset_log_std = self.LOG_STD_MIN + 0.5 * (
-    #         self.LOG_STD_MAX - self.LOG_STD_MIN
-    #     ) * (reset_log_std + 1)
-
-    #     std = log_std.exp()
-    #     dist = Normal(mu, std)
-    #     x_action = dist.rsample()
-    #     log_p = None
-    #     if compute_log_pi:
-    #         log_p = dist.log_prob(x_action).sum(axis=-1)
-    #         log_p -= (2 * (np.log(2) - x_action - F.softplus(-2 * x_action))).sum(axis=-1)
-
-    #     reset_std = reset_log_std.exp()
-    #     reset_dist = Normal(reset_mu, reset_std)
-    #     reset_action = reset_dist.rsample()
-    #     log_reset_action_prob = None
-    #     if compute_log_pi:
-    #         log_reset_action_prob = reset_dist.log_prob(reset_action).sum(axis=-1)
-    #         log_reset_action_prob -= (2 * (np.log(2) - reset_action - F.softplus(-2 * reset_action))).sum(axis=-1)
-
-        
-    #     return torch.tanh(mu), torch.tanh(x_action), log_p, log_std, torch.tanh(reset_mu), torch.tanh(reset_action), log_reset_action_prob, reset_log_std
 
 if __name__ == '__main__':
     net_params = {
