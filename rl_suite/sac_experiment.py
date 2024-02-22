@@ -371,10 +371,9 @@ def main(args):
 
     duration = datetime.now() - start_time    
     agent.save(model_dir=args.results_dir, unique_str=f"{run_id}_model")
-    save_args(args, f"{run_id}_args.json")
+    save_args(args, f"{args.results_dir}/{run_id}_args.json")
     save_returns(ep_lens=ep_lens, rets=returns, save_path=rets_path)
-    learning_curve(rets=returns, ep_lens=ep_lens, save_path=lc_path)
-
+    learning_curve(rets=returns, ep_lens=ep_lens, save_path=lc_path)    
     logging.info(f"Finished in {duration}")
     return ep_lens, returns
 
