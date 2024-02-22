@@ -370,7 +370,6 @@ def main(args):
             # if total_steps % 50 == 0: 
             #     print("Step: {}, Proprioception: {}, reward: {}, done: {}".format(total_steps, prop, r, terminated))
 
-
             obs = next_obs
 
             # Log

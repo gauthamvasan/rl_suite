@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from rl_suite.envs.min_time_dm_control import BallInCupWrapper, ReacherWrapper
 from rl_suite.envs.point_maze import PointMaze
+from rl_suite.envs.ant_maze import AntMaze
 from rl_suite.envs.dot_seeker import DotSeeker
 from rl_suite.envs.dot_reacher_env import DotReacherEnv, VisualDotReacherEnv
 from rl_suite.envs.gymnasium_wrapper import GymnasiumWrapper
@@ -35,8 +36,12 @@ def make_env(args):
         env = DotSeeker(pos_tol=pos_tol, penalty=reward,
                             timeout=timeout, use_image=use_image)
     elif env_str == "point_maze":        
-        env = PointMaze(seed=seed, map_type=args.maze_type, reward_type=args.reward_type, use_image=use_image, timeout=timeout, reward=reward)
+        env = PointMaze(seed=seed, map_type=args.maze_type, reward_type=args.reward_type, use_image=use_image, 
+                        timeout=timeout, reward=reward)
         env_str += f"_{args.maze_type}_{args.reward_type}"  # Make env name clear for saving results
+    elif "AntMaze" in env_str:
+        print("Using Ant Maze wrapper...")
+        env = AntMaze(env_str=env_str, seed=args.seed, use_image=use_image, timeout=timeout)
     elif env_str in ENV_MAP:
         env = DMControl(env_name=env_str, seed=seed)
     else:
