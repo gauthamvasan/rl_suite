@@ -32,7 +32,11 @@ class GymnasiumWrapper:
 
     @property
     def observation_space(self):
-        return self.env.observation_space
+        obs_space = self.env.observation_space
+        if isinstance(obs_space, gym.spaces.dict.Dict):
+            # Needed for Ant Maze envs
+            return obs_space['observation']
+        return obs_space
     
     @property
     def action_space(self):
