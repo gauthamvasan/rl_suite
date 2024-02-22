@@ -78,7 +78,8 @@ class AntMaze:
     def step(self, action):
         next_x, reward, terminated, truncated, info = self.env.step(action)
         self.steps += 1
-        next_obs = self.make_obs(next_x)        
+        next_obs = self.make_obs(next_x)
+        terminated = terminated or truncated        
         return next_obs, reward, terminated, truncated, info
     
     def render(self):
