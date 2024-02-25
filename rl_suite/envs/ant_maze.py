@@ -14,21 +14,60 @@ from gym.spaces import Box
 from gymnasium_robotics.envs.maze.maps import R, G, C
 from rl_suite.envs import Observation
 
+SMALL3 = [
+    [1, 1, 1, 1, 1],
+    [1, R, 0, G, 1],
+    [1, 1, 1, 1, 1]
+]
+
+SMALL4 = [
+    [1, 1, 1, 1, 1, 1],
+    [1, R, 0, 0, G, 1],
+    [1, 1, 1, 1, 1, 1]
+]
+
+SMALL5 = [
+    [1, 1, 1, 1, 1, 1, 1],
+    [1, R, 0, 0, 0, G, 1],
+    [1, 1, 1, 1, 1, 1, 1]
+]
+
+SMALL6 = [
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [1, R, 0, 0, 0, 0, G, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1]
+]
+
+OPEN = [
+    [1, 1, 1, 1, 1, 1],
+    [1, C, C, C, C, 1],
+    [1, C, C, C, C, 1],
+    [1, C, C, C, C, 1],
+    [1, 1, 1, 1, 1, 1]
+]
+
+ALL_MAPS = {"open": OPEN, "small3": SMALL3, "small4": SMALL4, "small5": SMALL5, "small6": SMALL6}
+
 
 class AntMaze:
-    def __init__(self, env_str, seed, timeout, use_image=False, img_history=3, render_mode=None) -> None:               
+    def __init__(self, env_str, seed, timeout, map_type="small", reward_type="sparse", 
+                 use_image=False, img_history=3, render_mode=None) -> None:               
         assert render_mode in ["human", "rgb_array", None], print(render_mode)
-        
+        assert reward_type in ["sparse", "dense"], print(reward_type)
+        assert map_type in ALL_MAPS, print(map_type)
+
         self.timeout = timeout        
         self.use_image = use_image
         self.img_history = img_history
         self.render_mode = render_mode
+        self.map_type = map_type
+        self.reward_type = reward_type
         if self.use_image:            
             self._image_buffer = deque([], maxlen=img_history)
             if render_mode is None:
                 render_mode = "rgb_array"
         
-        self.env = gym.make(env_str, max_episode_steps=timeout, render_mode=render_mode)
+        self.env = gym.make("AntMaze_UMazeDense-v3", max_episode_steps=timeout, maze_map=ALL_MAPS[map_type], render_mode=render_mode)
         self.set_seeds(seed)
 
         self._obs_dim = 27 if use_image else 29
@@ -77,9 +116,20 @@ class AntMaze:
 
     def step(self, action):
         next_x, reward, terminated, truncated, info = self.env.step(action)
+
+        if self.reward_type == "dense":
+            reward = np.log(reward)
+            terminated = terminated or truncated
+        elif self.reward_type == "sparse":
+            # https://github.com/Farama-Foundation/Gymnasium-Robotics/blob/8606192735a9963d1dcc12feade037b77d9349be/gymnasium_robotics/envs/maze/maze.py#L281C21-L281C37
+            terminated = -np.log(reward) <= 0.45
+            terminated = terminated or truncated
+            reward = -1
+
+
         self.steps += 1
         next_obs = self.make_obs(next_x)
-        terminated = terminated or truncated        
+        
         return next_obs, reward, terminated, truncated, info
     
     def render(self):
