@@ -33,7 +33,7 @@ def make_env(args):
         else:
             env = DotReacherEnv(pos_tol=pos_tol, vel_tol=vel_tol, penalty=reward, timeout=timeout)                
     elif env_str == "dot_seeker":
-        env = DotSeeker(pos_tol=pos_tol, penalty=reward,
+        env = DotSeeker(pos_tol=args.pos_tol, penalty=reward,
                             timeout=timeout, use_image=use_image)
     elif env_str == "point_maze":        
         env = PointMaze(seed=seed, map_type=args.maze_type, reward_type=args.reward_type, use_image=use_image, 
@@ -41,7 +41,7 @@ def make_env(args):
         env_str += f"_{args.maze_type}_{args.reward_type}"  # Make env name clear for saving results
     elif env_str=="ant_maze":
         print("Using Ant Maze wrapper...")
-        env = AntMaze(env_str=env_str, seed=args.seed, use_image=use_image, timeout=timeout,
+        env = AntMaze(seed=args.seed, use_image=use_image, timeout=timeout,
                       map_type=args.maze_type, reward_type=args.reward_type)
     elif env_str in ENV_MAP:
         env = DMControl(env_name=env_str, seed=seed)
