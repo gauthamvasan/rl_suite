@@ -39,9 +39,10 @@ def make_env(args):
         env = PointMaze(seed=seed, map_type=args.maze_type, reward_type=args.reward_type, use_image=use_image, 
                         timeout=timeout, reward=reward)
         env_str += f"_{args.maze_type}_{args.reward_type}"  # Make env name clear for saving results
-    elif "AntMaze" in env_str:
+    elif env_str=="ant_maze":
         print("Using Ant Maze wrapper...")
-        env = AntMaze(env_str=env_str, seed=args.seed, use_image=use_image, timeout=timeout)
+        env = AntMaze(env_str=env_str, seed=args.seed, use_image=use_image, timeout=timeout,
+                      map_type=args.maze_type, reward_type=args.reward_type)
     elif env_str in ENV_MAP:
         env = DMControl(env_name=env_str, seed=seed)
     else:

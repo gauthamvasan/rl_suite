@@ -105,7 +105,7 @@ MIN_TIME_MAP = [
 
 
 class PointMaze():
-    all_maps = {"open": OPEN_DIVERSE_GR, "small": SMALL_MAZE_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR, 
+    all_maps = {"open": OPEN_DIVERSE_GR, "small": SMALL_MAZE_DIVERSE_GR, "medium": MEDIUM_MAZE_DIVERSE_GR,
                 "large": LARGE_MAZE_DIVERSE_GR, "min_time": MIN_TIME_MAP, "U": U_DIVERSE_GR,
                 "T": T_MAZE_DIVERSE_GR, "plus": PLUS_MAZE_DIVERSE_GR}
     """
