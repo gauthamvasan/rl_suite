@@ -13,10 +13,11 @@ from collections import deque
 from gym.spaces import Box
 from gymnasium_robotics.envs.maze.maps import R, G, C
 from rl_suite.envs import Observation
+from rl_suite.arp import ARProcess
 
 SMALL3 = [
     [1, 1, 1, 1, 1],
-    [1, R, 0, G, 1],
+    [1, R, G, 0, 1],
     [1, 1, 1, 1, 1]
 ]
 
@@ -34,7 +35,7 @@ SMALL5 = [
 
 SMALL6 = [
     [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, R, 0, 0, 0, 0, G, 1],
+    [1, R, G, 0, 0, 0, 0, 1],
     [1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
@@ -50,7 +51,7 @@ ALL_MAPS = {"open": OPEN, "small3": SMALL3, "small4": SMALL4, "small5": SMALL5, 
 
 
 class AntMaze:
-    def __init__(self, env_str, seed, timeout, map_type="small", reward_type="sparse", 
+    def __init__(self, seed, timeout, map_type="small", reward_type="sparse", 
                  use_image=False, img_history=3, render_mode=None) -> None:               
         assert render_mode in ["human", "rgb_array", None], print(render_mode)
         assert reward_type in ["sparse", "dense"], print(reward_type)
@@ -117,14 +118,18 @@ class AntMaze:
     def step(self, action):
         next_x, reward, terminated, truncated, info = self.env.step(action)
 
+        # if self.env.ant_env.is_healthy:
         if self.reward_type == "dense":
             reward = np.log(reward)
             terminated = terminated or truncated
         elif self.reward_type == "sparse":
-            # https://github.com/Farama-Foundation/Gymnasium-Robotics/blob/8606192735a9963d1dcc12feade037b77d9349be/gymnasium_robotics/envs/maze/maze.py#L281C21-L281C37
+            # https://github.com/Farama-Foundation/Gymnasium-Robotics/blob/8606192735a9963d1dcc12feade037b77d9349be/gymnasium_robotics/envs/maze/maze.py#L281C21-L281C37                
             terminated = -np.log(reward) <= 0.45
             terminated = terminated or truncated
             reward = -1
+        # else:
+        #     reward = -self.timeout
+        #     terminated = True
 
 
         self.steps += 1
@@ -165,25 +170,29 @@ class AntMaze:
 def main():    
     seed = 42
     n_episodes = 100
-    timeout = 5000
-    map_type = "open"
-    reward_type = "dense"
+    timeout = 1000
+    map_type = "small3"
+    reward_type = "sparse"
     use_image = False
-    render_mode = None  # "human", "rgb_array"
+    # render_mode = "human"
+    render_mode = None # rgb_array 
     np.random.seed(seed)
-    env = PointMaze(seed=seed, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=use_image)
-    # env = gym.make('PointMaze_UMaze-v3', maze_map=MIN_TIME_MAP, render_mode = "human")
-
-    obs = env.reset(randomize_target=True)
+    env = AntMaze(seed=seed, timeout=timeout, reward_type=reward_type, map_type=map_type, render_mode=render_mode, use_image=use_image)
+    rets = []
+    
     for i_ep in range(n_episodes):
-        done = False
+        terminated = False
         ret = 0
         step = 0
+        obs, _ = env.reset(randomize_target=True)
         # First episode. Cannot use previous goal if it was never initialized.
         tic = time.time()
-        while (not done and step < timeout):
+        ar = ARProcess(p=3, alpha=0.8, size=env.action_space.shape[0], seed=seed)
+        while (not terminated and step < timeout):
             action = env.action_space.sample()
-            next_obs, reward, done, info = env.step(action)
+            # action += np.clip(ar.step()[0], -1, 1)
+
+            next_obs, reward, terminated, truncated, info = env.step(action)
             ret += reward
             step += 1
             obs = next_obs
@@ -198,19 +207,19 @@ def main():
                 # if cv2.waitKey(1) == ord('q'):                
                 #     break
 
-            if step % 100 == 0:
-                print(f"Obs: {obs[:4]}, action: {action}, reward: {reward}")
+            # if step % 100 == 0:
+            #     print(f"Obs: {obs[:4]}, action: {action}, reward: {reward}")
             env.render()
-
-        if not done:
-            obs = env.reset(randomize_target=False)
-        else:
-            obs = env.reset(randomize_target=True)
+        
+        rets.append(ret)
+                
             
         print("Episode {} ended in {} steps with return {:.2f}. Done: {}. Render time: {:.2f}".format(
-            i_ep+1, step, ret, done, time.time()-tic))
-    
+            i_ep+1, step, ret, terminated, time.time()-tic))
+        
     env.close()
+    indices = np.where(np.array(rets) > -timeout)[0]
+    print(len(indices), len(rets))
 
 
 if __name__ == "__main__":
