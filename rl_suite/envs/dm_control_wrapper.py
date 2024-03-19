@@ -4,7 +4,7 @@ import numpy as np
 
 from dm_control import suite
 from dm_control.rl.control import flatten_observation
-from incremental_rl.agent_builder import Observation
+from rl_suite.envs import Observation
 from gym.spaces.box import Box
 
 ENV_MAP = {
